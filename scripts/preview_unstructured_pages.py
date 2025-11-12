@@ -175,7 +175,7 @@ def load_gold(gold_path: str, input_source: str, doc_id: Optional[str]) -> Tuple
     return matched_doc_id or "", tables
 
 
-def compute_table_match_score(gold_table: Dict[str, Any], cand_html: str, expected_cols: Optional[int]) -> Dict[str, Any]:
+def compute_table_match_cohesion(gold_table: Dict[str, Any], cand_html: str, expected_cols: Optional[int]) -> Dict[str, Any]:
     g_header: List[str] = [str(x) for x in (gold_table.get("header") or [])]
     g_rows: List[List[str]] = [[str(c) for c in row] for row in (gold_table.get("rows") or [])]
     g_left = left_col_signature(g_rows)
@@ -191,7 +191,7 @@ def compute_table_match_score(gold_table: Dict[str, Any], cand_html: str, expect
         c_cols = max((len(r) for r in c_rows), default=0)
         col_penalty = -abs(c_cols - expected_cols) * 0.05  # light penalty per extra/missing col
 
-    score = max(0.0, min(1.0, s_rows + col_penalty))
+    cohesion = max(0.0, min(1.0, s_rows + col_penalty))
 
     # Build per-row containment stats (left column containment)
     gold_to_cand: List[Tuple[int, Optional[int], float]] = []
@@ -220,7 +220,7 @@ def compute_table_match_score(gold_table: Dict[str, Any], cand_html: str, expect
         gold_to_cand.append((i, best_j, best_sim))
 
     return {
-        "score": score,
+        "cohesion": cohesion,
         "row_overlap": s_rows,
         "gold_left_size": len(g_left),
         "cand_left_size": len(c_left),
@@ -359,7 +359,7 @@ def main(argv: Optional[List[str]] = None) -> int:
                     if not html:
                         # fallback to plain text: wrap as one-cell table
                         html = f"<table><tbody><tr><td>{d.get('text','')}</td></tr></tbody></table>"
-                    det = compute_table_match_score(g, html, expected_cols)
+                    det = compute_table_match_cohesion(g, html, expected_cols)
                     cand_details.append((d, md, det))
 
                 # Greedy selection of multiple chunks to maximize coverage of gold left column
@@ -384,9 +384,20 @@ def main(argv: Optional[List[str]] = None) -> int:
                     selected.append(chosen)
                     covered |= set(chosen[2].get("cand_left_sig") or []) & g_left
 
-                coverage_ratio = (len(covered) / len(g_left)) if g_left else 1.0
-                # Also keep the single best by score for reference
-                best_single = max(cand_details, key=lambda t: t[2].get("score", 0.0), default=None)
+                # Coverage and cohesion metrics
+                covered_count = len(covered)
+                gold_left_size = len(g_left)
+                coverage_ratio = (covered_count / gold_left_size) if gold_left_size else 1.0
+                # Single overall quality metric akin to F1: harmonic mean of
+                # coverage (recall) and cohesion (1 / number of selected chunks).
+                chunk_count = len(selected)
+                cohesion = (1.0 / chunk_count) if chunk_count > 0 else 0.0
+                if coverage_ratio > 0.0 and cohesion > 0.0:
+                    chunker_f1 = 2.0 * coverage_ratio * cohesion / (coverage_ratio + cohesion)
+                else:
+                    chunker_f1 = 0.0
+                # Also keep the single best by cohesion for reference
+                best_single = max(cand_details, key=lambda t: t[2].get("cohesion", 0.0), default=None)
 
                 match_entry: Dict[str, Any]
                 match_entry = {
@@ -400,12 +411,20 @@ def main(argv: Optional[List[str]] = None) -> int:
                             "element_id": d.get("element_id"),
                             "page_trimmed": (md.get("page_number") or (md.get("page_numbers") or [None])[0]),
                             "page_original": trimmed_to_orig.get(md.get("page_number") or (md.get("page_numbers") or [None])[0]),
-                            "score": det.get("score"),
+                            "cohesion": det.get("cohesion"),
                             "row_overlap": det.get("row_overlap"),
                         }
                         for (d, md, det) in selected
                     ],
+                    # Explicit metrics
                     "coverage_ratio": coverage_ratio,
+                    "coverage": coverage_ratio,
+                    "cohesion": cohesion,
+                    "selected_chunk_count": chunk_count,
+                    # Debug counts
+                    "gold_left_size": gold_left_size,
+                    "covered_count": covered_count,
+                    "chunker_f1": chunker_f1,
                 }
                 if best_single is not None:
                     d, md, det = best_single
@@ -417,19 +436,41 @@ def main(argv: Optional[List[str]] = None) -> int:
                             "best_element_id": d.get("element_id"),
                             "best_page_trimmed": pnum,
                             "best_page_original": trimmed_to_orig.get(pnum),
-                            "best_score": det.get("score"),
+                            "best_cohesion": det.get("cohesion"),
                             "best_row_overlap": det.get("row_overlap"),
                         }
                     )
                 matches.append(match_entry)
 
+            # Compute overall metrics across all tables (macro averages)
+            overall: Dict[str, Any] = {"tables": len(matches)}
+            if matches:
+                avg_cov = sum(m.get("coverage", m.get("coverage_ratio", 0.0)) for m in matches) / len(matches)
+                avg_coh = sum(m.get("cohesion", 0.0) for m in matches) / len(matches)
+                avg_f1 = sum(m.get("chunker_f1", 0.0) for m in matches) / len(matches)
+                avg_chunks = sum(m.get("selected_chunk_count", 0) for m in matches) / len(matches)
+                # Micro coverage weighted by gold rows when available
+                total_gold = sum(m.get("gold_left_size", 0) for m in matches)
+                total_covered = sum(m.get("covered_count", 0) for m in matches)
+                micro_cov = (total_covered / total_gold) if total_gold else avg_cov
+                overall.update(
+                    {
+                        "avg_coverage": avg_cov,
+                        "avg_cohesion": avg_coh,
+                        "avg_chunker_f1": avg_f1,
+                        "avg_selected_chunk_count": avg_chunks,
+                        "micro_coverage": micro_cov,
+                    }
+                )
+
+            payload = {"matches": matches, "overall": overall}
             # Write matches out if requested
             if args.emit_matches:
                 os.makedirs(os.path.dirname(args.emit_matches), exist_ok=True)
                 with open(args.emit_matches, "w", encoding="utf-8") as mf:
-                    json.dump({"matches": matches}, mf, ensure_ascii=False, indent=2)
+                    json.dump(payload, mf, ensure_ascii=False, indent=2)
             else:
-                emit(json.dumps({"matches": matches}, ensure_ascii=False))
+                emit(json.dumps(payload, ensure_ascii=False))
     finally:
         if out_fh is not None:
             out_fh.close()

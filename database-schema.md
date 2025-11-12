@@ -21,6 +21,13 @@ The project does not persist to a database yet. Instead, Unstructured parses eac
 2. **Matches JSON** (`outputs/unstructured/<doc>.matches.json`)
    - `matches`: array containing one entry per gold table:
      - `doc_id`, `gold_table_id`, `gold_title`, `gold_pages`, `expected_cols`
-     - `selected_elements`: ordered list of chunks chosen to cover the gold rows (with trimmed/original page numbers plus individual scores).
-     - `coverage_ratio`: proportion of unique left-column terms from the gold table found across the selected elements.
-     - `best_element_id`, `best_page_trimmed`, `best_page_original`, `best_score`, `best_row_overlap`: convenience fields for the single best chunk.
+      - `selected_elements`: ordered list of chunks chosen to cover the gold rows (with trimmed/original page numbers plus individual `cohesion` values and `row_overlap`).
+     - `coverage_ratio` / `coverage`: proportion of unique left-column terms from the gold table found across the selected elements (recall).
+     - `cohesion`: `1 / selected_chunk_count` — maximized when the table is kept in a single chunk.
+     - `selected_chunk_count`: number of distinct chunks selected to cover the gold table.
+     - `chunker_f1`: single overall chunking quality metric. Defined as the harmonic mean of coverage and cohesion. Ranges in [0, 1] and peaks only when the table is fully covered in a single chunk.
+      - `best_element_id`, `best_page_trimmed`, `best_page_original`, `best_cohesion`, `best_row_overlap`: convenience fields for the single best chunk.
+   - `overall`: document-level summary across all matched tables
+     - `tables`: number of tables matched
+     - `avg_coverage`, `avg_cohesion`, `avg_chunker_f1`, `avg_selected_chunk_count`
+     - `micro_coverage`: coverage weighted by gold-row counts

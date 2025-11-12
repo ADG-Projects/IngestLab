@@ -51,7 +51,10 @@ What it does:
 - Trims the PDF to the requested pages and runs Unstructured once.
 - Emits the resulting elements (tables-only if requested) with deterministic `chunk-*` IDs.
 - Parses each `text_as_html` payload into rows and auto-matches them to the curated `dataset/gold.jsonl` tables (multi-chunk coverage supported).
-- Writes a `matches.json` summary showing coverage, best chunk per table, and any unmatched gold rows.
+- Writes a `matches.json` summary showing per-table metrics and an overall section:
+  - Per-table: `coverage` (recall), `cohesion` (`1 / selected_chunk_count`), `chunker_f1` (harmonic mean), plus the selected elements and the best single chunk.
+  - Overall: macro averages across tables (`avg_coverage`, `avg_cohesion`, `avg_chunker_f1`, `avg_selected_chunk_count`) and `micro_coverage` weighted by gold rows.
+  - Note: `cohesion` on each selected element is the row-overlap similarity (with a light column-count penalty) and differs from the table-level `cohesion` metric reported alongside coverage.
 
 Use `--input-jsonl` when you want to re-evaluate matches from a previously saved JSONL without reprocessing the PDF, and `--trimmed-out` if you want to keep the sliced PDF for debugging.
 
