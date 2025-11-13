@@ -40,31 +40,42 @@
   <body>
     <header>
       <h1>Chunking Visualizer</h1>
+      <div class="view-tabs" role="tablist" aria-label="Primary view">
+        <button id="viewTabMetrics" class="tab active" data-view="metrics" role="tab" aria-selected="true">Metrics</button>
+        <button id="viewTabInspect" class="tab" data-view="inspect" role="tab" aria-selected="false">Inspect</button>
+      </div>
       <div class="controls">
-        <label>
-          Run:
+        <label class="run-picker">
+          <span class="lab">Run</span>
           <select id="runSelect"></select>
         </label>
+        <button id="openRunModal" class="btn">New Run</button>
+        <button id="openVariantModal" class="btn">Re-Run (clone)</button>
+        <button id="deleteRunBtn" class="btn" title="Delete current run">Delete</button>
+        <button id="cleanupBtn" class="btn" title="Remove orphan outputs from disk">Cleanup outputs</button>
       </div>
     </header>
 
-    <main>
+  <main>
       <section class="left">
         <div class="page-controls">
           <button id="prevPage">◀</button>
           <span>Page <span id="pageNum">-</span> / <span id="pageCount">-</span></span>
           <button id="nextPage">▶</button>
-          <input type="range" id="zoom" min="50" max="200" value="110" />
+          <input type="range" id="zoom" min="50" max="200" value="100" />
         </div>
         <div id="pdfContainer">
           <div class="page-layer">
             <canvas id="pdfCanvas"></canvas>
             <div id="overlay"></div>
           </div>
+          <div id="legend" class="legend hidden"></div>
         </div>
       </section>
 
-      <section class="right">
+      <!-- Right panel: Metrics view -->
+      <section class="right" id="right-metrics" aria-labelledby="viewTabMetrics">
+        <div id="runConfigCard" class="card config-card"></div>
         <div class="metrics">
           <div class="metric">
             <div class="label">Avg Coverage <span class="info" tabindex="0">i</span><div class="tip">Macro average of per-table coverage (recall): share of gold rows covered by the selected chunks.</div></div>
@@ -87,14 +98,41 @@
             <div id="mmicrov" class="value">-</div>
           </div>
         </div>
-
         <div class="chart">
           <canvas id="chart"></canvas>
         </div>
-
         <div class="matches">
           <h2>Tables</h2>
+          <div class="row controls-row">
+            <label class="checkbox"><input id="showUnmatched" type="checkbox" /> Show unmatched gold tables</label>
+          </div>
           <div id="matchList" class="list"></div>
+        </div>
+      </section>
+
+      <!-- Right panel: Inspect view -->
+      <section class="right hidden" id="right-inspect" aria-labelledby="viewTabInspect">
+        <div class="tabs inspect-tabs">
+          <button class="tab active" data-inspect="chunks">Chunks</button>
+          <button class="tab" data-inspect="elements">Elements</button>
+        </div>
+        <div id="pane-inspect-chunks" class="pane active">
+          <div class="chunks-view">
+            <div id="chunkSummary" class="card chunk-summary"></div>
+            <div id="chunkList" class="chunk-list"></div>
+          </div>
+        </div>
+        <div id="pane-inspect-elements" class="pane">
+          <div class="elements">
+            <div class="row">
+              <label>
+                <span class="lab">Type</span>
+                <select id="elementsTypeSelect"></select>
+              </label>
+            </div>
+            <div id="typesList" class="types"></div>
+            <div class="elements-list" id="elementsList"></div>
+          </div>
         </div>
       </section>
 
@@ -116,6 +154,123 @@
       </aside>
     </main>
 
-    <script src="/app.js" defer></script>
+    <div id="toast" class="toast"></div>
+
+    <!-- New Run Modal -->
+    <div id="runModal" class="modal hidden">
+      <div class="modal-backdrop" id="runModalBackdrop"></div>
+      <div class="modal-content card">
+        <div class="modal-header">
+          <div class="modal-title">New Run</div>
+          <button id="closeRunModal" class="btn">Close</button>
+        </div>
+        <div class="run-grid">
+          <label>
+            <div class="lab">PDF</div>
+            <select id="pdfSelect"></select>
+          </label>
+          <label>
+            <div class="lab">Pages</div>
+            <input id="pagesInput" placeholder="e.g. 4-6 or 4,5,6" />
+          </label>
+          <label>
+            <div class="lab">Strategy</div>
+            <select id="strategySelect">
+              <option value="auto">auto</option>
+              <option value="fast">fast</option>
+              <option value="hi_res">hi_res</option>
+            </select>
+          </label>
+          <label class="checkbox">
+            <input id="inferTables" type="checkbox" checked /> Infer table structure
+          </label>
+          <label>
+            <div class="lab">Chunking</div>
+            <select id="chunkingSelect">
+              <option value="by_title" selected>by_title</option>
+              <option value="basic">basic</option>
+            </select>
+          </label>
+          <label>
+            <div class="lab">Variant tag (optional)</div>
+            <input id="variantTag" placeholder="e.g. hi-res-tuned" />
+          </label>
+          <div id="chunkAdv" class="chunk-adv">
+            <details>
+              <summary>Advanced chunking</summary>
+              <div class="adv-grid">
+                <label>
+                  <div class="lab">max_tokens (≈ chars ÷ 4, default ≈125)</div>
+                  <input id="chunkMaxTokens" type="number" min="50" step="10" placeholder="e.g. 500" />
+                </label>
+                <label>
+                  <div class="lab">max_characters (default 500)</div>
+                  <input id="chunkMaxChars" type="number" min="50" step="10" placeholder="e.g. 2000" />
+                </label>
+                <label>
+                  <div class="lab">new_after_n_chars (default 500)</div>
+                  <input id="chunkNewAfter" type="number" min="50" step="10" placeholder="e.g. 1500" />
+                </label>
+                <label id="chunkCombineRow">
+                  <div class="lab">combine_under_n_chars (default 500)</div>
+                  <input id="chunkCombineUnder" type="number" min="0" step="10" placeholder="e.g. 500" />
+                </label>
+                <label>
+                  <div class="lab">overlap (default 0)</div>
+                  <input id="chunkOverlap" type="number" min="0" step="10" placeholder="e.g. 100" />
+                </label>
+              </div>
+              <div class="adv-grid">
+                <label>
+                  <div class="lab">include_orig_elements (default true)</div>
+                  <select id="chunkIncludeOrig">
+                    <option value="">default (true)</option>
+                    <option value="true">true</option>
+                    <option value="false">false</option>
+                  </select>
+                </label>
+                <label>
+                  <div class="lab">overlap_all (default false)</div>
+                  <select id="chunkOverlapAll">
+                    <option value="">default (false)</option>
+                    <option value="true">true</option>
+                    <option value="false">false</option>
+                  </select>
+                </label>
+                <label id="chunkMultipageRow">
+                  <div class="lab">multipage_sections (default true)</div>
+                  <select id="chunkMultipage">
+                    <option value="">default (true)</option>
+                    <option value="true">true</option>
+                    <option value="false">false</option>
+                  </select>
+                </label>
+              </div>
+            </details>
+          </div>
+          <div class="run-actions">
+            <button id="runBtn" class="btn">Run</button>
+            <span id="runStatus" class="muted"></span>
+          </div>
+        </div>
+        <div class="run-preview">
+          <div class="run-preview-controls">
+            <button id="runPrev" class="btn">◀</button>
+            <span>Page <span id="runPageNum">-</span> / <span id="runPageCount">-</span></span>
+            <button id="runNext" class="btn">▶</button>
+            <span class="sep"></span>
+            <button id="addPageBtn" class="btn">Add page</button>
+            <button id="markStartBtn" class="btn">Mark start</button>
+            <button id="markEndBtn" class="btn">Mark end</button>
+            <span id="rangeHint" class="muted"></span>
+          </div>
+          <div class="run-canvas-wrap">
+            <canvas id="runPdfCanvas"></canvas>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="/app.js?v=20251113-2" defer></script>
   </body>
   </html>

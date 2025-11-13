@@ -27,15 +27,21 @@ The project does not persist to a database yet. Instead, Unstructured parses eac
      - `selected_chunk_count`: number of distinct chunks selected to cover the gold table.
      - `chunker_f1`: single overall chunking quality metric. Defined as the harmonic mean of coverage and cohesion. Ranges in [0, 1] and peaks only when the table is fully covered in a single chunk.
       - `best_element_id`, `best_page_trimmed`, `best_page_original`, `best_cohesion`, `best_row_overlap`: convenience fields for the single best chunk.
-   - `overall`: document-level summary across all matched tables
+    - `overall`: document-level summary across all matched tables
      - `tables`: number of tables matched
      - `avg_coverage`, `avg_cohesion`, `avg_chunker_f1`, `avg_selected_chunk_count`
      - `micro_coverage`: coverage weighted by gold-row counts
+
+3. **Optional Chunks JSONL** (`outputs/unstructured/<doc>.pages<range>.chunks.jsonl`)
+   - Emitted when the UI/API runs with `chunking=by_title`.
+   - Each line is a chunk object returned by `unstructured.chunking.title.chunk_by_title(elements, ...)` with deterministic `chunk-*` IDs applied.
+   - Tuning parameters include `max_characters`, `new_after_n_chars`, `combine_text_under_n_chars`, and `overlap`.
 
 ## Web UI consumption
 
 The local web UI (served by `web/serve.py`) consumes the same artifacts:
 - Tables JSONL for per-chunk coordinates (`metadata.coordinates.points`, `layout_width`, `layout_height`, `page_number`).
 - Matches JSON for per-table `selected_elements` (with `page_trimmed`/`page_original`) and overall metrics.
+ - Chunks JSONL is currently not visualized, but generation is available from the “New Run” card for tuning text chunking parameters.
 
 No schema changes are introduced; these endpoints are thin wrappers over the files on disk.
