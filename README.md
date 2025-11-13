@@ -82,6 +82,7 @@ What you get:
 - Overlay UX improvements:
   - Hover any overlay to see a tooltip with ID, type, page, and for chunks the character length.
   - Overlay colors are hardcoded per element type (consistent across views and runs).
+  - Table chunks derive per-row bounding boxes from their source tables, so multi-chunk highlights no longer stack on top of each other.
 - Drilldown: click "Details" on any table to preview the extracted HTML table for the best chunk (and switch among all selected chunks).
 - Inspect → Chunks: review chunk output (summary + list); selecting a chunk jumps to its page and shows its boxes.
 - Inspect → Elements: browse element types and overlay boxes for the current page; filter by type.

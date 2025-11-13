@@ -160,6 +160,12 @@ function addBox(rect, layoutW, layoutH, isBest=false, type=null, color=null, var
   overlay.appendChild(el);
 }
 
+function chunkBox(chunk) {
+  if (!chunk) return null;
+  if (chunk.segment_bbox) return chunk.segment_bbox;
+  return chunk.bbox || null;
+}
+
 async function highlightForTable(tableMatch, bestOnly=false) {
   const targets = bestOnly
     ? [{ element_id: tableMatch.best_element_id, page_trimmed: tableMatch.best_page_trimmed }]
@@ -168,11 +174,7 @@ async function highlightForTable(tableMatch, bestOnly=false) {
   LAST_SELECTED_MATCH = tableMatch;
   LAST_HIGHLIGHT_MODE = bestOnly ? 'best' : 'all';
 
-  const ids = targets.map(t => t.element_id).filter(Boolean);
-  // Fetch minimal boxes for these IDs
-  if (ids.length) {
-    BOX_INDEX = await fetchJSON(`/api/elements/${encodeURIComponent(CURRENT_SLUG)}?ids=${encodeURIComponent(ids.join(','))}`);
-  }
+  // No longer fetch element boxes - we'll use chunk bboxes directly from CURRENT_CHUNK_LOOKUP
 
   const pages = new Set(targets.map(t => t.page_trimmed));
   const arr = [...pages];
@@ -200,20 +202,21 @@ function drawTargetsOnPage(pageNum, tableMatch, bestOnly=false) {
 
   for (const t of targets) {
     if (t.page_trimmed !== pageNum) continue;
-    const entry = BOX_INDEX[t.element_id];
-    if (!entry) continue;
-    const rect = { x: entry.x, y: entry.y, w: entry.w, h: entry.h };
+    const ch = CURRENT_CHUNK_LOOKUP[t.element_id];
+    const box = chunkBox(ch);
+    if (!ch || !box) continue;
+    if (box.page_trimmed !== pageNum) continue;
+    const rect = { x: box.x, y: box.y, w: box.w, h: box.h };
     const isBest = bestOnly || t.element_id === tableMatch.best_element_id;
     if (SHOW_CHUNK_OVERLAYS) {
-      const ch = (t.element_id && CURRENT_CHUNK_LOOKUP) ? CURRENT_CHUNK_LOOKUP[t.element_id] : null;
       const meta = {
         kind: 'chunk',
         id: t.element_id,
-        type: entry.type,
-        page: entry.page_trimmed,
-        chars: ch && Number.isFinite(ch.char_len) ? ch.char_len : undefined,
+        type: ch.type,
+        page: box.page_trimmed,
+        chars: ch.char_len,
       };
-      addBox(rect, entry.layout_w, entry.layout_h, isBest, entry.type, null, 'chunk', meta);
+      addBox(rect, box.layout_w, box.layout_h, isBest, ch.type, null, 'chunk', meta);
     }
     if (SHOW_ELEMENT_OVERLAYS) {
       drawOrigBoxesForChunk(t.element_id, pageNum, null);
@@ -225,9 +228,11 @@ function drawOrigBoxesForChunk(chunkId, pageNum, color) {
   if (!chunkId || !CURRENT_CHUNK_LOOKUP) return;
   const chunk = CURRENT_CHUNK_LOOKUP[chunkId];
   if (!chunk || !chunk.orig_boxes) return;
+  const hasSegmentBox = Boolean(chunk.segment_bbox);
   for (const box of chunk.orig_boxes) {
     const t = String(box.type || '').toLowerCase();
     if (t.includes('composite')) continue; // avoid page-sized composite overlays
+    if (hasSegmentBox && t.includes('table')) continue; // segment covers the table footprint already
     if (box.page_trimmed !== pageNum) continue;
     if (!(box.layout_w && box.layout_h)) continue;
     const rect = { x: box.x, y: box.y, w: box.w, h: box.h };
@@ -241,7 +246,7 @@ function drawChunksModeForPage(pageNum) {
   // show all chunk bboxes on this page when enabled
   if (SHOW_CHUNK_OVERLAYS && CURRENT_CHUNKS && CURRENT_CHUNKS.chunks) {
     for (const ch of CURRENT_CHUNKS.chunks) {
-      const box = ch.bbox;
+      const box = chunkBox(ch);
       if (!box || box.page_trimmed !== pageNum) continue;
       const meta = { kind: 'chunk', id: ch.element_id, type: ch.type, page: box.page_trimmed, chars: ch.char_len };
       addBox({ x: box.x, y: box.y, w: box.w, h: box.h }, box.layout_w, box.layout_h, false, ch.type, null, 'chunk', meta);
@@ -1292,7 +1297,7 @@ function renderChunksTab() {
   const allChunks = CURRENT_CHUNKS.chunks || [];
   // Filter chunks by current page
   const chunks = allChunks.filter(ch => {
-    const b = ch.bbox;
+    const b = chunkBox(ch);
     return b && Number.isFinite(b.page_trimmed) && b.page_trimmed === CURRENT_PAGE;
   });
 
@@ -1368,7 +1373,7 @@ function renderChunksTab() {
     card.addEventListener('click', async () => {
       // Open chunk details in drawer
       CURRENT_ELEMENT_ID = chunk.element_id || null;
-      const b = chunk.bbox;
+      const b = chunkBox(chunk);
       if (b && Number.isFinite(b.page_trimmed)) {
         const p = Number(b.page_trimmed);
         if (p && p !== CURRENT_PAGE) {
@@ -1506,7 +1511,7 @@ async function focusChunkFromOverlay(chunkId) {
   switchInspectTab('chunks');
   CURRENT_ELEMENT_ID = chunkId;
   const ch = CURRENT_CHUNK_LOOKUP ? CURRENT_CHUNK_LOOKUP[chunkId] : null;
-  const b = ch && ch.bbox;
+  const b = chunkBox(ch);
   if (b && Number.isFinite(b.page_trimmed)) {
     const p = Number(b.page_trimmed);
     if (p && p !== CURRENT_PAGE) await renderPage(p);
