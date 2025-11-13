@@ -79,6 +79,7 @@ What you get:
   - Metrics: run config, overall metrics bars, F1 chart, and table match cards with per-table actions (Highlight all/best, Details).
   - Inspect: focused tools for chunk and element inspection, with overlay toggles and type filter, plus sub-tabs for Chunks and Elements.
 - Per-table cards with coverage, cohesion, F1, and chunk count, and one-click highlighting on the PDF from Metrics.
+- A compact single-line settings recap with rich tooltips for each parameter; the New Run modal mirrors the same tooltips so behavior is clear where you edit values.
 - Overlay UX improvements:
   - Hover any overlay to see a tooltip with ID, type, page, and for chunks the character length.
   - Overlay colors are hardcoded per element type (consistent across views and runs).
@@ -119,7 +120,8 @@ Endpoints (served by FastAPI):
 Run on demand via the UI:
 - In the right panel, use the “New Run” card to pick a PDF, set pages and strategy, choose `basic` or `by_title` chunking, tweak advanced parameters, then click Run.
 - The server slices the PDF, runs Unstructured, writes artifacts in `outputs/unstructured/`, and refreshes the run list. The latest run per slug is shown.
- - The New Run modal includes a live PDF preview from `res` with prev/next controls and quick buttons to “Add page” or mark a start/end to append a page range to the Pages field. Advanced chunking controls now expose both `basic` and `by_title` strategies plus every Unstructured flag (including approximate `max_tokens`, `include_orig_elements`, `overlap_all`, and `multipage_sections`).
+- The New Run modal includes a live PDF preview from `res` with prev/next controls and quick buttons to “Add page” or mark a start/end to append a page range to the Pages field. Advanced chunking controls now expose both `basic` and `by_title` strategies plus every Unstructured flag (including approximate `max_tokens`, `include_orig_elements`, `overlap_all`, and `multipage_sections`).
+- The Settings Recap bar mirrors all inputs from the New Run modal, including `max_tokens` (approximate), `max_characters`, `new_after_n_chars`, `combine_under_n_chars`, `overlap`, `include_orig_elements`, `overlap_all`, `multipage_sections`, and metadata like PDF, pages, and optional tag. New runs persist this snapshot under `run_config.form_snapshot`, while older runs fall back to whatever fields are available.
  - To compare strategies on the same slice, click “Re-Run (clone)” in the header. It pre-fills the same PDF and pages; add an optional Variant tag (e.g., `hires-2k`) to keep results side-by-side. Artifacts are saved under a variant slug like `<slug>__hires-2k`.
  - Per-table highlighting uses distinct colors per selected chunk so multi-page/multi-chunk tables are easy to see; the overlay legend reflects element types present on the current page.
  - Use the header “Cleanup outputs” button (or `POST /api/cleanup`) to remove orphaned files under `outputs/unstructured/` that are no longer referenced by runs.

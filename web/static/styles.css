@@ -32,6 +32,57 @@ header h1 { font-size: 18px; margin: 0; }
 header .controls { display: flex; gap: 12px; align-items: center; }
 .run-picker { display: inline-flex; align-items: center; gap: 8px; }
 .run-picker .lab { color: var(--muted); font-size: 12px; }
+
+/* Settings Recap Bar */
+.settings-recap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  background: var(--panel);
+  border-bottom: 1px solid #22262d;
+  flex-wrap: nowrap; /* force single line */
+  /* Keep on one line but allow tooltips to overflow vertically */
+  overflow-x: hidden;
+  overflow-y: visible;
+  white-space: nowrap;
+  position: relative; /* create stacking context for tooltips */
+  z-index: 10010;      /* ensure tips appear above main content */
+}
+.setting-item {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  min-width: auto;
+  flex: 0 1 auto;
+  overflow: visible; /* allow child tooltip overflow */
+}
+.setting-label {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 10px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-weight: 500;
+}
+.setting-value {
+  font-size: 13px;
+  color: var(--text);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  max-width: 260px; /* allow truncation when needed */
+}
+.settings-recap .truncate {
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: inline-block;
+  vertical-align: bottom;
+}
 select, input[type="checkbox"], input[type="range"] {
   accent-color: var(--accent);
 }
@@ -43,7 +94,7 @@ select {
   border-radius: 6px;
 }
 
-main { display: grid; grid-template-columns: 1fr 700px; height: calc(100vh - 58px); }
+main { display: grid; grid-template-columns: 1fr 700px; height: calc(100vh - 58px - 60px); }
 
 section.left {
   display: flex;
@@ -260,7 +311,7 @@ section.right {
 /* Drawer */
 .drawer {
   position: fixed;
-  top: 58px;
+  top: calc(58px + 60px);
   right: 0;
   width: min(700px, calc(100vw - 32px));
   bottom: 0;
@@ -276,20 +327,20 @@ section.right {
 .drawer-header > div:first-child { display: grid; gap: 6px; }
 .drawer-title { font-weight: 600; }
 .drawer-meta { color: var(--muted); font-size: 12px; }
-.drawer-content { display: grid; grid-template-rows: auto 1fr; gap: 10px; padding: 10px; min-height: 0; overflow-y: auto; overflow-x: hidden; }
-.element-picker { display: flex; flex-wrap: wrap; gap: 6px; }
+.drawer-content { display: flex; flex-direction: column; gap: 10px; padding: 10px; min-height: 0; overflow: hidden; flex: 1; }
+.element-picker { display: flex; flex-wrap: wrap; gap: 6px; flex-shrink: 0; }
 .element-picker .chip { cursor: pointer; }
 .element-picker .chip.active { outline: 2px solid var(--accent); }
 .chip-tag { margin-left: 6px; background: #2a3140; color: #bcd; border-radius: 4px; padding: 1px 6px; font-size: 11px; }
 .chip-tag.best { background: #1f2d24; color: #9fe5c4; }
-.table-preview { background: var(--panel); border: 1px solid #2a2f38; border-radius: 8px; padding: 10px; overflow: visible; position: relative; }
-.scrollbox { overflow: auto; max-height: 52vh; border-radius: 6px; }
-.table-preview table { width: 100%; border-collapse: collapse; }
-.table-preview td, .table-preview th { border: 1px solid #3a3f49; padding: 6px 8px; font-size: 12px; color: var(--text); }
+.table-preview { background: var(--panel); border: 1px solid #2a2f38; border-radius: 8px; padding: 10px; overflow: visible; position: relative; display: flex; flex-direction: column; flex: 1; min-height: 0; }
+.scrollbox { overflow: auto; flex: 1; border-radius: 6px; min-height: 0; }
+.table-preview table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+.table-preview td, .table-preview th { border: 1px solid #3a3f49; padding: 6px 8px; font-size: 12px; color: var(--text); word-wrap: break-word; overflow-wrap: anywhere; word-break: break-word; white-space: normal; }
 .table-preview tr:nth-child(odd) { background: #171a21; }
 .placeholder { color: var(--muted); font-size: 12px; }
-.preview-meta { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; color: var(--muted); font-size: 12px; }
-#preview { overflow-x: hidden; overflow-y: auto; max-height: 100%; word-wrap: break-word; }
+.preview-meta { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; color: var(--muted); font-size: 12px; flex-shrink: 0; }
+#preview { overflow-x: hidden; overflow-y: auto; word-wrap: break-word; flex: 1; min-height: 0; display: flex; flex-direction: column; }
 .badge { background: #2a3140; color: #bcd; border-radius: 999px; padding: 2px 8px; font-size: 11px; text-transform: uppercase; letter-spacing: .02em; }
 
 /* Text wrapping for pre elements in drawer */
@@ -306,7 +357,7 @@ section.right {
 }
 
 /* Mini metrics in drawer */
-.mini-metrics { display: grid; gap: 8px; margin: 8px 0 10px; }
+.mini-metrics { display: grid; gap: 8px; margin: 8px 0 10px; flex-shrink: 0; }
 .mini-metric { display: grid; grid-template-columns: 120px 1fr auto; gap: 8px; align-items: center; }
 .mini-metric .label { color: var(--muted); font-size: 12px; }
 .mini-metric .bar { background: #20242b; border-radius: 999px; height: 6px; overflow: hidden; }
@@ -316,10 +367,21 @@ section.right {
 .mini-metrics.compact .mini-metric { grid-template-columns: 110px 220px 38px; }
 
 /* Info tooltip */
-.metric .label, .mini-metric .label { position: relative; display: flex; align-items: center; gap: 6px; }
+.metric .label, .mini-metric .label, .setting-label, .run-grid .lab { position: relative; display: inline-flex; align-items: center; gap: 6px; }
 .info { display: inline-flex; align-items: center; justify-content: center; width: 14px; height: 14px; border-radius: 50%; border: 1px solid #3a3f49; color: #b9c3cf; font-size: 10px; cursor: help; }
 .tip { position: absolute; right: 0; top: 22px; background: #0f1116; color: var(--text); border: 1px solid #2a2f38; border-radius: 6px; padding: 8px 10px; font-size: 12px; width: 260px; box-shadow: 0 6px 20px rgba(0,0,0,0.35); opacity: 0; transform: translateY(-4px); pointer-events: none; transition: opacity .15s ease, transform .15s ease; z-index: 10001; }
-.metric .label:hover .tip, .mini-metric .label:hover .tip, .info:focus + .tip { opacity: 1; transform: translateY(0); pointer-events: auto; }
+.metric .label:hover .tip, .mini-metric .label:hover .tip, .setting-label:hover .tip, .run-grid .lab:hover .tip, .info:focus + .tip,
+.settings-recap .setting-item:hover .tip, .settings-recap .setting-item:focus-within .tip { opacity: 1; transform: translateY(0); pointer-events: auto; }
+
+/* Recap bar: show tooltips above the row and trigger on the whole item */
+.settings-recap .setting-item { position: relative; }
+.settings-recap .setting-item .tip {
+  top: auto;
+  bottom: calc(100% + 8px); /* show above the recap row */
+  left: 0;
+  right: auto;
+  z-index: 20000;
+}
 /* Header toggle tooltip */
 .toggle-label { position: relative; display: inline-flex; align-items: center; gap: 6px; }
 .toggle-label .tip { left: 0; right: auto; top: 24px; }

@@ -56,6 +56,66 @@
       </div>
     </header>
 
+    <!-- Settings Recap Bar -->
+    <div id="settingsRecap" class="settings-recap">
+      <div class="setting-item">
+        <span class="setting-label">STRAT <span class="info" tabindex="0">i</span><div class="tip">Extraction strategy in Unstructured: auto lets the library pick, fast is lighter, hi_res uses high‑resolution vision for layout accuracy.</div></span>
+        <span class="setting-value" id="settingStrategy">-</span>
+      </div>
+      <div class="setting-item">
+        <span class="setting-label">INF‑TBL <span class="info" tabindex="0">i</span><div class="tip">Infer table structure (rows and cells) from detected lines/glyphs. When off, tables are generic blocks.</div></span>
+        <span class="setting-value" id="settingInferTables">-</span>
+      </div>
+      <div class="setting-item">
+        <span class="setting-label">CHUNK <span class="info" tabindex="0">i</span><div class="tip">How elements are grouped: by_title uses headings as section boundaries; basic creates size‑based text chunks.</div></span>
+        <span class="setting-value" id="settingChunking">-</span>
+      </div>
+      <div class="setting-item">
+        <span class="setting-label">TOK <span class="info" tabindex="0">i</span><div class="tip">Approximate target tokens per chunk (LLM). If provided, max_characters ≈ tokens × 4.</div></span>
+        <span class="setting-value" id="settingMaxTokens">-</span>
+      </div>
+      <div class="setting-item">
+        <span class="setting-label">CHARS <span class="info" tabindex="0">i</span><div class="tip">Hard character cap per chunk. Used if max_tokens is not set.</div></span>
+        <span class="setting-value" id="settingMaxChars">-</span>
+      </div>
+      <div class="setting-item">
+        <span class="setting-label">NEW <span class="info" tabindex="0">i</span><div class="tip">Start a new chunk after this many characters have been appended.</div></span>
+        <span class="setting-value" id="settingNewAfter">-</span>
+      </div>
+      <div class="setting-item">
+        <span class="setting-label">COMB <span class="info" tabindex="0">i</span><div class="tip">If a chunk is smaller than this, merge it with the next. Applies to by_title.</div></span>
+        <span class="setting-value" id="settingCombineUnder">-</span>
+      </div>
+      <div class="setting-item">
+        <span class="setting-label">OVRLP <span class="info" tabindex="0">i</span><div class="tip">Trailing characters to overlap between adjacent chunks to preserve context.</div></span>
+        <span class="setting-value" id="settingOverlap">-</span>
+      </div>
+      <div class="setting-item">
+        <span class="setting-label">INCL <span class="info" tabindex="0">i</span><div class="tip">Include original atomic elements alongside chunk spans in outputs/overlays.</div></span>
+        <span class="setting-value" id="settingIncludeOrig">-</span>
+      </div>
+      <div class="setting-item">
+        <span class="setting-label">OVRLP* <span class="info" tabindex="0">i</span><div class="tip">Apply overlap to all boundaries, including section breaks. When off, overlap only within contiguous text.</div></span>
+        <span class="setting-value" id="settingOverlapAll">-</span>
+      </div>
+      <div class="setting-item">
+        <span class="setting-label">MPAGE <span class="info" tabindex="0">i</span><div class="tip">Allow by_title chunks to span multiple pages until the next title appears.</div></span>
+        <span class="setting-value" id="settingMultipage">-</span>
+      </div>
+      <div class="setting-item">
+        <span class="setting-label">PDF <span class="info" tabindex="0">i</span><div class="tip">Input PDF used to generate this run.</div></span>
+        <span class="setting-value truncate" id="settingPdf">-</span>
+      </div>
+      <div class="setting-item">
+        <span class="setting-label">PAGES <span class="info" tabindex="0">i</span><div class="tip">Pages processed (list or ranges, e.g., 5-7,12).</div></span>
+        <span class="setting-value truncate" id="settingPages">-</span>
+      </div>
+      <div class="setting-item">
+        <span class="setting-label">TAG <span class="info" tabindex="0">i</span><div class="tip">Optional variant tag appended to the run slug for comparison.</div></span>
+        <span class="setting-value truncate" id="settingTag">-</span>
+      </div>
+    </div>
+
   <main>
       <section class="left">
         <div class="page-controls">
@@ -75,7 +135,6 @@
 
       <!-- Right panel: Metrics view -->
       <section class="right" id="right-metrics" aria-labelledby="viewTabMetrics">
-        <div id="runConfigCard" class="card config-card"></div>
         <div class="metrics">
           <div class="metric">
             <div class="label">Avg Coverage <span class="info" tabindex="0">i</span><div class="tip">Macro average of per-table coverage (recall): share of gold rows covered by the selected chunks.</div></div>
@@ -113,16 +172,10 @@
       <!-- Right panel: Inspect view -->
       <section class="right hidden" id="right-inspect" aria-labelledby="viewTabInspect">
         <div class="tabs inspect-tabs">
-          <button class="tab active" data-inspect="chunks">Chunks</button>
-          <button class="tab" data-inspect="elements">Elements</button>
+          <button class="tab active" data-inspect="elements">Elements</button>
+          <button class="tab" data-inspect="chunks">Chunks</button>
         </div>
-        <div id="pane-inspect-chunks" class="pane active">
-          <div class="chunks-view">
-            <div id="chunkSummary" class="card chunk-summary"></div>
-            <div id="chunkList" class="chunk-list"></div>
-          </div>
-        </div>
-        <div id="pane-inspect-elements" class="pane">
+        <div id="pane-inspect-elements" class="pane active">
           <div class="elements">
             <div class="row">
               <label>
@@ -132,6 +185,12 @@
             </div>
             <div id="typesList" class="types"></div>
             <div class="elements-list" id="elementsList"></div>
+          </div>
+        </div>
+        <div id="pane-inspect-chunks" class="pane">
+          <div class="chunks-view">
+            <div id="chunkSummary" class="card chunk-summary"></div>
+            <div id="chunkList" class="chunk-list"></div>
           </div>
         </div>
       </section>
@@ -166,15 +225,15 @@
         </div>
         <div class="run-grid">
           <label>
-            <div class="lab">PDF</div>
+            <div class="lab">PDF <span class="info" tabindex="0">i</span><div class="tip">Pick a source PDF from <code>res/</code>.</div></div>
             <select id="pdfSelect"></select>
           </label>
           <label>
-            <div class="lab">Pages</div>
+            <div class="lab">Pages <span class="info" tabindex="0">i</span><div class="tip">Comma‑separated pages and ranges, e.g., <code>5-7,12</code>. The server trims and processes only these pages.</div></div>
             <input id="pagesInput" placeholder="e.g. 4-6 or 4,5,6" />
           </label>
           <label>
-            <div class="lab">Strategy</div>
+            <div class="lab">Strategy <span class="info" tabindex="0">i</span><div class="tip">Unstructured extraction mode: <b>auto</b> (choose for you), <b>fast</b> (lighter), <b>hi_res</b> (vision‑heavy, better layout).</div></div>
             <select id="strategySelect">
               <option value="auto">auto</option>
               <option value="fast">fast</option>
@@ -182,17 +241,18 @@
             </select>
           </label>
           <label class="checkbox">
-            <input id="inferTables" type="checkbox" checked /> Infer table structure
+            <input id="inferTables" type="checkbox" checked />
+            <span class="lab">Infer table structure <span class="info" tabindex="0">i</span><div class="tip">Rebuild table rows and cells from lines/glyphs for more accurate tables.</div></span>
           </label>
           <label>
-            <div class="lab">Chunking</div>
+            <div class="lab">Chunking <span class="info" tabindex="0">i</span><div class="tip">Group output into chunks: <b>by_title</b> uses section titles; <b>basic</b> uses size‑only chunking.</div></div>
             <select id="chunkingSelect">
               <option value="by_title" selected>by_title</option>
               <option value="basic">basic</option>
             </select>
           </label>
           <label>
-            <div class="lab">Variant tag (optional)</div>
+            <div class="lab">Variant tag (optional) <span class="info" tabindex="0">i</span><div class="tip">Optional label appended to the run slug for side‑by‑side comparisons (e.g., <code>hires-2k</code>).</div></div>
             <input id="variantTag" placeholder="e.g. hi-res-tuned" />
           </label>
           <div id="chunkAdv" class="chunk-adv">
@@ -200,29 +260,29 @@
               <summary>Advanced chunking</summary>
               <div class="adv-grid">
                 <label>
-                  <div class="lab">max_tokens (≈ chars ÷ 4, default ≈125)</div>
+                  <div class="lab">max_tokens <span class="info" tabindex="0">i</span><div class="tip">Target tokens per chunk. When set, <code>max_characters</code> is derived as <code>tokens × 4</code>.</div></div>
                   <input id="chunkMaxTokens" type="number" min="50" step="10" placeholder="e.g. 500" />
                 </label>
                 <label>
-                  <div class="lab">max_characters (default 500)</div>
+                  <div class="lab">max_characters <span class="info" tabindex="0">i</span><div class="tip">Hard character cap per chunk. Used when <code>max_tokens</code> is not provided.</div></div>
                   <input id="chunkMaxChars" type="number" min="50" step="10" placeholder="e.g. 2000" />
                 </label>
                 <label>
-                  <div class="lab">new_after_n_chars (default 500)</div>
+                  <div class="lab">new_after_n_chars <span class="info" tabindex="0">i</span><div class="tip">Start a new chunk after N characters have been appended.</div></div>
                   <input id="chunkNewAfter" type="number" min="50" step="10" placeholder="e.g. 1500" />
                 </label>
                 <label id="chunkCombineRow">
-                  <div class="lab">combine_under_n_chars (default 500)</div>
+                  <div class="lab">combine_under_n_chars <span class="info" tabindex="0">i</span><div class="tip">Merge small chunks below N characters with the next chunk. Applies to <b>by_title</b>.</div></div>
                   <input id="chunkCombineUnder" type="number" min="0" step="10" placeholder="e.g. 500" />
                 </label>
                 <label>
-                  <div class="lab">overlap (default 0)</div>
+                  <div class="lab">overlap <span class="info" tabindex="0">i</span><div class="tip">Overlap N trailing characters between adjacent chunks to preserve context.</div></div>
                   <input id="chunkOverlap" type="number" min="0" step="10" placeholder="e.g. 100" />
                 </label>
               </div>
               <div class="adv-grid">
                 <label>
-                  <div class="lab">include_orig_elements (default true)</div>
+                  <div class="lab">include_orig_elements <span class="info" tabindex="0">i</span><div class="tip">Include original atomic elements alongside chunk spans in outputs/overlays.</div></div>
                   <select id="chunkIncludeOrig">
                     <option value="">default (true)</option>
                     <option value="true">true</option>
@@ -230,7 +290,7 @@
                   </select>
                 </label>
                 <label>
-                  <div class="lab">overlap_all (default false)</div>
+                  <div class="lab">overlap_all <span class="info" tabindex="0">i</span><div class="tip">Apply overlap to all boundaries, including section breaks.</div></div>
                   <select id="chunkOverlapAll">
                     <option value="">default (false)</option>
                     <option value="true">true</option>
@@ -238,7 +298,7 @@
                   </select>
                 </label>
                 <label id="chunkMultipageRow">
-                  <div class="lab">multipage_sections (default true)</div>
+                  <div class="lab">multipage_sections <span class="info" tabindex="0">i</span><div class="tip">Allow <b>by_title</b> chunks to span multiple pages until the next title.</div></div>
                   <select id="chunkMultipage">
                     <option value="">default (true)</option>
                     <option value="true">true</option>
@@ -271,6 +331,6 @@
       </div>
     </div>
 
-    <script src="/app.js?v=20251113-2" defer></script>
+    <script src="/app.js?v=20251113-3" defer></script>
   </body>
   </html>

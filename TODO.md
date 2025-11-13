@@ -4,6 +4,8 @@
 - [ ] Compare output quality between Unstructured and the Azure Document Intelligence SDK.
 
 ## Completed
+- [x] 2025-11-13 Compact single-line settings recap with rich tooltips; add matching tooltips to the New Run modal.
+- [x] 2025-11-13 Persist the New Run modal snapshot (PDF/pages/tag plus chunk flags like max_tokens) into matches.json so the recap bar always reflects every parameter.
 - [x] 2025-11-13 Derive per-row table chunk boxes (server + UI) so multi-chunk tables highlight distinct slices instead of overlapping.
 - [x] 2025-11-13 Add overlay tooltips (hover shows ID/type/page and chunk length) and switch overlay colors to fixed per-type CSS classes.
 - [x] 2025-11-13 Elements list shows per-type colors and inline text preview; display original element IDs instead of internal stable IDs.
