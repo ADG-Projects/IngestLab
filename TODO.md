@@ -4,6 +4,8 @@
 - [ ] Compare output quality between Unstructured and the Azure Document Intelligence SDK.
 
 ## Completed
+- [x] 2025-11-13 Auto-upload PDFs on file selection and store them on Fly volume via `PDF_DIR`; removed separate Upload button and fixed file chooser/tooltip and checkbox UI quirks.
+- [x] 2025-11-13 Enable Fly volume-backed PDF uploads: server honors `PDF_DIR`, Fly config mounts `/data`, UI uploads instantly without a button, and docs cover the flow.
 - [x] 2025-11-13 Compact single-line settings recap with rich tooltips; add matching tooltips to the New Run modal.
 - [x] 2025-11-13 Persist the New Run modal snapshot (PDF/pages/tag plus chunk flags like max_tokens) into matches.json so the recap bar always reflects every parameter.
 - [x] 2025-11-13 Derive per-row table chunk boxes (server + UI) so multi-chunk tables highlight distinct slices instead of overlapping.

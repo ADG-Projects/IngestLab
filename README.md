@@ -64,14 +64,14 @@ Use `--input-jsonl` when you want to re-evaluate matches from a previously saved
 
 ## Web UI (Chunking Visualizer)
 
-Spin up a small local UI to inspect PDFs, table matching, and chunker performance without juggling multiple files.
+Spin up a small local UI to inspect PDFs, table matching, and chunker performance without juggling multiple files. The server reads `PDF_DIR` to find a writable location for PDFs (defaults to `res/` locally). When deployed to Fly.io with a volume mounted at `/data`, set `PDF_DIR=/data/res` to persist uploads.
 
 Quickstart:
 
 ```bash
 uv sync
-uv run python web/serve.py
-# then open http://127.0.0.1:8765/
+uv run uvicorn web.serve:app --host 127.0.0.1 --port 8765
+# open http://127.0.0.1:8765/
 ```
 
 What you get:
@@ -98,7 +98,8 @@ Data sources used by the UI:
 - `outputs/unstructured/<slug>.pagesX-Y.pdf`
 
 Endpoints (served by FastAPI):
- - `GET /api/pdfs` — list PDFs available in `res/` (for new runs).
+- `GET /api/pdfs` — list PDFs available in `res/` (for new runs).
+ - `POST /api/pdfs` — upload a PDF to `PDF_DIR` (auto-saves on selection in the New Run modal).
  - `GET /api/runs` — discover available runs under `outputs/unstructured/`.
  - `DELETE /api/run/{slug}` — delete a run by its UI slug.
  - `GET /api/matches/{slug}` — load the matches JSON.
@@ -118,10 +119,33 @@ Endpoints (served by FastAPI):
     - Extra for `by_title`: `chunk_combine_under_n_chars`, `chunk_multipage_sections`.
 
 Run on demand via the UI:
-- In the right panel, use the “New Run” card to pick a PDF, set pages and strategy, choose `basic` or `by_title` chunking, tweak advanced parameters, then click Run.
+- In the right panel, use the “New Run” card to pick a PDF (or upload one — it uploads immediately after selection), set pages and strategy, choose `basic` or `by_title` chunking, tweak advanced parameters, then click Run.
 - The server slices the PDF, runs Unstructured, writes artifacts in `outputs/unstructured/`, and refreshes the run list. The latest run per slug is shown.
 - The New Run modal includes a live PDF preview from `res` with prev/next controls and quick buttons to “Add page” or mark a start/end to append a page range to the Pages field. Advanced chunking controls now expose both `basic` and `by_title` strategies plus every Unstructured flag (including approximate `max_tokens`, `include_orig_elements`, `overlap_all`, and `multipage_sections`).
 - The Settings Recap bar mirrors all inputs from the New Run modal, including `max_tokens` (approximate), `max_characters`, `new_after_n_chars`, `combine_under_n_chars`, `overlap`, `include_orig_elements`, `overlap_all`, `multipage_sections`, and metadata like PDF, pages, and optional tag. New runs persist this snapshot under `run_config.form_snapshot`, while older runs fall back to whatever fields are available.
  - To compare strategies on the same slice, click “Re-Run (clone)” in the header. It pre-fills the same PDF and pages; add an optional Variant tag (e.g., `hires-2k`) to keep results side-by-side. Artifacts are saved under a variant slug like `<slug>__hires-2k`.
  - Per-table highlighting uses distinct colors per selected chunk so multi-page/multi-chunk tables are easy to see; the overlay legend reflects element types present on the current page.
- - Use the header “Cleanup outputs” button (or `POST /api/cleanup`) to remove orphaned files under `outputs/unstructured/` that are no longer referenced by runs.
+- Use the header “Cleanup outputs” button (or `POST /api/cleanup`) to remove orphaned files under `outputs/unstructured/` that are no longer referenced by runs.
+
+### Fly.io deployment & persistent PDF uploads
+
+The web server now reads a `PDF_DIR` environment variable to decide where uploads live. Locally it defaults to `res/`, but Fly deployments can mount a volume for shared storage:
+
+```toml
+# fly.toml
+[env]
+  PDF_DIR = "/data/res"
+
+[mounts]
+  source = "data"
+  destination = "/data"
+```
+
+Provision the volume in the same region as your machine(s):
+
+```bash
+fly volumes create data -r <region>
+fly deploy
+```
+
+In the New Run modal, the “Upload PDF” row streams the chosen file straight into `PDF_DIR`. The file list refreshes immediately, and the preview loads from `/res_pdf/{name}` pointing at the mounted directory.
