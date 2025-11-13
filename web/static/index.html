@@ -228,6 +228,14 @@
             <div class="lab">PDF <span class="info" tabindex="0">i</span><div class="tip">Pick a source PDF from <code>res/</code>.</div></div>
             <select id="pdfSelect"></select>
           </label>
+          <div class="upload-row">
+            <label>
+              <div class="lab">Upload PDF <span class="info" tabindex="0">i</span><div class="tip">Uploads are saved to the server's <code>PDF_DIR</code> (Fly volume mount) so future runs can reuse them.</div></div>
+              <input id="pdfUploadInput" type="file" accept=".pdf" />
+            </label>
+            <button id="pdfUploadBtn" class="btn" type="button">Upload</button>
+            <span id="pdfUploadStatus" class="muted"></span>
+          </div>
           <label>
             <div class="lab">Pages <span class="info" tabindex="0">i</span><div class="tip">Comma‑separated pages and ranges, e.g., <code>5-7,12</code>. The server trims and processes only these pages.</div></div>
             <input id="pagesInput" placeholder="e.g. 4-6 or 4,5,6" />

@@ -755,11 +755,13 @@ async function refreshRuns() {
   };
 }
 
-async function loadPdfs() {
+async function loadPdfs(preferredName = null) {
   try {
     KNOWN_PDFS = await fetchJSON('/api/pdfs');
   } catch (e) { KNOWN_PDFS = []; }
   const sel = $('pdfSelect');
+  if (!sel) return;
+  const prevSelection = sel.value;
   sel.innerHTML = '';
   if (KNOWN_PDFS.length) {
     for (const p of KNOWN_PDFS) {
@@ -768,11 +770,19 @@ async function loadPdfs() {
       opt.textContent = `${p.name}`;
       sel.appendChild(opt);
     }
-    sel.value = KNOWN_PDFS[0].name;
+    let target = null;
+    if (preferredName && KNOWN_PDFS.some(p => p.name === preferredName)) {
+      target = preferredName;
+    } else if (prevSelection && KNOWN_PDFS.some(p => p.name === prevSelection)) {
+      target = prevSelection;
+    } else {
+      target = KNOWN_PDFS[0].name;
+    }
+    sel.value = target;
   } else {
     const opt = document.createElement('option');
     opt.value = '';
-    opt.textContent = '(no PDFs found in res/)';
+    opt.textContent = '(upload a PDF to begin)';
     opt.disabled = true;
     opt.selected = true;
     sel.appendChild(opt);
@@ -790,6 +800,43 @@ function wireRunForm() {
   };
   chunkSel.addEventListener('change', toggleAdv);
   toggleAdv();
+
+  const uploadBtn = $('pdfUploadBtn');
+  const uploadInput = $('pdfUploadInput');
+  const uploadStatus = $('pdfUploadStatus');
+  if (uploadBtn && uploadInput) {
+    uploadBtn.addEventListener('click', async () => {
+      if (!uploadInput.files || !uploadInput.files.length) {
+        if (uploadStatus) uploadStatus.textContent = 'Select a PDF first';
+        return;
+      }
+      const file = uploadInput.files[0];
+      if (!file || !file.name || !file.name.toLowerCase().endsWith('.pdf')) {
+        if (uploadStatus) uploadStatus.textContent = 'File must be a .pdf';
+        return;
+      }
+      const form = new FormData();
+      form.append('file', file);
+      uploadBtn.disabled = true;
+      uploadBtn.textContent = 'Uploading…';
+      if (uploadStatus) uploadStatus.textContent = '';
+      try {
+        const resp = await fetch('/api/pdfs', { method: 'POST', body: form });
+        let data = null;
+        try { data = await resp.json(); } catch (err) { data = null; }
+        if (!resp.ok) throw new Error((data && data.detail) || `HTTP ${resp.status}`);
+        if (uploadStatus) uploadStatus.textContent = `Uploaded ${data.name}`;
+        uploadInput.value = '';
+        await loadPdfs(data?.name || null);
+        await loadRunPreviewForSelectedPdf();
+      } catch (e) {
+        if (uploadStatus) uploadStatus.textContent = `Upload failed: ${e.message}`;
+      } finally {
+        uploadBtn.disabled = false;
+        uploadBtn.textContent = 'Upload';
+      }
+    });
+  }
 
   $('runBtn').addEventListener('click', async () => {
     const status = $('runStatus');
