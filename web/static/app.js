@@ -801,19 +801,14 @@ function wireRunForm() {
   chunkSel.addEventListener('change', toggleAdv);
   toggleAdv();
 
-  const uploadBtn = $('pdfUploadBtn');
   const uploadInput = $('pdfUploadInput');
   const uploadStatus = $('pdfUploadStatus');
-  if (uploadBtn && uploadInput) {
+  if (uploadInput) {
     let uploading = false;
     const setStatus = (msg) => { if (uploadStatus) uploadStatus.textContent = msg || ''; };
     const handleUpload = async () => {
       if (uploading) return;
-      if (!uploadInput.files || !uploadInput.files.length) {
-        try { uploadInput.click(); } catch (e) {}
-        setStatus('');
-        return;
-      }
+      if (!uploadInput.files || !uploadInput.files.length) return;
       const file = uploadInput.files[0];
       if (!file || !file.name || !file.name.toLowerCase().endsWith('.pdf')) {
         setStatus('File must be a .pdf');
@@ -823,8 +818,6 @@ function wireRunForm() {
       const form = new FormData();
       form.append('file', file);
       uploading = true;
-      uploadBtn.disabled = true;
-      uploadBtn.textContent = 'Uploading…';
       setStatus(`Uploading ${file.name}…`);
       try {
         const resp = await fetch('/api/pdfs', { method: 'POST', body: form });
@@ -843,11 +836,8 @@ function wireRunForm() {
         setStatus(`Upload failed: ${e.message}`);
       } finally {
         uploading = false;
-        uploadBtn.disabled = false;
-        uploadBtn.textContent = 'Upload';
       }
     };
-    uploadBtn.addEventListener('click', handleUpload);
     uploadInput.addEventListener('change', async () => {
       if (uploadInput.files && uploadInput.files.length) {
         await handleUpload();
