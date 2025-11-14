@@ -1,0 +1,19 @@
+{
+  "steps": {
+    "build": {
+      "commands": [
+        "...",
+        "uv pip uninstall -y opencv-python || python -m pip uninstall -y opencv-python || python3 -m pip uninstall -y opencv-python || true",
+        "uv pip install --no-deps opencv-python-headless==4.11.0.86 || python -m pip install --no-deps opencv-python-headless==4.11.0.86 || python3 -m pip install --no-deps opencv-python-headless==4.11.0.86"
+      ]
+    }
+  },
+  "start": "bash ./start_headless.sh",
+  "packages": {
+    "apt": [
+      "tesseract-ocr",
+      "poppler-utils"
+    ]
+  }
+}
+
