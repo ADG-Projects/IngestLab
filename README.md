@@ -109,17 +109,18 @@ Endpoints (served by FastAPI):
  - `GET /api/boxes/{slug}?page=N&types=Table,Text` — minimal per-page box index for overlays (server-side indexed, avoids heavy scans).
  - `GET /api/chunks/{slug}` — chunk artifacts (summary + JSONL contents) for each run.
  - `POST /api/cleanup` — remove orphaned outputs (matches/tables/pdf/chunks not referenced by any run).
- - `POST /api/run` — execute a new run. Body:
-   - `pdf` (string, required): filename under `res/`.
-   - `pages` (string, required): page list/range (e.g., `4-6`, `4,5,6`). The server trims the PDF first and only processes those pages.
-   - `strategy` (`auto|fast|hi_res`, default `auto`).
-   - `infer_table_structure` (bool, default `true`).
+- `POST /api/run` — execute a new run. Body:
+  - `pdf` (string, required): filename under `res/`.
+  - `pages` (string, optional): page list/range (e.g., `4-6`, `4,5,6`). If omitted or blank, the server processes the entire document (equivalent to `1-<num_pages>`). The server trims the PDF first and only processes those pages.
+  - `strategy` (`auto|fast|hi_res`, default `auto`).
+  - `infer_table_structure` (bool, default `true`).
   - `chunking` (`basic|by_title`, default `by_title`). Additional knobs:
     - Shared: `chunk_max_characters`, `chunk_new_after_n_chars`, `chunk_overlap`, `chunk_include_orig_elements`, `chunk_overlap_all`.
     - Extra for `by_title`: `chunk_combine_under_n_chars`, `chunk_multipage_sections`.
 
 Run on demand via the UI:
 - In the right panel, use the “New Run” card to pick a PDF (or upload one — it uploads immediately after selection), set pages and strategy, choose `basic` or `by_title` chunking, tweak advanced parameters, then click Run.
+- Leave the Pages field blank to chunk the entire PDF; the UI fills `1-<num_pages>` automatically when possible, and the server also falls back to the full range if the field is empty.
 - The server slices the PDF, runs Unstructured, writes artifacts in `outputs/unstructured/`, and refreshes the run list. The latest run per slug is shown.
 - The New Run modal includes a live PDF preview from `res` with prev/next controls and quick buttons to “Add page” or mark a start/end to append a page range to the Pages field. Advanced chunking controls now expose both `basic` and `by_title` strategies plus every Unstructured flag (including approximate `max_tokens`, `include_orig_elements`, `overlap_all`, and `multipage_sections`).
 - Right next to the strategy dropdown, a Primary Language toggle lets you flag whether the document is predominantly English (default) or Arabic. Choosing Arabic prioritizes Arabic OCR (`ara+eng`), sets Unstructured’s `languages` hint to `["ar", "en"]`, enables per-element language detection, and makes the preview drawers render RTL so Arabic text stays readable.

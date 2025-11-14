@@ -312,8 +312,8 @@ def api_run(payload: Dict[str, Any]) -> Dict[str, Any]:
     # Validate input
     pdf_name = str(payload.get("pdf") or payload.get("pdf_name") or "").strip()
     pages = str(payload.get("pages") or "").strip()
-    if not pdf_name or not pages:
-        raise HTTPException(status_code=400, detail="Fields 'pdf' and 'pages' are required")
+    if not pdf_name:
+        raise HTTPException(status_code=400, detail="Field 'pdf' is required")
 
     strategy = str(payload.get("strategy") or "auto")
     if strategy not in {"auto", "fast", "hi_res"}:
@@ -380,6 +380,19 @@ def api_run(payload: Dict[str, Any]) -> Dict[str, Any]:
     input_pdf = RES_DIR / pdf_name
     if not input_pdf.exists():
         raise HTTPException(status_code=404, detail=f"PDF not found: {pdf_name}")
+
+    # Default pages to the full document when left empty.
+    if not pages:
+        try:
+            from pypdf import PdfReader  # type: ignore
+
+            reader = PdfReader(str(input_pdf))
+            total = len(reader.pages)
+            if total <= 0:
+                raise ValueError("empty PDF")
+            pages = f"1-{total}"
+        except Exception as e:  # pragma: no cover - defensive fallback
+            raise HTTPException(status_code=400, detail=f"Could not infer page range: {e}")
 
     slug = input_pdf.stem
     # Optional variant tag to allow side-by-side comparisons
