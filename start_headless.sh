@@ -20,7 +20,15 @@ if [ "$have_uv" -eq 1 ]; then
 fi
 
 # Fallback: pip-based environment
-python -m pip uninstall -y opencv-python || true
-python -m pip install --no-deps opencv-python-headless==4.11.0.86
-exec uvicorn main:app --host 0.0.0.0 --port "${PORT:-8000}"
+PY="python3"
+if ! command -v python3 >/dev/null 2>&1 && command -v python >/dev/null 2>&1; then
+  PY="python"
+fi
 
+${PY} -m pip install -U pip setuptools wheel || true
+# Install project (pulls dependencies from pyproject)
+${PY} -m pip install . || true
+# Swap OpenCV to headless variant
+${PY} -m pip uninstall -y opencv-python || true
+${PY} -m pip install --no-deps opencv-python-headless==4.11.0.86
+exec ${PY} -m uvicorn main:app --host 0.0.0.0 --port "${PORT:-8000}"
