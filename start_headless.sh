@@ -41,7 +41,7 @@ fi
 
 $PY -m pip install -U pip setuptools wheel || true
 # Install project (pulls dependencies from pyproject)
-$PIP install . || true
+$PIP install /app || true
 # Swap OpenCV to headless variant
 $PIP uninstall -y opencv-python || true
 $PIP install --no-deps opencv-python-headless==4.11.0.86
