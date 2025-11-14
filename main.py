@@ -1097,9 +1097,16 @@ app.mount("/", StaticFiles(directory=str(STATIC_DIR), html=True), name="ui")
 
 
 if __name__ == "__main__":
+    # When executed directly (e.g., Railpack default 'python main.py'),
+    # bind to 0.0.0.0 and honor $PORT for container healthchecks.
     import uvicorn
-
-    uvicorn.run(app, host="127.0.0.1", port=8765, reload=False)
+    host = os.environ.get("HOST", "0.0.0.0")
+    try:
+        port = int(os.environ.get("PORT", "8000"))
+    except ValueError:
+        port = 8000
+    reload = str(os.environ.get("RELOAD", "false")).strip().lower() in {"1", "true", "yes", "on"}
+    uvicorn.run(app, host=host, port=port, reload=reload)
 # Ensure local pdf.js assets are available so the UI can load without CDNs
 def ensure_pdfjs_assets() -> None:
     VENDOR_DIR.mkdir(parents=True, exist_ok=True)
