@@ -3,6 +3,17 @@ set -euo pipefail
 
 echo "[start] ensuring OpenCV headless and starting Uvicorn"
 
+# Prefer project virtualenv if present
+if [ -x ".venv/bin/python" ]; then
+  PY=".venv/bin/python"
+  PIP=".venv/bin/pip"
+  UVICORN=".venv/bin/uvicorn"
+else
+  PY="python3"
+  PIP="python3 -m pip"
+  UVICORN="uvicorn"
+fi
+
 have_uv=1
 if ! command -v uv >/dev/null 2>&1; then
   have_uv=0
@@ -19,16 +30,19 @@ if [ "$have_uv" -eq 1 ]; then
   exec uv run uvicorn main:app --host 0.0.0.0 --port "${PORT:-8000}"
 fi
 
-# Fallback: pip-based environment
-PY="python3"
-if ! command -v python3 >/dev/null 2>&1 && command -v python >/dev/null 2>&1; then
-  PY="python"
+# Fallback: pip-based environment (use venv if available, else create it)
+if [ ! -x "$PY" ]; then
+  # Create a local venv to avoid PEP 668 constraints
+  python3 -m venv .venv
+  PY=".venv/bin/python"
+  PIP=".venv/bin/pip"
+  UVICORN=".venv/bin/uvicorn"
 fi
 
-${PY} -m pip install -U pip setuptools wheel || true
+$PY -m pip install -U pip setuptools wheel || true
 # Install project (pulls dependencies from pyproject)
-${PY} -m pip install . || true
+$PIP install . || true
 # Swap OpenCV to headless variant
-${PY} -m pip uninstall -y opencv-python || true
-${PY} -m pip install --no-deps opencv-python-headless==4.11.0.86
-exec ${PY} -m uvicorn main:app --host 0.0.0.0 --port "${PORT:-8000}"
+$PIP uninstall -y opencv-python || true
+$PIP install --no-deps opencv-python-headless==4.11.0.86
+exec $UVICORN main:app --host 0.0.0.0 --port "${PORT:-8000}"
