@@ -13,6 +13,7 @@ dependencies = [
     "pi-heif",
     "fastapi",
     "uvicorn[standard]",
+    "unstructured-inference",
 ]
 
 [project.optional-dependencies]

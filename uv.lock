@@ -294,6 +294,7 @@ dependencies = [
     { name = "pypdf" },
     { name = "python-multipart" },
     { name = "unstructured" },
+    { name = "unstructured-inference" },
     { name = "unstructured-pytesseract" },
     { name = "uvicorn", extra = ["standard"] },
 ]
@@ -312,6 +313,7 @@ requires-dist = [
     { name = "pypdf" },
     { name = "python-multipart" },
     { name = "unstructured" },
+    { name = "unstructured-inference" },
     { name = "unstructured-inference", marker = "extra == 'hires'" },
     { name = "unstructured-pytesseract" },
     { name = "uvicorn", extras = ["standard"] },

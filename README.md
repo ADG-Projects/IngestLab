@@ -171,6 +171,7 @@ Notes:
 - The server creates `PDF_DIR` on startup if it doesn’t exist.
 - `internal_port` is `8000` (set in `fly.toml`); Uvicorn binds to `0.0.0.0:8000` in the container.
 - UI auto-fetches vendor `pdf.js` and `Chart.js` on first run if the local copies are missing; no CDN is required after that.
+- The default install now includes `unstructured-inference` so hi_res layout is available when the platform provides the needed system libraries. On lightweight builders (Railpack/Nixpacks), if you see `ImportError: libGL.so.1` or OCR errors, either switch to the provided Dockerfile (recommended) or add the runtime packages `libgl1 libglib2.0-0 libsm6 libxext6 libxrender1 tesseract-ocr`.
 ```
 
 In the New Run modal, the “Upload PDF” row streams the chosen file straight into `PDF_DIR`. The file list refreshes immediately, and the preview loads from `/res_pdf/{name}` pointing at the mounted directory.
