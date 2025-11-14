@@ -23,10 +23,27 @@ from fastapi.staticfiles import StaticFiles
 
 
 ROOT = Path(__file__).resolve().parent.parent
-OUT_DIR = ROOT / "outputs" / "unstructured"
 DATASET_DIR = ROOT / "dataset"
-# Allow overriding the PDF source directory via env (e.g., for Fly.io volume mounts)
-RES_DIR = Path(os.environ.get("PDF_DIR") or (ROOT / "res"))
+
+# Volume-aware directories (Railway/Fly/etc.)
+# Prefer explicit OUTPUT_DIR/OUT_DIR; otherwise, if DATA_DIR is set, place outputs under it.
+_DATA_DIR = os.environ.get("DATA_DIR")
+_OUT_DIR_ENV = os.environ.get("OUTPUT_DIR") or os.environ.get("OUT_DIR")
+if _OUT_DIR_ENV:
+    OUT_DIR = Path(_OUT_DIR_ENV)
+elif _DATA_DIR:
+    OUT_DIR = Path(_DATA_DIR) / "outputs" / "unstructured"
+else:
+    OUT_DIR = ROOT / "outputs" / "unstructured"
+
+# Source PDFs location: prefer explicit PDF_DIR, else DATA_DIR/pdfs, else repo res/
+_PDF_DIR_ENV = os.environ.get("PDF_DIR")
+if _PDF_DIR_ENV:
+    RES_DIR = Path(_PDF_DIR_ENV)
+elif _DATA_DIR:
+    RES_DIR = Path(_DATA_DIR) / "pdfs"
+else:
+    RES_DIR = ROOT / "res"
 RES_DIR.mkdir(parents=True, exist_ok=True)
 VENDOR_DIR = ROOT / "web" / "static" / "vendor" / "pdfjs"
 PDFJS_VERSION = "3.11.174"

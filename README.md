@@ -174,3 +174,31 @@ Notes:
 ```
 
 In the New Run modal, the “Upload PDF” row streams the chosen file straight into `PDF_DIR`. The file list refreshes immediately, and the preview loads from `/res_pdf/{name}` pointing at the mounted directory.
+
+### Railway deployment & volumes
+
+Railway mounts a persistent directory into the container. This app looks for the following env vars to place files onto that volume:
+
+- `PDF_DIR` — directory for source PDFs (uploads). If unset and `DATA_DIR` is set, defaults to `$DATA_DIR/pdfs`.
+- `OUTPUT_DIR` or `OUT_DIR` — directory for run artifacts (trimmed PDFs, JSONL, matches). If unset and `DATA_DIR` is set, defaults to `$DATA_DIR/outputs/unstructured`.
+- `PORT` — the port Uvicorn binds to (Railway sets this automatically).
+
+Recommended setup in the Railway service:
+
+1. Add a Volume and mount it at `/data`.
+2. Set env vars:
+   - `DATA_DIR=/data`
+   - (optional) override `PDF_DIR` or `OUTPUT_DIR` explicitly if you prefer different subfolders.
+3. Deploy using this repo’s Dockerfile. Hi‑res extraction is enabled by default.
+
+You can disable hi‑res (smaller image/runtimes) by building with:
+
+```bash
+docker build -t chunking-tests:min \
+  --build-arg WITH_HIRES=0 \
+  --build-arg DISABLE_HI_RES=1 .
+```
+
+Operational notes:
+- The server creates missing directories on startup/use.
+- Volumes are per‑instance; for shared state across instances, use object storage.
