@@ -8,34 +8,60 @@
     <!-- Prefer local vendor copy (server auto-fetches if missing), fallback to CDN -->
     <script>
       (function() {
-        function load(src) {
-          return new Promise(function(resolve, reject){
-            var s = document.createElement('script'); s.src = src; s.onload = resolve; s.onerror = reject; document.head.appendChild(s);
+        function loadScript(src) {
+          return new Promise(function(resolve, reject) {
+            var s = document.createElement('script');
+            s.src = src;
+            s.async = false;
+            s.onload = resolve;
+            s.onerror = reject;
+            document.head.appendChild(s);
           });
         }
-        (async function ensurePdfjs(){
-          const localPdf = '/vendor/pdfjs/pdf.min.js';
-          const cdns = [
+        window.loadScript = loadScript;
+        window.__pdfReady = (async function ensurePdfjs(){
+          const sources = [
+            '/vendor/pdfjs/pdf.min.js',
             'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.min.js',
             'https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.min.js',
           ];
-          let ok = false;
-          try { await load(localPdf); ok = true; } catch(e) {}
-          for (const url of cdns) { if (ok) break; try { await load(url); ok = true; } catch(e) {} }
-          if (ok && window.pdfjsLib) {
+          for (const src of sources) {
+            try {
+              await loadScript(src);
+              if (window.pdfjsLib) break;
+            } catch (e) {}
+          }
+          if (window.pdfjsLib) {
             // Point worker to local first, then CDN fallbacks.
             const workerCandidates = [
               '/vendor/pdfjs/pdf.worker.min.js',
               'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/pdf.worker.min.js',
               'https://unpkg.com/pdfjs-dist@3.11.174/build/pdf.worker.min.js',
             ];
-            // Use first; pdf.js will fetch this URL when creating the worker.
             window.pdfjsLib.GlobalWorkerOptions.workerSrc = workerCandidates[0];
           }
+          return window.pdfjsLib;
         })();
+        window.__chartReady = (async function ensureChartJs(){
+          const sources = [
+            '/vendor/chartjs/chart.umd.min.js',
+            'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js',
+            'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js',
+            'https://unpkg.com/chart.js@4.4.1/dist/chart.umd.min.js',
+          ];
+          for (const src of sources) {
+            try {
+              await loadScript(src);
+              if (window.Chart) return window.Chart;
+            } catch (e) {}
+          }
+          throw new Error('Chart.js failed to load');
+        })().catch(function(err){
+          console.warn('Chart.js failed to load', err);
+          return null;
+        });
       })();
     </script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js" defer></script>
   </head>
   <body>
     <header>
@@ -69,6 +95,10 @@
       <div class="setting-item">
         <span class="setting-label">CHUNK <span class="info" tabindex="0">i</span><div class="tip">How elements are grouped: by_title uses headings as section boundaries; basic creates size‑based text chunks.</div></span>
         <span class="setting-value" id="settingChunking">-</span>
+      </div>
+      <div class="setting-item">
+        <span class="setting-label">LANG <span class="info" tabindex="0">i</span><div class="tip">Primary document language. Arabic toggles RTL previews and prioritizes Arabic OCR.</div></span>
+        <span class="setting-value" id="settingPrimaryLang">-</span>
       </div>
       <div class="setting-item">
         <span class="setting-label">TOK <span class="info" tabindex="0">i</span><div class="tip">Approximate target tokens per chunk (LLM). If provided, max_characters ≈ tokens × 4.</div></span>
@@ -233,6 +263,7 @@
               <div class="lab">Upload PDF <span class="info" tabindex="0">i</span><div class="tip">Choose a file and it uploads immediately to the server's <code>PDF_DIR</code> (Fly volume mount) so future runs can reuse it.</div></div>
               <input id="pdfUploadInput" type="file" accept=".pdf" />
             </label>
+            <button id="pdfUploadBtn" class="btn" type="button" style="display:none;">Upload</button>
             <span id="pdfUploadStatus" class="muted"></span>
           </div>
           <label>
@@ -245,6 +276,13 @@
               <option value="auto">auto</option>
               <option value="fast">fast</option>
               <option value="hi_res">hi_res</option>
+            </select>
+          </label>
+          <label>
+            <div class="lab">Primary language <span class="info" tabindex="0">i</span><div class="tip">Hints OCR and display alignment. Arabic prioritizes Arabic OCR and right-aligns previews.</div></div>
+            <select id="docLanguage">
+              <option value="eng" selected>English (LTR)</option>
+              <option value="ara">Arabic (RTL)</option>
             </select>
           </label>
           <label class="checkbox">

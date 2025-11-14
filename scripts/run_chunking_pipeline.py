@@ -56,6 +56,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--detect-language-per-element", dest="detect_language_per_element", action="store_true", help="Enable language detection per element")
     parser.add_argument("--no-detect-language-per-element", dest="detect_language_per_element", action="store_false", help="Disable per-element language detection")
     parser.set_defaults(detect_language_per_element=False)
+    parser.add_argument("--primary-language", choices=["eng", "ara"], help="Primary document language (metadata hint)")
     parser.add_argument("--no-infer-table-structure", dest="infer_table_structure", action="store_false", help="Disable Unstructured infer_table_structure flag")
     parser.set_defaults(infer_table_structure=True)
     args = parser.parse_args(argv)
@@ -84,6 +85,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     languages: Optional[List[str]] = None
     if args.languages:
         languages = [part.strip() for part in args.languages.split(",") if part.strip()]
+
+    primary_language = args.primary_language
 
     trimmed, raw_elements, dict_elements = partition_document(
         input_pdf=args.input,
@@ -120,6 +123,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         "languages": languages,
         "detect_language_per_element": args.detect_language_per_element,
     }
+    if primary_language:
+        run_config["primary_language"] = primary_language
     if chunk_params:
         run_config["chunk_params"] = chunk_params
     if chunk_summary:

@@ -7,6 +7,7 @@ let BOX_INDEX = {}; // element_id -> {page_trimmed, layout_w,h, x,y,w,h}
 let MATCHES = null;
 let LAST_SELECTED_MATCH = null;
 let CHART_INSTANCE = null;
+let LAST_CHART_MATCHES = [];
 let CURRENT_ELEMENT_ID = null;
 let CHIP_META = {}; // element_id -> meta from /api/elements
 let LAST_HIGHLIGHT_MODE = 'all'; // 'all' | 'best'
@@ -36,6 +37,7 @@ let RUN_PREVIEW_COUNT = 0;
 let RUN_RANGE_START = null;
 let HINTED_HIRES = false;
 let RETURN_TO = null; // navigation context for closing drawers
+let CURRENT_DOC_LANGUAGE = 'eng';
 
 const $ = (id) => document.getElementById(id);
 
@@ -43,6 +45,53 @@ async function fetchJSON(url) {
   const r = await fetch(url);
   if (!r.ok) throw new Error(`Fetch failed: ${r.status}`);
   return r.json();
+}
+
+function applyLanguageDirection() {
+  const body = document.body;
+  if (!body) return;
+  const isArabic = CURRENT_DOC_LANGUAGE === 'ara';
+  body.classList.toggle('rtl-preview', isArabic);
+}
+
+function normalizeLangCode(value) {
+  if (value === undefined || value === null) return null;
+  const txt = String(value).trim().toLowerCase();
+  if (!txt) return null;
+  if (txt.startsWith('ar')) return 'ara';
+  if (txt.startsWith('en')) return 'eng';
+  return null;
+}
+
+function extractLangFromList(value) {
+  if (!value) return null;
+  if (Array.isArray(value)) {
+    for (const part of value) {
+      const code = normalizeLangCode(part);
+      if (code) return code;
+    }
+    return null;
+  }
+  if (typeof value === 'string') {
+    const parts = value.split(/[\s,;+]+/);
+    for (const part of parts) {
+      const code = normalizeLangCode(part);
+      if (code) return code;
+    }
+  }
+  return null;
+}
+
+function resolvePrimaryLanguage(cfg, snap) {
+  return (
+    normalizeLangCode(snap?.primary_language) ||
+    normalizeLangCode(cfg?.primary_language) ||
+    extractLangFromList(snap?.languages) ||
+    extractLangFromList(cfg?.languages) ||
+    normalizeLangCode(snap?.ocr_languages) ||
+    normalizeLangCode(cfg?.ocr_languages) ||
+    'eng'
+  );
 }
 
 function setMetric(idBase, value) {
@@ -59,13 +108,26 @@ function renderMetrics(overall) {
 }
 
 function buildChart(matches) {
-  const ctx = document.getElementById('chart');
-  const labels = matches.map(m => m.gold_title || m.gold_table_id);
-  const data = matches.map(m => Number(m.chunker_f1 || 0));
-  if (CHART_INSTANCE) {
-    CHART_INSTANCE.destroy();
+  LAST_CHART_MATCHES = matches || [];
+  const canvas = document.getElementById('chart');
+  if (!canvas) return;
+  if (!window.Chart) {
+    const ready = window.__chartReady;
+    if (ready && typeof ready.then === 'function' && !ready.__chunkVizChartHooked) {
+      ready.__chunkVizChartHooked = true;
+      ready.then(() => {
+        if (window.Chart) buildChart(LAST_CHART_MATCHES);
+      }).catch(() => {});
+    }
+    return;
   }
-  CHART_INSTANCE = new Chart(ctx, {
+  const labels = LAST_CHART_MATCHES.map(m => m.gold_title || m.gold_table_id);
+  const data = LAST_CHART_MATCHES.map(m => Number(m.chunker_f1 || 0));
+  if (CHART_INSTANCE) {
+    try { CHART_INSTANCE.destroy(); } catch (e) {}
+    CHART_INSTANCE = null;
+  }
+  CHART_INSTANCE = new Chart(canvas, {
     type: 'bar',
     data: { labels, datasets: [{ label: 'Chunker F1', data, backgroundColor: '#6bbcff' }]},
     options: { responsive: true, plugins: { legend: { display: false } }, scales: { y: { min: 0, max: 1 } } }
@@ -426,8 +488,10 @@ function updateRunConfigCard() {
     if (el) el.textContent = value;
   };
   if (!cfg) {
-    ['Strategy','InferTables','Chunking','MaxTokens','MaxChars','NewAfter','CombineUnder','Overlap','IncludeOrig','OverlapAll','Multipage','Pdf','Pages','Tag']
+    ['Strategy','InferTables','Chunking','PrimaryLang','MaxTokens','MaxChars','NewAfter','CombineUnder','Overlap','IncludeOrig','OverlapAll','Multipage','Pdf','Pages','Tag']
       .forEach(name => set(`setting${name}`, '-'));
+    CURRENT_DOC_LANGUAGE = 'eng';
+    applyLanguageDirection();
     return;
   }
   const chunkParams = cfg.chunk_params || {};
@@ -463,6 +527,10 @@ function updateRunConfigCard() {
   set('settingPages', pages || '-');
   set('settingPdf', cfg.pdf || snap.pdf || (CURRENT_RUN?.slug?.split('.pages')[0] ?? '-'));
   set('settingTag', cfg.tag || snap.tag || snap.variant_tag || '-');
+  const primaryLang = resolvePrimaryLanguage(cfg, snap);
+  CURRENT_DOC_LANGUAGE = primaryLang;
+  set('settingPrimaryLang', primaryLang === 'ara' ? 'Arabic' : 'English');
+  applyLanguageDirection();
 }
 
 async function openDetails(tableMatch) {
@@ -803,9 +871,17 @@ function wireRunForm() {
 
   const uploadInput = $('pdfUploadInput');
   const uploadStatus = $('pdfUploadStatus');
+  const uploadBtn = $('pdfUploadBtn');
   if (uploadInput) {
     let uploading = false;
     const setStatus = (msg) => { if (uploadStatus) uploadStatus.textContent = msg || ''; };
+    const setUploadingState = (flag) => {
+      uploading = flag;
+      if (uploadBtn) {
+        uploadBtn.disabled = flag;
+        uploadBtn.textContent = flag ? 'Uploading…' : 'Upload';
+      }
+    };
     const handleUpload = async () => {
       if (uploading) return;
       if (!uploadInput.files || !uploadInput.files.length) return;
@@ -817,7 +893,7 @@ function wireRunForm() {
       }
       const form = new FormData();
       form.append('file', file);
-      uploading = true;
+      setUploadingState(true);
       setStatus(`Uploading ${file.name}…`);
       try {
         const resp = await fetch('/api/pdfs', { method: 'POST', body: form });
@@ -835,14 +911,17 @@ function wireRunForm() {
       } catch (e) {
         setStatus(`Upload failed: ${e.message}`);
       } finally {
-        uploading = false;
+        setUploadingState(false);
       }
     };
-    uploadInput.addEventListener('change', async () => {
-      if (uploadInput.files && uploadInput.files.length) {
-        await handleUpload();
-      }
-    });
+    const requestUpload = async () => {
+      if (!uploadInput.files || !uploadInput.files.length) return;
+      await handleUpload();
+    };
+    uploadInput.addEventListener('change', requestUpload);
+    uploadInput.addEventListener('input', requestUpload);
+    if (uploadBtn) uploadBtn.addEventListener('click', requestUpload);
+    setUploadingState(false);
   }
 
   $('runBtn').addEventListener('click', async () => {
@@ -855,6 +934,18 @@ function wireRunForm() {
       infer_table_structure: $('inferTables').checked,
       chunking: $('chunkingSelect').value,
     };
+    const langSel = $('docLanguage');
+    const docLang = langSel ? (langSel.value || 'eng') : 'eng';
+    payload.primary_language = docLang;
+    if (docLang === 'ara') {
+      payload.ocr_languages = 'ara+eng';
+      payload.languages = 'ar,en';
+      payload.detect_language_per_element = true;
+    } else {
+      payload.ocr_languages = 'eng+ara';
+      payload.languages = 'en,ar';
+      payload.detect_language_per_element = false;
+    }
     const tagVal = $('variantTag')?.value?.trim();
     if (tagVal) payload.tag = tagVal;
     if (!payload.pages) { status.textContent = 'Enter pages (e.g., 4-6)'; return; }
@@ -911,6 +1002,10 @@ function wireRunForm() {
       include_orig_elements: parseBoolSelect('chunkIncludeOrig'),
       overlap_all: parseBoolSelect('chunkOverlapAll'),
       multipage_sections: parseBoolSelect('chunkMultipage'),
+      primary_language: docLang,
+      ocr_languages: payload.ocr_languages,
+      languages: payload.languages,
+      detect_language_per_element: payload.detect_language_per_element,
     };
     const btn = $('runBtn');
     btn.disabled = true; btn.textContent = 'Running…';
@@ -1375,6 +1470,7 @@ function typeBorderColor(t) {
 
 // Elements tab: type filter mirrors the quickbar's CURRENT_TYPE_FILTER
 document.addEventListener('DOMContentLoaded', () => {
+  applyLanguageDirection();
   const sel = $('elementsTypeSelect');
   if (sel) sel.addEventListener('change', async () => {
     CURRENT_TYPE_FILTER = sel.value || 'All';

@@ -29,6 +29,8 @@ RES_DIR = Path(os.environ.get("PDF_DIR") or (ROOT / "res"))
 RES_DIR.mkdir(parents=True, exist_ok=True)
 VENDOR_DIR = ROOT / "web" / "static" / "vendor" / "pdfjs"
 PDFJS_VERSION = "3.11.174"
+CHART_VENDOR_DIR = ROOT / "web" / "static" / "vendor" / "chartjs"
+CHARTJS_VERSION = "4.4.1"
 
 
 app = FastAPI(title="Chunking Visualizer")
@@ -312,6 +314,9 @@ def api_run(payload: Dict[str, Any]) -> Dict[str, Any]:
     chunk_overlap = payload.get("chunk_overlap")
     ocr_languages = str(payload.get("ocr_languages") or "eng+ara").strip() or None
     languages_raw = payload.get("languages")
+    primary_language = str(payload.get("primary_language") or "eng").strip().lower()
+    if primary_language not in {"eng", "ara"}:
+        primary_language = "eng"
 
     def _normalize_languages(value: Any) -> Optional[List[str]]:
         if value is None:
@@ -386,6 +391,7 @@ def api_run(payload: Dict[str, Any]) -> Dict[str, Any]:
         "ocr_languages": ocr_languages,
         "languages": languages,
         "detect_language_per_element": detect_language_per_element,
+        "primary_language": primary_language,
     }
     payload["form_snapshot"] = form_snapshot
 
@@ -452,6 +458,8 @@ def api_run(payload: Dict[str, Any]) -> Dict[str, Any]:
         cmd += ["--languages", ",".join(languages)]
     if detect_language_per_element:
         cmd.append("--detect-language-per-element")
+    if primary_language:
+        cmd += ["--primary-language", primary_language]
 
     try:
         r = subprocess.run(cmd, cwd=str(ROOT), capture_output=True, text=True)
@@ -479,6 +487,8 @@ def api_run(payload: Dict[str, Any]) -> Dict[str, Any]:
             rc["tag"] = safe_tag
         if raw_tag:
             rc["variant_tag"] = raw_tag
+        if primary_language:
+            rc["primary_language"] = primary_language
         mobj["run_config"] = rc
         try:
             with matches_out.open("w", encoding="utf-8") as f:
@@ -1088,3 +1098,30 @@ def ensure_pdfjs_assets() -> None:
 
 
 ensure_pdfjs_assets()
+
+
+def ensure_chartjs_assets() -> None:
+    """Cache Chart.js locally so the UI can initialize offline."""
+    CHART_VENDOR_DIR.mkdir(parents=True, exist_ok=True)
+    dest = CHART_VENDOR_DIR / "chart.umd.min.js"
+    if dest.exists() and dest.stat().st_size > 50_000:
+        return
+    sources = [
+        f"https://cdnjs.cloudflare.com/ajax/libs/Chart.js/{CHARTJS_VERSION}/chart.umd.min.js",
+        f"https://cdn.jsdelivr.net/npm/chart.js@{CHARTJS_VERSION}/dist/chart.umd.min.js",
+        f"https://unpkg.com/chart.js@{CHARTJS_VERSION}/dist/chart.umd.min.js",
+    ]
+    for url in sources:
+        try:
+            with urlopen(url, timeout=10) as r:  # nosec - controlled URLs
+                data = r.read()
+            if not data:
+                continue
+            with dest.open("wb") as f:
+                f.write(data)
+            break
+        except URLError:
+            continue
+
+
+ensure_chartjs_assets()

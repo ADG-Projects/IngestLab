@@ -122,6 +122,7 @@ Run on demand via the UI:
 - In the right panel, use the “New Run” card to pick a PDF (or upload one — it uploads immediately after selection), set pages and strategy, choose `basic` or `by_title` chunking, tweak advanced parameters, then click Run.
 - The server slices the PDF, runs Unstructured, writes artifacts in `outputs/unstructured/`, and refreshes the run list. The latest run per slug is shown.
 - The New Run modal includes a live PDF preview from `res` with prev/next controls and quick buttons to “Add page” or mark a start/end to append a page range to the Pages field. Advanced chunking controls now expose both `basic` and `by_title` strategies plus every Unstructured flag (including approximate `max_tokens`, `include_orig_elements`, `overlap_all`, and `multipage_sections`).
+- Right next to the strategy dropdown, a Primary Language toggle lets you flag whether the document is predominantly English (default) or Arabic. Choosing Arabic prioritizes Arabic OCR (`ara+eng`), sets Unstructured’s `languages` hint to `["ar", "en"]`, enables per-element language detection, and makes the preview drawers render RTL so Arabic text stays readable.
 - The Settings Recap bar mirrors all inputs from the New Run modal, including `max_tokens` (approximate), `max_characters`, `new_after_n_chars`, `combine_under_n_chars`, `overlap`, `include_orig_elements`, `overlap_all`, `multipage_sections`, and metadata like PDF, pages, and optional tag. New runs persist this snapshot under `run_config.form_snapshot`, while older runs fall back to whatever fields are available.
  - To compare strategies on the same slice, click “Re-Run (clone)” in the header. It pre-fills the same PDF and pages; add an optional Variant tag (e.g., `hires-2k`) to keep results side-by-side. Artifacts are saved under a variant slug like `<slug>__hires-2k`.
  - Per-table highlighting uses distinct colors per selected chunk so multi-page/multi-chunk tables are easy to see; the overlay legend reflects element types present on the current page.
@@ -144,8 +145,29 @@ The web server now reads a `PDF_DIR` environment variable to decide where upload
 Provision the volume in the same region as your machine(s):
 
 ```bash
-fly volumes create data -r <region>
+fly launch --no-deploy  # creates app + fly.toml if missing; pick region (e.g., fra)
+fly volumes create data -r <region> --size 3  # persistent storage
 fly deploy
+
+Verify the mount and uploads directory in a shell on the machine:
+
+```bash
+fly ssh console -C 'ls -la /data && mkdir -p /data/res && ls -la /data/res'
+```
+
+Quick upload and verify via API (bypass the UI):
+
+```bash
+# Replace APP with your Fly app name
+BASE=https://APP.fly.dev
+curl -f -X POST -F file=@res/sample.pdf "$BASE/api/pdfs"
+curl -f "$BASE/api/pdfs" | jq
+```
+
+Notes:
+- The server creates `PDF_DIR` on startup if it doesn’t exist.
+- `internal_port` is `8000` (set in `fly.toml`); Uvicorn binds to `0.0.0.0:8000` in the container.
+- UI auto-fetches vendor `pdf.js` and `Chart.js` on first run if the local copies are missing; no CDN is required after that.
 ```
 
 In the New Run modal, the “Upload PDF” row streams the chosen file straight into `PDF_DIR`. The file list refreshes immediately, and the preview loads from `/res_pdf/{name}` pointing at the mounted directory.

@@ -29,12 +29,13 @@ The project does not persist to a database yet. Instead, Unstructured parses eac
      - `selected_chunk_count`: number of distinct chunks selected to cover the gold table.
      - `chunker_f1`: single overall chunking quality metric. Defined as the harmonic mean of coverage and cohesion. Ranges in [0, 1] and peaks only when the table is fully covered in a single chunk.
       - `best_element_id`, `best_page_trimmed`, `best_page_original`, `best_cohesion`, `best_row_overlap`: convenience fields for the single best chunk.
-    - `overall`: document-level summary across all matched tables
+   - `overall`: document-level summary across all matched tables
      - `tables`: number of tables matched
      - `avg_coverage`, `avg_cohesion`, `avg_chunker_f1`, `avg_selected_chunk_count`
      - `micro_coverage`: coverage weighted by gold-row counts
    - `run_config`: metadata about how the run was produced
      - `strategy`, `chunking`, `infer_table_structure`, `match_source`
+     - Language hints mirrored from the UI: `primary_language` (`eng` or `ara`), `ocr_languages` (string passed to Tesseract, e.g., `ara+eng`), `languages` (comma list or array of ISO codes forwarded to Unstructured), and `detect_language_per_element` (bool). These help downstream consumers right-align RTL previews when the document is Arabic-heavy.
      - `chunk_params`: the effective parameters supplied to Unstructured. Keys may include `max_characters`, `new_after_n_chars`, `combine_text_under_n_chars`, `overlap`, `include_orig_elements`, `overlap_all`, `multipage_sections`.
      - `chunk_summary`: quick stats about emitted chunks (`count`, `min_chars`, `max_chars`, `avg_chars`)
      - `form_snapshot` (UI-only): raw values entered in the New Run modal, including convenience fields like `max_tokens` and the original `pdf`, `pages`, and optional `tag`. The recap bar prefers these when available and falls back to `chunk_params`.
