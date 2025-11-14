@@ -34,7 +34,9 @@ ARG WITH_HIRES=1
 ARG DISABLE_HI_RES
 RUN if [ "${WITH_HIRES}" = "1" ]; then \
       echo "Installing hires extras"; \
-      uv sync --frozen --no-dev --extra hires; \
+      # Use non-frozen resolution when extras are enabled because the lockfile
+      # does not capture optional dependency groups in all uv versions. \
+      uv sync --no-dev --extra hires; \
     else \
       echo "Installing minimal deps (no hires)"; \
       uv sync --frozen --no-dev; \
