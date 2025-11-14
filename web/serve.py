@@ -6,6 +6,7 @@ from html import unescape
 from html.parser import HTMLParser
 import os
 from pathlib import Path
+import sys
 import subprocess
 from dataclasses import dataclass
 from urllib.request import urlopen
@@ -43,6 +44,10 @@ app.add_middleware(
     allow_headers=["*"],
 )
 app.add_middleware(GZipMiddleware, minimum_size=1024)
+
+@app.get("/healthz")
+def healthz() -> Dict[str, Any]:
+    return {"status": "ok"}
 
 
 def _latest_by_mtime(paths: List[Path]) -> Optional[Path]:
@@ -138,43 +143,6 @@ def discover_runs() -> List[Dict[str, Any]]:
 @app.get("/api/runs")
 def api_runs() -> List[Dict[str, Any]]:
     return discover_runs()
-
-
-def _managed_file_set() -> set:
-    runs = discover_runs()
-    keep: set = set()
-    for r in runs:
-        for key in ("matches_file", "tables_file", "pdf_file", "chunks_file"):
-            val = r.get(key)
-            if val:
-                keep.add(str((ROOT / val).resolve()))
-    return keep
-
-
-def _is_managed_path(path: Path) -> bool:
-    name = path.name
-    if name.endswith(".matches.json") or name.endswith(".tables.jsonl") or name.endswith(".chunks.jsonl"):
-        return True
-    if name.endswith(".pdf") and ".pages" in name:
-        return True
-    return False
-
-
-@app.post("/api/cleanup")
-def api_cleanup() -> Dict[str, Any]:
-    keep = _managed_file_set()
-    removed: List[str] = []
-    for path in OUT_DIR.glob("*"):
-        if not path.is_file():
-            continue
-        if not _is_managed_path(path):
-            continue
-        if str(path.resolve()) in keep:
-            continue
-        path.unlink()
-        removed.append(str(path.relative_to(ROOT)))
-    return {"status": "ok", "removed": removed}
-
 
 @app.delete("/api/run/{slug}")
 def api_delete_run(slug: str) -> Dict[str, Any]:
@@ -318,6 +286,10 @@ def api_run(payload: Dict[str, Any]) -> Dict[str, Any]:
     strategy = str(payload.get("strategy") or "auto")
     if strategy not in {"auto", "fast", "hi_res"}:
         raise HTTPException(status_code=400, detail="strategy must be one of: auto, fast, hi_res")
+    # Allow disabling hi_res on constrained deployments (e.g., Fly) to avoid heavy deps
+    if os.environ.get("DISABLE_HI_RES"):
+        if strategy in {"auto", "hi_res"}:
+            strategy = "fast"
 
     infer_table_structure = bool(payload.get("infer_table_structure", True))
 
@@ -450,7 +422,8 @@ def api_run(payload: Dict[str, Any]) -> Dict[str, Any]:
             n += 1
 
     cmd: List[str] = [
-        "uv", "run", "python", str(ROOT / "scripts" / "run_chunking_pipeline.py"),
+        sys.executable,
+        str(ROOT / "scripts" / "run_chunking_pipeline.py"),
         "--input", str(input_pdf),
         "--pages", pages,
         "--strategy", strategy,

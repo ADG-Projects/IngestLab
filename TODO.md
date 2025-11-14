@@ -4,6 +4,7 @@
 - [ ] Compare output quality between Unstructured and the Azure Document Intelligence SDK.
 
 ## Completed
+- [x] 2025-11-14 Remove the header Re-Run/cleanup controls (UI + API) and rename the Delete button to “Delete run” so the toolbar only exposes new-run + delete actions.
 - [x] 2025-11-14 Default empty Pages to full document (UI + API): leaving Pages blank now processes `1-<num_pages>` automatically; tooltip/placeholder updated and README documents the behavior.
 - [x] 2025-11-14 Add delete for uploaded PDFs (UI button + API `DELETE /api/pdfs/{name}`) and guard preview when a file is removed.
 - [x] 2025-11-14 Add Primary Language toggle (English vs Arabic), wire OCR defaults, and right-align previews for Arabic documents.

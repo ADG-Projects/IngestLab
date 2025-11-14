@@ -1236,18 +1236,10 @@ function switchView(view) {
 function wireModal() {
   const modal = $('runModal');
   const openBtn = $('openRunModal');
-  const openVariantBtn = $('openVariantModal');
   const deleteBtn = $('deleteRunBtn');
-  const cleanupBtn = $('cleanupBtn');
   const closeBtn = $('closeRunModal');
   const backdrop = $('runModalBackdrop');
   openBtn.addEventListener('click', () => { const s=$('pdfSelect'); if(s) s.disabled=false; modal.classList.remove('hidden'); });
-  if (openVariantBtn) {
-    openVariantBtn.addEventListener('click', () => {
-      prefillRunFormFromCurrent();
-      modal.classList.remove('hidden');
-    });
-  }
   if (deleteBtn) {
     deleteBtn.addEventListener('click', async () => {
       if (!CURRENT_SLUG) return;
@@ -1263,22 +1255,6 @@ function wireModal() {
       }
     });
   }
-  if (cleanupBtn) {
-    cleanupBtn.addEventListener('click', async () => {
-      const ok = confirm('Cleanup outputs not linked to any run?');
-      if (!ok) return;
-      try {
-        const r = await fetch('/api/cleanup', { method: 'POST' });
-        const data = await r.json();
-        if (!r.ok) throw new Error(data?.detail || `HTTP ${r.status}`);
-        const removed = (data?.removed || []).length;
-        showToast(`Cleanup removed ${removed} files`, 'ok', 3000);
-        await refreshRuns();
-      } catch (e) {
-        showToast(`Cleanup failed: ${e.message}`, 'err');
-      }
-    });
-  }
   const close = () => { $('runStatus').textContent = ''; modal.classList.add('hidden'); };
   closeBtn.addEventListener('click', close);
   backdrop.addEventListener('click', close);
@@ -1287,21 +1263,6 @@ function wireModal() {
 function closeRunModal() {
   const modal = $('runModal');
   if (modal) modal.classList.add('hidden');
-}
-
-function prefillRunFormFromCurrent() {
-  const pdfSel = $('pdfSelect');
-  const pagesInput = $('pagesInput');
-  let baseSlug = CURRENT_SLUG || '';
-  if (baseSlug.includes('.pages')) baseSlug = baseSlug.split('.pages')[0];
-  if (baseSlug.includes('__')) baseSlug = baseSlug.split('__')[0];
-  const pdf = (KNOWN_PDFS || []).find(p => p.slug === baseSlug);
-  if (pdf && pdfSel) {
-    pdfSel.value = pdf.name;
-    pdfSel.disabled = true;
-  }
-  const run = (RUNS_CACHE || []).find(r => r.slug === CURRENT_SLUG);
-  if (run && run.page_range && pagesInput) pagesInput.value = run.page_range;
 }
 
 async function ensurePdfjsReady(maxMs = 5000) {
