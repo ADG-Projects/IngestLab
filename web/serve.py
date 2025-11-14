@@ -34,6 +34,13 @@ CHART_VENDOR_DIR = ROOT / "web" / "static" / "vendor" / "chartjs"
 CHARTJS_VERSION = "4.4.1"
 
 
+def _env_true(name: str) -> bool:
+    v = os.environ.get(name)
+    if v is None:
+        return False
+    return str(v).strip().lower() in {"1", "true", "yes", "on"}
+
+
 app = FastAPI(title="Chunking Visualizer")
 
 app.add_middleware(
@@ -287,7 +294,7 @@ def api_run(payload: Dict[str, Any]) -> Dict[str, Any]:
     if strategy not in {"auto", "fast", "hi_res"}:
         raise HTTPException(status_code=400, detail="strategy must be one of: auto, fast, hi_res")
     # Allow disabling hi_res on constrained deployments (e.g., Fly) to avoid heavy deps
-    if os.environ.get("DISABLE_HI_RES"):
+    if _env_true("DISABLE_HI_RES"):
         if strategy in {"auto", "hi_res"}:
             strategy = "fast"
 

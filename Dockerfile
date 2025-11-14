@@ -28,17 +28,18 @@ ENV PATH="/root/.local/bin:$PATH"
 # Copy lockfiles first for better layer caching and install deps
 COPY pyproject.toml uv.lock ./
 
-# Opt-in to heavy hi_res deps at build time to keep image small by default
-ARG WITH_HIRES=0
-ENV DISABLE_HI_RES=1
-RUN if [ "$WITH_HIRES" = "1" ]; then \
+# Default: include hi_res extras. To build a minimal image, pass
+#   --build-arg WITH_HIRES=0 --build-arg DISABLE_HI_RES=1
+ARG WITH_HIRES=1
+ARG DISABLE_HI_RES
+RUN if [ "${WITH_HIRES}" = "1" ]; then \
       echo "Installing hires extras"; \
       uv sync --frozen --no-dev --extra hires; \
-      unset DISABLE_HI_RES; \
     else \
       echo "Installing minimal deps (no hires)"; \
       uv sync --frozen --no-dev; \
     fi
+ENV DISABLE_HI_RES=${DISABLE_HI_RES}
 
 # Copy the rest of the app
 COPY . .
