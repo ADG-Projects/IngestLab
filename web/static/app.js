@@ -1030,6 +1030,15 @@ function wireRunForm() {
     }
   });
 
+  const cancelBtn = $('cancelRunBtn');
+  if (cancelBtn) {
+    cancelBtn.addEventListener('click', () => {
+      const status = $('runStatus');
+      if (status) status.textContent = '';
+      closeRunModal();
+    });
+  }
+
   // Modal PDF preview wiring
   const pdfSel = $('pdfSelect');
   if (pdfSel) {
