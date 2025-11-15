@@ -172,9 +172,31 @@ Notes:
 - `internal_port` is `8000` (set in `fly.toml`); Uvicorn binds to `0.0.0.0:8000` in the container.
 - UI auto-fetches vendor `pdf.js` and `Chart.js` on first run if the local copies are missing; no CDN is required after that.
 - The default install now includes `unstructured-inference` so hi_res layout is available when the platform provides the needed system libraries. On lightweight builders (Railpack/Nixpacks), if you see `ImportError: libGL.so.1` or OCR errors, either switch to the provided Dockerfile (recommended) or add the runtime packages `libgl1 libglib2.0-0 libsm6 libxext6 libxrender1 tesseract-ocr`.
-```
 
 In the New Run modal, the “Upload PDF” row streams the chosen file straight into `PDF_DIR`. The file list refreshes immediately, and the preview loads from `/res_pdf/{name}` pointing at the mounted directory.
+
+### Docker image (hi_res ready)
+
+Use the included `Dockerfile` when you need hi_res chunking on platforms like Railway. It installs the native libraries (`libgl1`, `libglib2.0-0`, `libsm6`, `libxext6`, `libxrender1`, `tesseract-ocr`, `poppler-utils`, `libheif1`) and uses `uv sync --frozen` so the bundled `.venv` always matches `uv.lock`.
+
+Build and test locally:
+
+```bash
+docker build -t chunking-tests:latest .
+docker run -d --name chunking-tests-local -p 8765:8000 chunking-tests:latest
+curl -sf http://localhost:8765/healthz
+docker stop chunking-tests-local && docker rm chunking-tests-local
+```
+
+Hi_res is enabled by default inside the container. To produce a slimmed-down fast-only image, pass the build args exposed in the Dockerfile:
+
+```bash
+docker build -t chunking-tests:min \
+  --build-arg WITH_HIRES=0 \
+  --build-arg DISABLE_HI_RES=1 .
+```
+
+At runtime you can still set `DISABLE_HI_RES=1` to force the `strategy=fast` path without rebuilding the image.
 
 ### Railway deployment & volumes
 
@@ -190,17 +212,9 @@ Recommended setup in the Railway service:
 2. Set env vars:
    - `DATA_DIR=/data`
    - (optional) override `PDF_DIR` or `OUTPUT_DIR` explicitly if you prefer different subfolders.
-3. Deploy using this repo’s Dockerfile (or with the Python/Nixpacks builder, set Start Command to `uvicorn main:app --host 0.0.0.0 --port $PORT`). Hi‑res extraction is enabled by default when using the Dockerfile.
+3. Deploy using this repo’s Dockerfile so the hi_res dependencies (libGL/Tesseract/Poppler) ship with the image. Set Railway’s service to Docker, point it at the repository, and it will build with the same `docker build` invocation as above. If you must stick with the Python/Nixpacks builder, set Start Command to `uvicorn main:app --host 0.0.0.0 --port $PORT` and ensure the apt packages match those listed in the Dockerfile, or flip `DISABLE_HI_RES=1` to force the lightweight path.
 
-You can disable hi‑res (smaller image/runtimes) by building with:
-
-```bash
-docker build -t chunking-tests:min \
-  --build-arg WITH_HIRES=0 \
-  --build-arg DISABLE_HI_RES=1 .
-
-If you deploy with Railway’s default Nixpacks builder and hit an OpenCV error like `ImportError: libGL.so.1`, use the included `nixpacks.toml`. It replaces `opencv-python` with `opencv-python-headless` during the install phase so no system `libGL` is required. You can additionally set `DISABLE_HI_RES=1` in your service’s environment to force the lightweight `strategy=fast` path.
-```
+If you deploy with Railway’s default Nixpacks builder and still hit an OpenCV error like `ImportError: libGL.so.1`, use `nixpacks.toml`. It replaces `opencv-python` with `opencv-python-headless` during the install phase so no system `libGL` is required, but hi_res will remain unavailable unless you install the rest of the native dependencies manually.
 
 Operational notes:
 - The server creates missing directories on startup/use.
