@@ -62,8 +62,7 @@ header .controls { display: flex; gap: 12px; align-items: center; }
   overflow-x: hidden;
   overflow-y: visible;
   white-space: nowrap;
-  position: relative; /* create stacking context for tooltips */
-  z-index: 10010;      /* ensure tips appear above main content */
+  position: relative; /* host for recap tooltips */
 }
 .setting-item {
   display: inline-flex;
@@ -368,7 +367,7 @@ section.right {
 /* Drawer */
 .drawer {
   position: fixed;
-  top: calc(58px + 60px);
+  top: calc(58px + 60px + 44px);
   right: 0;
   width: min(700px, calc(100vw - 32px));
   bottom: 0;
@@ -380,6 +379,14 @@ section.right {
   z-index: 9999;
 }
 .drawer.hidden { display: none; }
+
+/* When the drawer is open, hide right-panel stats/content but keep Inspect tabs visible */
+body.drawer-open #right-inspect > :not(.inspect-tabs),
+body.drawer-open #right-metrics {
+  visibility: hidden;
+  pointer-events: none;
+}
+
 .drawer-header { display: flex; align-items: center; justify-content: space-between; padding: 10px 12px; border-bottom: 1px solid #22262d; }
 .drawer-header > div:first-child { display: grid; gap: 6px; }
 .drawer-title { font-weight: 600; }
@@ -437,7 +444,7 @@ section.right {
   bottom: calc(100% + 8px); /* show above the recap row */
   left: 0;
   right: auto;
-  z-index: 20000;
+  z-index: 15000; /* above main content, below modal */
 }
 /* Header toggle tooltip */
 .toggle-label { position: relative; display: inline-flex; align-items: center; gap: 6px; }
@@ -447,9 +454,9 @@ section.right {
 
 /* Modal */
 .modal.hidden { display: none; }
-.modal { position: fixed; inset: 0; z-index: 20000; }
+.modal { position: fixed; inset: 0; z-index: 30000; }
 .modal-backdrop { position: absolute; inset: 0; background: rgba(0,0,0,0.5); }
-.modal-content { position: absolute; top: 6vh; left: 50%; transform: translateX(-50%); width: min(820px, calc(100vw - 24px)); max-height: 88vh; overflow: auto; }
+.modal-content { position: absolute; top: 6vh; left: 0; right: 0; margin: 0 auto; width: min(820px, calc(100vw - 24px)); max-height: 88vh; overflow: auto; }
 .modal-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
 .modal-title { font-weight: 600; }
 .run-preview { margin-top: 10px; background: var(--panel); border: 1px solid #2a2f38; border-radius: 8px; padding: 10px; }
