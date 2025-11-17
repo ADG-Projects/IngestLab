@@ -62,6 +62,13 @@ Use `--input-jsonl` when you want to re-evaluate matches from a previously saved
 
 - Evaluate additional ingestion pipelines (Azure AI Document Intelligence, AWS Textract, etc.) as new experiments land in this sandbox.
 
+## Release history
+
+- **v1.1 (2025-11-17)** – Polished chunk overlays and drawer interactions so Metrics highlights respect the selected chunk, drawer-close restores the same chunk context, and highlight-all/best redraws from a clean slate before rerunning.
+  - Verification steps:
+    1. `uv run python scripts/preview_unstructured_pages.py --input res/<pdf>.pdf --pages 4-6 --only-tables --output outputs/unstructured/<slug>.pagesX-Y.tables.jsonl --gold dataset/gold.jsonl --emit-matches outputs/unstructured/<slug>.matches.json`
+    2. `uv run uvicorn main:app --reload --host 127.0.0.1 --port 8765` and walk through the Metrics + Inspect views to confirm overlay redraws track the drawer selections.
+
 ## Web UI (Chunking Visualizer)
 
 Spin up a small local UI to inspect PDFs, table matching, and chunker performance without juggling multiple files. The server reads `PDF_DIR` to find a writable location for PDFs (defaults to `res/` locally). When deployed to Fly.io with a volume mounted at `/data`, set `PDF_DIR=/data/res` to persist uploads.

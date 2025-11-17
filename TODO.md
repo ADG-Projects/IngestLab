@@ -4,6 +4,7 @@
 - [ ] Compare output quality between Unstructured and the Azure Document Intelligence SDK.
 
 ## Completed
+- [x] 2025-11-17 Release v1.1 (chunk overlay/drawer polish plus metrics highlight cleanup).
 - [x] 2025-11-17 Fix Inspect chunk overlays so closing an element drilled down from a chunk restores the same chunk context and re-draws its overlay on the PDF.
 - [x] 2025-11-15 Add Dockerfile with hi_res-ready libraries and document the Docker/Railway workflow so deployments no longer hit libGL errors.
 - [x] 2025-11-14 Install `unstructured-inference` by default so hi_res layout is always available on supported platforms; document builder caveats for required system libs.
