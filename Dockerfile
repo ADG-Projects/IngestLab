@@ -14,17 +14,22 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     APP_HOME=/app \
     VIRTUAL_ENV=/app/.venv \
     PATH="/app/.venv/bin:/root/.local/bin:$PATH" \
-    DISABLE_HI_RES=${DISABLE_HI_RES}
+    DISABLE_HI_RES=${DISABLE_HI_RES} \
+    TESSDATA_PREFIX=/usr/share/tesseract-ocr/5/tessdata
 
 WORKDIR /app
 
 # Install system dependencies needed for hi_res layout (OpenCV, Tesseract, Poppler, HEIF)
-RUN apt-get update && \
+RUN --mount=type=cache,target=/var/cache/apt \
+    --mount=type=cache,target=/var/lib/apt/lists \
+    apt-get update && \
     apt-get install -y --no-install-recommends \
         build-essential \
         curl \
         poppler-utils \
         tesseract-ocr \
+        tesseract-ocr-ara \
+        tesseract-ocr-script-arab \
         libgl1 \
         libglib2.0-0 \
         libsm6 \
@@ -36,14 +41,18 @@ RUN apt-get update && \
 # Install uv so all Python commands use the same resolver/runtime
 RUN pip install --no-cache-dir uv
 
-COPY . .
-
-RUN uv sync --frozen --no-dev && \
+# Pre-install Python dependencies using the lockfile for better Docker caching
+COPY pyproject.toml uv.lock ./
+RUN --mount=type=cache,target=/root/.cache/uv \
+    uv sync --frozen --no-dev && \
     uv pip uninstall opencv-python || true && \
     uv pip install --no-deps opencv-python-headless==4.11.0.86 && \
     if [ "$WITH_HIRES" = "0" ]; then \
         uv pip uninstall unstructured-inference || true; \
     fi
+
+# Copy the rest of the application after deps to preserve cached layers
+COPY . .
 
 EXPOSE 8000
 
