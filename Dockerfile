@@ -20,9 +20,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 # Install system dependencies needed for hi_res layout (OpenCV, Tesseract, Poppler, HEIF)
-RUN --mount=type=cache,target=/var/cache/apt \
-    --mount=type=cache,target=/var/lib/apt/lists \
-    apt-get update && \
+RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         build-essential \
         curl \
@@ -43,8 +41,7 @@ RUN pip install --no-cache-dir uv
 
 # Pre-install Python dependencies using the lockfile for better Docker caching
 COPY pyproject.toml uv.lock ./
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-dev && \
+RUN uv sync --frozen --no-dev && \
     uv pip uninstall opencv-python || true && \
     uv pip install --no-deps opencv-python-headless==4.11.0.86 && \
     if [ "$WITH_HIRES" = "0" ]; then \
