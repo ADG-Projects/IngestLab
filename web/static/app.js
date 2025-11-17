@@ -373,31 +373,21 @@ function drawChunksModeForPage(pageNum) {
   clearBoxes();
   const chunkTypesPresent = new Set();
   const elementTypesPresent = new Set();
-  // show all chunk bboxes on this page when enabled
-  if (SHOW_CHUNK_OVERLAYS && CURRENT_CHUNKS && CURRENT_CHUNKS.chunks) {
-    for (const ch of CURRENT_CHUNKS.chunks) {
-      const box = chunkBox(ch);
-      if (!box || box.page_trimmed !== pageNum) continue;
-      // Filter by chunk type if a filter is active
-      if (CURRENT_CHUNK_TYPE_FILTER && CURRENT_CHUNK_TYPE_FILTER !== 'All' && ch.type !== CURRENT_CHUNK_TYPE_FILTER) {
-        continue;
-      }
-      const meta = { kind: 'chunk', id: ch.element_id, type: ch.type, page: box.page_trimmed, chars: ch.char_len };
-      addBox({ x: box.x, y: box.y, w: box.w, h: box.h }, box.layout_w, box.layout_h, false, ch.type, null, 'chunk', meta);
-      if (ch.type) chunkTypesPresent.add(ch.type);
+  const selectedChunk = CURRENT_ELEMENT_ID ? CURRENT_CHUNK_LOOKUP[CURRENT_ELEMENT_ID] : null;
+  if (SHOW_CHUNK_OVERLAYS && selectedChunk) {
+    const box = chunkBox(selectedChunk);
+    if (box && box.page_trimmed === pageNum) {
+      const meta = { kind: 'chunk', id: selectedChunk.element_id, type: selectedChunk.type, page: box.page_trimmed, chars: selectedChunk.char_len };
+      addBox({ x: box.x, y: box.y, w: box.w, h: box.h }, box.layout_w, box.layout_h, true, selectedChunk.type, null, 'chunk', meta);
+      if (selectedChunk.type) chunkTypesPresent.add(selectedChunk.type);
     }
   }
-  // if a chunk is selected and element overlays are enabled, draw its orig boxes only
-  if (SHOW_ELEMENT_OVERLAYS && CURRENT_ELEMENT_ID) {
-    const ch = CURRENT_CHUNK_LOOKUP[CURRENT_ELEMENT_ID];
-    if (ch) {
-      drawOrigBoxesForChunk(ch.element_id, pageNum, null);
-      // Collect element types from orig_boxes
-      if (ch.orig_boxes) {
-        for (const box of ch.orig_boxes) {
-          if (box.page_trimmed === pageNum && box.type) {
-            elementTypesPresent.add(box.type);
-          }
+  if (SHOW_ELEMENT_OVERLAYS && selectedChunk) {
+    drawOrigBoxesForChunk(selectedChunk.element_id, pageNum, null);
+    if (selectedChunk.orig_boxes) {
+      for (const box of selectedChunk.orig_boxes) {
+        if (box.page_trimmed === pageNum && box.type) {
+          elementTypesPresent.add(box.type);
         }
       }
     }
