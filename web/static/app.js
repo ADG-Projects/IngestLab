@@ -1308,10 +1308,13 @@ function setupViewTabs() {
 }
 
 function setupReviewChipHandlers() {
-  const chunkChip = $('reviewChunksChip');
-  if (chunkChip) chunkChip.addEventListener('click', () => handleReviewChipClick('chunks'));
-  const elementChip = $('reviewElementsChip');
-  if (elementChip) elementChip.addEventListener('click', () => handleReviewChipClick('elements'));
+  const chip = $('reviewSummaryChip');
+  if (!chip) return;
+  chip.addEventListener('click', (ev) => {
+    const line = ev.target.closest('.review-chip-line');
+    if (!line || !line.dataset.kind) return;
+    handleReviewChipClick(line.dataset.kind);
+  });
 }
 
 function handleReviewChipClick(kind) {
@@ -1823,35 +1826,43 @@ function setReviewState(payload) {
 }
 
 function updateReviewSummaryChip() {
-  updateReviewChip('chunks');
-  updateReviewChip('elements');
-}
-
-function updateReviewChip(kind) {
-  const chip = kind === 'chunks' ? $('reviewChunksChip') : $('reviewElementsChip');
+  const chip = $('reviewSummaryChip');
   if (!chip) return;
-  const summary = CURRENT_REVIEWS?.summary?.[kind] || { good: 0, bad: 0, total: 0 };
-  const label = kind === 'chunks' ? 'Chunks' : 'Elements';
-  const good = Number(summary.good || 0);
-  const bad = Number(summary.bad || 0);
+  const chunks = CURRENT_REVIEWS?.summary?.chunks || { good: 0, bad: 0, total: 0 };
+  const elements = CURRENT_REVIEWS?.summary?.elements || { good: 0, bad: 0, total: 0 };
+  const chunksGood = Number(chunks.good || 0);
+  const chunksBad = Number(chunks.bad || 0);
+  const elementsGood = Number(elements.good || 0);
+  const elementsBad = Number(elements.bad || 0);
   chip.innerHTML = `
-    <span class="review-chip-label">${label}</span>
-    <span class="review-chip-counts">
-      <span class="review-chip-good">${good}</span>
-      <span>-</span>
-      <span class="review-chip-bad">${bad}</span>
-    </span>
+    <div class="review-chip-line" data-kind="elements">
+      <span class="review-chip-label">Elements</span>
+      <span class="review-chip-counts">
+        <span class="review-chip-good">${elementsGood}</span>
+        <span>-</span>
+        <span class="review-chip-bad">${elementsBad}</span>
+      </span>
+    </div>
+    <div class="review-chip-line" data-kind="chunks">
+      <span class="review-chip-label">Chunks</span>
+      <span class="review-chip-counts">
+        <span class="review-chip-good">${chunksGood}</span>
+        <span>-</span>
+        <span class="review-chip-bad">${chunksBad}</span>
+      </span>
+    </div>
   `;
-  if (!summary.total) {
-    chip.classList.add('disabled');
-    chip.classList.remove('active');
-    return;
-  }
-  chip.classList.remove('disabled');
-  const active =
-    (kind === 'chunks' && CURRENT_VIEW === 'inspect' && INSPECT_TAB === 'chunks' && CURRENT_CHUNK_REVIEW_FILTER === 'Reviewed') ||
-    (kind === 'elements' && CURRENT_VIEW === 'inspect' && INSPECT_TAB === 'elements' && CURRENT_ELEMENT_REVIEW_FILTER === 'Reviewed');
-  chip.classList.toggle('active', active);
+  const anyTotal = (chunks.total || 0) + (elements.total || 0);
+  chip.classList.toggle('disabled', !anyTotal);
+  const chunksActive = CURRENT_VIEW === 'inspect' && INSPECT_TAB === 'chunks' && CURRENT_CHUNK_REVIEW_FILTER === 'Reviewed';
+  const elementsActive = CURRENT_VIEW === 'inspect' && INSPECT_TAB === 'elements' && CURRENT_ELEMENT_REVIEW_FILTER === 'Reviewed';
+  const lines = chip.querySelectorAll('.review-chip-line');
+  lines.forEach((line) => {
+    const kind = line.dataset.kind;
+    const isActive = kind === 'chunks' ? chunksActive : elementsActive;
+    line.classList.toggle('active', isActive);
+  });
+  chip.classList.toggle('active', chunksActive || elementsActive);
 }
 
 async function loadReviews(slug) {
