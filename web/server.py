@@ -193,6 +193,14 @@ def api_delete_run(slug: str) -> Dict[str, Any]:
             for p in OUT_DIR.glob(globpat):
                 p.unlink()
                 removed.append(_relative_to_root(p))
+    # Drop stored reviews for this run so the UI no longer surfaces stale feedback.
+    try:
+        review_path = _review_file(slug)
+    except HTTPException:
+        review_path = None
+    if review_path and review_path.exists():
+        review_path.unlink()
+        removed.append(_relative_to_root(review_path))
     # Clear cache entries
     _INDEX_CACHE.pop(slug, None)
     return {"status": "ok", "removed": removed}
