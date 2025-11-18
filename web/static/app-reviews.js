@@ -2,6 +2,27 @@ function reviewKey(kind, itemId) {
   return `${kind}:${itemId}`;
 }
 
+function reviewDraftKey(kind, itemId, slug = CURRENT_SLUG) {
+  const safeSlug = slug || CURRENT_SLUG || 'global';
+  return `${safeSlug}:${reviewKey(kind, itemId)}`;
+}
+
+function getReviewDraft(kind, itemId, slug = CURRENT_SLUG) {
+  const key = reviewDraftKey(kind, itemId, slug);
+  return Object.prototype.hasOwnProperty.call(REVIEW_NOTE_DRAFTS, key)
+    ? REVIEW_NOTE_DRAFTS[key]
+    : null;
+}
+
+function setReviewDraft(kind, itemId, value, slug = CURRENT_SLUG) {
+  const key = reviewDraftKey(kind, itemId, slug);
+  if (value === null) {
+    delete REVIEW_NOTE_DRAFTS[key];
+    return;
+  }
+  REVIEW_NOTE_DRAFTS[key] = value;
+}
+
 function getReview(kind, itemId) {
   return REVIEW_LOOKUP[reviewKey(kind, itemId)] || null;
 }
@@ -29,9 +50,11 @@ function _emptyReviewState(slug = CURRENT_SLUG) {
 }
 
 function setReviewState(payload) {
+  const prevSlug = CURRENT_REVIEWS?.slug || null;
   const base = (payload && Array.isArray(payload.items)) ? payload : _emptyReviewState(payload?.slug || CURRENT_SLUG);
+  const nextSlug = base.slug || CURRENT_SLUG || null;
   CURRENT_REVIEWS = {
-    slug: base.slug || CURRENT_SLUG,
+    slug: nextSlug,
     items: Array.isArray(base.items) ? base.items : [],
     summary: {
       overall: base.summary?.overall || { good: 0, bad: 0, total: 0 },
@@ -39,6 +62,9 @@ function setReviewState(payload) {
       elements: base.summary?.elements || { good: 0, bad: 0, total: 0 },
     },
   };
+  if (prevSlug !== nextSlug) {
+    REVIEW_NOTE_DRAFTS = {};
+  }
   REVIEW_LOOKUP = {};
   (CURRENT_REVIEWS.items || []).forEach((item) => {
     if (!item || !item.kind || !item.item_id) return;
@@ -215,7 +241,15 @@ function buildDrawerReviewSection(kind, itemId) {
   const note = document.createElement('textarea');
   note.placeholder = 'Add reviewer notes (optional)…';
   const existing = getReview(kind, itemId);
-  note.value = existing?.note || '';
+  const draft = getReviewDraft(kind, itemId);
+  if (draft !== null && draft !== undefined) {
+    note.value = draft;
+  } else {
+    note.value = existing?.note || '';
+  }
+  note.addEventListener('input', () => {
+    setReviewDraft(kind, itemId, note.value);
+  });
   noteWrap.appendChild(note);
   const actions = document.createElement('div');
   actions.className = 'drawer-review-actions';
@@ -229,7 +263,10 @@ function buildDrawerReviewSection(kind, itemId) {
       showToast('Pick Good or Bad before saving a note.', 'err');
       return;
     }
-    await saveReview(kind, itemId, { note: note.value.trim() });
+    const trimmed = note.value.trim();
+    await saveReview(kind, itemId, { note: trimmed });
+    note.value = trimmed;
+    setReviewDraft(kind, itemId, trimmed);
   });
   const clearBtn = document.createElement('button');
   clearBtn.className = 'btn btn-secondary';
@@ -237,6 +274,7 @@ function buildDrawerReviewSection(kind, itemId) {
   clearBtn.addEventListener('click', (ev) => {
     ev.stopPropagation();
     note.value = '';
+    setReviewDraft(kind, itemId, '');
   });
   actions.appendChild(saveBtn);
   actions.appendChild(clearBtn);
