@@ -1,6 +1,7 @@
 # Entry point for FastAPI app
 from __future__ import annotations
 
+import logging
 from typing import Any, Dict
 
 from fastapi import FastAPI
@@ -22,8 +23,27 @@ from .routes import (
     runs_router,
     tables_router,
 )
+from .run_jobs import RUN_JOB_MANAGER  # noqa: F401 - ensure job manager thread starts
+
+_LOGGING_CONFIGURED = False
+
+
+def configure_chunking_logging() -> None:
+    global _LOGGING_CONFIGURED
+    if _LOGGING_CONFIGURED:
+        return
+    handler = logging.StreamHandler()
+    handler.setLevel(logging.INFO)
+    handler.setFormatter(logging.Formatter("[chunking] %(asctime)s %(levelname)s %(name)s: %(message)s"))
+    for name in ("chunking.routes.runs", "chunking.run_jobs"):
+        logger = logging.getLogger(name)
+        logger.setLevel(logging.INFO)
+        logger.addHandler(handler)
+        logger.propagate = False
+    _LOGGING_CONFIGURED = True
 
 ensure_dirs()
+configure_chunking_logging()
 
 app = FastAPI(title="Chunking Visualizer")
 

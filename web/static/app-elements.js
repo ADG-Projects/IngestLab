@@ -124,11 +124,24 @@ function renderElementsListForCurrentPage(boxes) {
   host.innerHTML = '';
   const reviewSelect = $('elementsReviewSelect');
   if (reviewSelect) reviewSelect.value = CURRENT_ELEMENT_REVIEW_FILTER;
+
+  // Update elements pagination
+  const paginationEl = $('elementPagination');
+  if (paginationEl) {
+    const entries = sortElementEntries(Object.entries(boxes || {}));
+    const filtered = filterElementEntriesByReview(entries);
+    const totalElements = ELEMENT_TYPES.reduce((sum, t) => sum + t.count, 0);
+    paginationEl.innerHTML = `<div><span class="lab">Elements (page ${CURRENT_PAGE})</span><span>${filtered.length} of ${totalElements}</span></div>`;
+  }
+
+  // Update elements review summary
   const reviewSummaryEl = $('elementsReviewSummary');
   if (reviewSummaryEl) {
     const counts = CURRENT_REVIEWS?.summary?.elements || { good: 0, bad: 0, total: 0 };
-    reviewSummaryEl.textContent = counts.total ? `Reviewed: ${counts.good} Good · ${counts.bad} Bad` : 'Reviewed: none';
+    const reviewText = counts.total ? `Reviewed: ${counts.good} Good · ${counts.bad} Bad` : 'Reviewed: none';
+    reviewSummaryEl.innerHTML = `<div><span class="lab">Reviewed</span><span>${reviewText}</span></div>`;
   }
+
   const entries = sortElementEntries(Object.entries(boxes || {}));
   if (!entries.length) {
     const div = document.createElement('div');
@@ -213,6 +226,7 @@ function renderElementsListForCurrentPage(boxes) {
     })();
   }
   updateReviewSummaryChip();
+  initElementsViewAutoCondense();
 }
 
 function revealElementInList(elementId, retries = 12) {
@@ -233,6 +247,7 @@ async function openElementDetails(elementId) {
   try {
     const data = await fetchJSON(`/api/element/${encodeURIComponent(CURRENT_SLUG)}/${encodeURIComponent(elementId)}`);
     const container = $('preview');
+    resetDrawerScrollState();
     CURRENT_ELEMENT_DRAWER_ID = elementId;
     CURRENT_CHUNK_DRAWER_ID = null;
     $('drawerTitle').textContent = 'Element';
@@ -255,7 +270,11 @@ async function openElementDetails(elementId) {
       const wrapper = document.createElement('div');
       wrapper.innerHTML = html;
       scroll.appendChild(wrapper);
+      if (wrapper.querySelector('table')) {
+        applyTablePreviewDirection(wrapper);
+      }
       applyDirectionalText(scroll);
+      registerDrawerScrollTarget(scroll);
       container.appendChild(scroll);
     } else {
       const pre = document.createElement('pre');

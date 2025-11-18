@@ -4,6 +4,12 @@
 - [ ] Compare output quality between Unstructured and the Azure Document Intelligence SDK.
 
 ## Completed
+- [x] 2025-11-18 Release v2.1 (persist chunking defaults in `run_config` and ship drawer table previews that keep the chunker column order while still aligning RTL cell text per document direction).
+- [x] 2025-11-18 Keep drawer table previews in the chunker column order while aligning RTL cell text per document direction.
+- [x] 2025-11-18 Persist chunking defaults in `run_config` so the UI header shows actual parameter values instead of "-".
+- [x] 2025-11-18 Queue `/api/run` chunking jobs, stream stderr/stdout tails in the New Run modal, and expose status endpoints so Railway runs no longer hit “failed to fetch” timeouts.
+- [x] 2025-11-18 Auto-condense chunk/element drawers based on preview scroll, fade drawer chips/mini-metrics to reclaim space, and reset drawer state whenever new content is opened.
+- [x] 2025-11-18 Collapse New Run modal inputs into a compact “Running…” view (with header button feedback) while runs are in progress so the dialog focuses on status instead of parameters.
 - [x] 2025-11-17 Release v2.0 (chunk/element review workflows plus modular frontend scripts).
 - [x] 2025-11-17 Size chunk cards by their text and keep chunk overlays synced with the type/review filters.
 - [x] 2025-11-17 Refactor Chunking Visualizer frontend into modular scripts (app-state/ui/overlays/metrics/elements/chunks/reviews/runs) and a small entry loader so each concern stays focused.

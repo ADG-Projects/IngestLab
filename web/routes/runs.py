@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
-import subprocess
 import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
@@ -19,10 +19,12 @@ from ..config import (
     relative_to_root,
     safe_pages_tag,
 )
+from ..run_jobs import RUN_JOB_MANAGER
 from .elements import clear_index_cache
 from .reviews import review_file_path
 
 router = APIRouter()
+logger = logging.getLogger("chunking.routes.runs")
 
 
 def _parse_matches(p: Path) -> Dict[str, Optional[str]]:
@@ -90,6 +92,19 @@ def discover_runs() -> List[Dict[str, Any]]:
         )
 
     return runs
+
+
+@router.get("/api/run-jobs")
+def api_run_jobs() -> Dict[str, Any]:
+    return {"jobs": RUN_JOB_MANAGER.list_jobs()}
+
+
+@router.get("/api/run-jobs/{job_id}")
+def api_run_job_detail(job_id: str) -> Dict[str, Any]:
+    job = RUN_JOB_MANAGER.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found")
+    return job
 
 
 @router.get("/api/runs")
@@ -214,6 +229,14 @@ def api_run(payload: Dict[str, Any]) -> Dict[str, Any]:
         except Exception as e:  # pragma: no cover - defensive fallback
             raise HTTPException(status_code=400, detail=f"Could not infer page range: {e}")
 
+    logger.info(
+        "Received chunk run request pdf=%s pages=%s strategy=%s chunking=%s",
+        pdf_name,
+        pages,
+        strategy,
+        chunking,
+    )
+
     slug = input_pdf.stem
     raw_tag = str(payload.get("tag") or "").strip()
     safe_tag = None
@@ -317,46 +340,38 @@ def api_run(payload: Dict[str, Any]) -> Dict[str, Any]:
     if primary_language:
         cmd += ["--primary-language", primary_language]
 
-    try:
-        r = subprocess.run(cmd, cwd=str(ROOT), capture_output=True, text=True)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed starting run: {e}")
+    logger.info(
+        "Submitting chunk run slug=%s command=%s",
+        f"{run_slug}.{pages_tag}",
+        " ".join(cmd),
+    )
 
-    if r.returncode != 0:
-        tail = (r.stderr or "").splitlines()[-20:]
-        raise HTTPException(status_code=500, detail=f"Run failed ({r.returncode}):\n" + "\n".join(tail))
-
-    try:
-        with matches_out.open("r", encoding="utf-8") as f:
-            mobj = json.load(f)
-    except Exception:
-        mobj = None
-    if isinstance(mobj, dict):
-        rc = mobj.get("run_config") or {}
-        snap = payload.get("form_snapshot") or {}
-        rc["form_snapshot"] = snap
-        rc["pdf"] = pdf_name
-        rc["pages"] = pages
-        if safe_tag:
-            rc["tag"] = safe_tag
-        if raw_tag:
-            rc["variant_tag"] = raw_tag
-        if primary_language:
-            rc["primary_language"] = primary_language
-        mobj["run_config"] = rc
-        try:
-            with matches_out.open("w", encoding="utf-8") as f:
-                json.dump(mobj, f, ensure_ascii=False, indent=2)
-                f.write("\n")
-        except Exception:
-            pass
-
-    run_info = {
-        "slug": f"{run_slug}.{pages_tag}",
+    job_metadata = {
+        "slug_with_pages": f"{run_slug}.{pages_tag}",
+        "pages_tag": pages_tag,
+        "pdf_name": pdf_name,
+        "pages": pages,
+        "safe_tag": safe_tag,
+        "raw_tag": raw_tag,
+        "primary_language": primary_language,
+        "form_snapshot": payload.get("form_snapshot") or {},
+        "tables_path": str(tables_out),
+        "trimmed_path": str(trimmed_out),
+        "chunk_path": str(chunk_out),
+    }
+    job = RUN_JOB_MANAGER.enqueue(command=cmd, matches_path=matches_out, metadata=job_metadata)
+    job_data = job.to_dict()
+    logger.info(
+        "Chunk run queued job_id=%s slug=%s",
+        job_data.get("id"),
+        job_metadata["slug_with_pages"],
+    )
+    run_stub = {
+        "slug": job_metadata["slug_with_pages"],
         "page_tag": pages_tag,
         "tables_file": relative_to_root(tables_out) if tables_out.exists() else None,
         "pdf_file": relative_to_root(trimmed_out) if trimmed_out.exists() else None,
-        "matches_file": relative_to_root(matches_out) if matches_out.exists() else None,
+        "matches_file": relative_to_root(matches_out),
         "chunks_file": relative_to_root(chunk_out) if chunk_out.exists() else None,
     }
-    return {"status": "ok", "run": run_info}
+    return {"status": "queued", "job": job_data, "run": run_stub}

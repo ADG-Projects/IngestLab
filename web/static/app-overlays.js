@@ -6,8 +6,11 @@ function clearBoxes() {
 function addBox(rect, layoutW, layoutH, isBest = false, type = null, color = null, variant = 'chunk', meta = null) {
   const overlay = $('overlay');
   const canvas = $('pdfCanvas');
-  const scaleX = canvas.width / layoutW;
-  const scaleY = canvas.height / layoutH;
+  if (!overlay || !canvas || !layoutW || !layoutH) return;
+  const overlayWidth = overlay.clientWidth || overlay.offsetWidth || parseFloat(overlay.style.width) || canvas.width;
+  const overlayHeight = overlay.clientHeight || overlay.offsetHeight || parseFloat(overlay.style.height) || canvas.height;
+  const scaleX = overlayWidth / layoutW;
+  const scaleY = overlayHeight / layoutH;
   const el = document.createElement('div');
   const typeClass = type ? ` type-${String(type).replace(/[^A-Za-z0-9_-]/g, '')}` : '';
   el.className = 'box' + (isBest ? ' best' : '') + typeClass;

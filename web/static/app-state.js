@@ -2,6 +2,8 @@ let PDF_DOC = null;
 let CURRENT_PAGE = 1;
 let PAGE_COUNT = 0;
 let SCALE = 1.0; // Will be adjusted to fit viewport
+let SCALE_IS_MANUAL = false;
+let CURRENT_RENDER_TASK = null;
 let CURRENT_SLUG = null;
 let BOX_INDEX = {}; // element_id -> {page_trimmed, layout_w,h, x,y,w,h}
 let MATCHES = null;
@@ -47,13 +49,17 @@ let CURRENT_REVIEWS = {
   },
 };
 let REVIEW_LOOKUP = {};
+let REVIEW_NOTE_DRAFTS = {};
 let CURRENT_CHUNK_REVIEW_FILTER = 'All';
 let CURRENT_ELEMENT_REVIEW_FILTER = 'All';
 let CURRENT_PAGE_BOXES = null;
 let CURRENT_CHUNK_DRAWER_ID = null;
 let CURRENT_ELEMENT_DRAWER_ID = null;
+let CURRENT_RUN_JOB_ID = null;
+let CURRENT_RUN_JOB_STATUS = null;
 
 const RTL_AWARE_ELEMENTS = new Set();
+const TABLE_PREVIEW_ELEMENTS = new Set();
 
 const $ = (id) => document.getElementById(id);
 
@@ -79,6 +85,43 @@ function applyDirectionalText(element, options = {}) {
   if (track) RTL_AWARE_ELEMENTS.add(element);
 }
 
+function applyTablePreviewDirection(element, options = {}) {
+  if (!element) return;
+  const { track = true } = options;
+  const rtl = isArabicDocument();
+  try {
+    element.setAttribute('dir', 'ltr');
+  } catch (_) {}
+  if (element.style) {
+    element.style.direction = 'ltr';
+    element.style.unicodeBidi = 'plaintext';
+  }
+  const cells = element.querySelectorAll('td, th');
+  if (cells.length) {
+    cells.forEach((cell) => {
+      if (cell.style) {
+        cell.style.direction = rtl ? 'rtl' : 'ltr';
+        cell.style.textAlign = rtl ? 'right' : 'left';
+        cell.style.unicodeBidi = 'plaintext';
+      }
+      try {
+        cell.setAttribute('dir', rtl ? 'rtl' : 'ltr');
+      } catch (_) {}
+    });
+  }
+  if (track) TABLE_PREVIEW_ELEMENTS.add(element);
+}
+
+function refreshTablePreviewDirections() {
+  for (const tableEl of Array.from(TABLE_PREVIEW_ELEMENTS)) {
+    if (!tableEl.isConnected) {
+      TABLE_PREVIEW_ELEMENTS.delete(tableEl);
+      continue;
+    }
+    applyTablePreviewDirection(tableEl, { track: false });
+  }
+}
+
 function refreshDirectionalElements() {
   for (const el of Array.from(RTL_AWARE_ELEMENTS)) {
     if (!el.isConnected) {
@@ -102,6 +145,7 @@ function applyLanguageDirection() {
     isArabic,
   });
   refreshDirectionalElements();
+  refreshTablePreviewDirections();
   console.log('[RTL Debug] After toggle:', {
     CURRENT_DOC_LANGUAGE,
     isArabic,

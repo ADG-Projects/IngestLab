@@ -11,6 +11,13 @@ function renderMetrics(overall) {
   setMetric('mmicro', overall.micro_coverage);
 }
 
+function setLanguageControl(langCode) {
+  const select = $('settingPrimaryLang');
+  if (!select) return;
+  const normalized = normalizeLangCode(langCode) || 'eng';
+  select.value = normalized;
+}
+
 function buildChart(matches) {
   LAST_CHART_MATCHES = matches || [];
   const canvas = document.getElementById('chart');
@@ -104,46 +111,105 @@ function refreshMatchesView() {
 
 function updateRunConfigCard() {
   const cfg = CURRENT_RUN_CONFIG || CURRENT_RUN?.run_config;
+  const ensureDisplay = (value) => {
+    if (value === undefined || value === null) return '-';
+    if (typeof value === 'string') {
+      const trimmed = value.trim();
+      return trimmed ? trimmed : '-';
+    }
+    return value;
+  };
+  const preferValues = (...values) => {
+    for (const val of values) {
+      if (val === undefined || val === null) continue;
+      if (typeof val === 'string' && !val.trim()) continue;
+      return val;
+    }
+    return null;
+  };
   const set = (id, value) => {
     const el = $(id);
-    if (el) el.textContent = value;
+    if (el) el.textContent = ensureDisplay(value);
   };
   if (!cfg) {
-    ['Strategy','InferTables','Chunking','PrimaryLang','MaxTokens','MaxChars','NewAfter','CombineUnder','Overlap','IncludeOrig','OverlapAll','Multipage','Pdf','Pages','Tag']
+    ['Strategy','InferTables','Chunking','MaxTokens','MaxChars','NewAfter','CombineUnder','Overlap','IncludeOrig','OverlapAll','Multipage','Pdf','Pages','Tag']
       .forEach(name => set(`setting${name}`, '-'));
+    setLanguageControl('eng');
     CURRENT_DOC_LANGUAGE = 'eng';
     applyLanguageDirection();
     return;
   }
   const chunkParams = cfg.chunk_params || {};
   const snap = cfg.form_snapshot || cfg.ui_form || {};
-  const fallback = (value, def) => {
-    if (value === undefined || value === null || value === '') return def;
-    return value;
-  };
   set('settingStrategy', cfg.strategy || 'auto');
   set('settingInferTables', String(cfg.infer_table_structure !== false));
   set('settingChunking', cfg.chunking || 'by_title');
-  const maxCharsRaw = fallback(chunkParams.max_characters, snap.max_characters);
-  const mtSource = fallback(snap.max_tokens, chunkParams.max_tokens);
-  const inferredTokens = (maxCharsRaw != null && Number.isFinite(Number(maxCharsRaw))) ? Math.round(Number(maxCharsRaw) / 4) : null;
-  set('settingMaxTokens', mtSource || inferredTokens || '-');
-  set('settingMaxChars', maxCharsRaw || '-');
-  set('settingNewAfter', fallback(chunkParams.new_after_n_chars, snap.new_after_n_chars) || '-');
-  set('settingCombineUnder', fallback(chunkParams.combine_text_under_n_chars, snap.combine_text_under_n_chars) || '-');
-  set('settingOverlap', fallback(chunkParams.overlap, snap.chunk_overlap) || '-');
-  set('settingIncludeOrig', fallback(chunkParams.include_orig_elements, snap.include_orig_elements) || '-');
-  set('settingOverlapAll', fallback(chunkParams.overlap_all, snap.chunk_overlap_all) || '-');
-  set('settingMultipage', fallback(chunkParams.multipage_sections, snap.chunk_multipage) || '-');
-  set('settingPdf', snap.pdf || cfg.form_snapshot?.pdf || '-');
-  set('settingPages', snap.pages || cfg.form_snapshot?.pages || '-');
-  set('settingTag', snap.tag || '-');
+  const maxCharsRaw = preferValues(
+    chunkParams.max_characters,
+    chunkParams.chunk_max_characters,
+    snap.chunk_max_characters,
+    snap.max_characters
+  );
+  const mtSource = preferValues(
+    snap.max_tokens,
+    snap.chunk_max_tokens,
+    chunkParams.max_tokens
+  );
+  const inferredTokens =
+    mtSource == null && maxCharsRaw != null && Number.isFinite(Number(maxCharsRaw))
+      ? Math.round(Number(maxCharsRaw) / 4)
+      : null;
+  const tokensDisplay = preferValues(mtSource, inferredTokens);
+  set('settingMaxTokens', tokensDisplay ?? '-');
+  set('settingMaxChars', maxCharsRaw ?? '-');
+  set('settingNewAfter', preferValues(
+    chunkParams.new_after_n_chars,
+    chunkParams.chunk_new_after_n_chars,
+    snap.chunk_new_after_n_chars,
+    snap.new_after_n_chars
+  ) ?? '-');
+  set('settingCombineUnder', preferValues(
+    chunkParams.combine_text_under_n_chars,
+    chunkParams.chunk_combine_under_n_chars,
+    snap.chunk_combine_under_n_chars,
+    snap.combine_under_n_chars
+  ) ?? '-');
+  set('settingOverlap', preferValues(
+    chunkParams.overlap,
+    chunkParams.chunk_overlap,
+    snap.chunk_overlap,
+    snap.overlap
+  ) ?? '-');
+  set('settingIncludeOrig', preferValues(
+    chunkParams.include_orig_elements,
+    chunkParams.chunk_include_orig_elements,
+    snap.chunk_include_orig_elements,
+    snap.include_orig_elements
+  ) ?? '-');
+  set('settingOverlapAll', preferValues(
+    chunkParams.overlap_all,
+    chunkParams.chunk_overlap_all,
+    snap.chunk_overlap_all,
+    snap.overlap_all
+  ) ?? '-');
+  set('settingMultipage', preferValues(
+    chunkParams.multipage_sections,
+    chunkParams.chunk_multipage_sections,
+    snap.chunk_multipage_sections,
+    snap.multipage_sections,
+    snap.chunk_multipage
+  ) ?? '-');
+  set('settingPdf', preferValues(snap.pdf, cfg.pdf) ?? '-');
+  set('settingPages', preferValues(snap.pages, cfg.pages) ?? '-');
+  set('settingTag', preferValues(snap.tag, snap.variant_tag, cfg.tag, cfg.variant_tag) ?? '-');
   const lang = resolvePrimaryLanguage(cfg.run_config ?? cfg, snap);
+  setLanguageControl(lang);
   CURRENT_DOC_LANGUAGE = lang;
   applyLanguageDirection();
 }
 
 async function openDetails(tableMatch) {
+  resetDrawerScrollState();
   $('drawerTitle').textContent = tableMatch.gold_title || tableMatch.gold_table_id || 'Details';
   $('drawerMeta').textContent = `Rows ${tableMatch.gold_rows?.join(', ') || '-'}`;
   $('drawerSummary').innerHTML = `
@@ -157,7 +223,12 @@ async function openDetails(tableMatch) {
   preview.appendChild(buildDrawerReviewSection('table', tableMatch.gold_table_id));
   const tableSection = document.createElement('div');
   tableSection.className = 'table-preview';
-  tableSection.textContent = tableMatch.table_html || 'No preview available';
+  if (tableMatch.table_html) {
+    tableSection.innerHTML = tableMatch.table_html;
+    applyTablePreviewDirection(tableSection);
+  } else {
+    tableSection.textContent = 'No preview available';
+  }
   preview.appendChild(tableSection);
   $('drawer').classList.remove('hidden');
   document.body.classList.add('drawer-open');

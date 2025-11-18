@@ -40,3 +40,105 @@ function typeBorderColor(t) {
   document.body.removeChild(fake);
   return color || '#6bbcff';
 }
+
+let DRAWER_CONDENSED = false;
+const DRAWER_SCROLL_TARGETS = new Set();
+
+function registerDrawerScrollTarget(el) {
+  if (!el) return;
+  const entry = { el, handler: () => updateDrawerCondensedState() };
+  DRAWER_SCROLL_TARGETS.add(entry);
+  el.addEventListener('scroll', entry.handler, { passive: true });
+}
+
+function clearDrawerScrollTargets() {
+  for (const entry of DRAWER_SCROLL_TARGETS) {
+    const { el, handler } = entry;
+    if (el) el.removeEventListener('scroll', handler);
+  }
+  DRAWER_SCROLL_TARGETS.clear();
+}
+
+function currentDrawerScrollOffset() {
+  let offset = 0;
+  const preview = $('preview');
+  if (preview) offset = preview.scrollTop || 0;
+  for (const entry of Array.from(DRAWER_SCROLL_TARGETS)) {
+    const { el, handler } = entry;
+    if (!el || !el.isConnected) {
+      if (el) el.removeEventListener('scroll', handler);
+      DRAWER_SCROLL_TARGETS.delete(entry);
+      continue;
+    }
+    if (el.scrollTop > offset) offset = el.scrollTop;
+  }
+  return offset;
+}
+
+function updateDrawerCondensedState() {
+  const drawer = $('drawer');
+  if (!drawer) return;
+  const shouldCondense = currentDrawerScrollOffset() > 32;
+  if (shouldCondense === DRAWER_CONDENSED) return;
+  DRAWER_CONDENSED = shouldCondense;
+  drawer.classList.toggle('drawer-condensed', shouldCondense);
+}
+
+function resetDrawerScrollState() {
+  const drawer = $('drawer');
+  const preview = $('preview');
+  if (preview) preview.scrollTop = 0;
+  clearDrawerScrollTargets();
+  DRAWER_CONDENSED = false;
+  if (drawer) drawer.classList.remove('drawer-condensed');
+}
+
+function initDrawerAutoCondense() {
+  const preview = $('preview');
+  if (!preview) return;
+  preview.addEventListener('scroll', () => {
+    updateDrawerCondensedState();
+  }, { passive: true });
+}
+
+// Chunks view condensing
+let CHUNKS_VIEW_CONDENSED = false;
+
+function updateChunksViewCondensedState() {
+  const chunkList = $('chunkList');
+  const chunksView = document.querySelector('.chunks-view');
+  if (!chunkList || !chunksView) return;
+  const shouldCondense = chunkList.scrollTop > 32;
+  if (shouldCondense === CHUNKS_VIEW_CONDENSED) return;
+  CHUNKS_VIEW_CONDENSED = shouldCondense;
+  chunksView.classList.toggle('condensed', shouldCondense);
+}
+
+function initChunksViewAutoCondense() {
+  const chunkList = $('chunkList');
+  if (!chunkList) return;
+  // Remove any existing listener first
+  chunkList.removeEventListener('scroll', updateChunksViewCondensedState);
+  chunkList.addEventListener('scroll', updateChunksViewCondensedState, { passive: true });
+}
+
+// Elements view condensing
+let ELEMENTS_VIEW_CONDENSED = false;
+
+function updateElementsViewCondensedState() {
+  const elementsList = $('elementsList');
+  const elementsView = document.querySelector('.elements-view');
+  if (!elementsList || !elementsView) return;
+  const shouldCondense = elementsList.scrollTop > 32;
+  if (shouldCondense === ELEMENTS_VIEW_CONDENSED) return;
+  ELEMENTS_VIEW_CONDENSED = shouldCondense;
+  elementsView.classList.toggle('condensed', shouldCondense);
+}
+
+function initElementsViewAutoCondense() {
+  const elementsList = $('elementsList');
+  if (!elementsList) return;
+  // Remove any existing listener first
+  elementsList.removeEventListener('scroll', updateElementsViewCondensedState);
+  elementsList.addEventListener('scroll', updateElementsViewCondensedState, { passive: true });
+}

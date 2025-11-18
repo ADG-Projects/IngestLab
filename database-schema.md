@@ -2,10 +2,13 @@
 
 The project does not persist to a database yet. Instead, Unstructured parses each PDF into JSON documents stored under `outputs/`. Source PDFs are read from a configurable directory:
 
+- **v2.1 (2025-11-18)** – Persist chunking defaults in `run_config` so UI recap bars (and downstream checks) see the actual Unstructured parameters, and keep drawer table previews aligned with the chunker’s column order while still right-aligning RTL cell text per document direction.
 - **v2.0 (2025-11-17)** – Chunk/element review workflows and the modularized frontend keep overlays/cards in sync while leaving stored outputs and API payloads untouched.
 - **v1.1 (2025-11-17)** – Chunk overlay/drawer refinements and Metrics view redraws introduced here leave the stored JSON layout unchanged.
 
 - `PDF_DIR` environment variable points to where PDFs live. Locally it defaults to `res/`. In Fly deployments with a volume mounted at `/data`, use `PDF_DIR=/data/res` so uploads persist across deploys.
+  - New UI runs now also record a compact “Running” state in the frontend only: while `/api/run` is processing, the New Run modal hides its fields and the header button reflects the in-flight status, but the persisted `run_config.form_snapshot` continues to store the full parameter set as before.
+- `/api/run` enqueues work instead of blocking: the response contains a job descriptor (`id`, `status`, `slug`, `pdf`, `pages`, command preview, stdout/stderr tails). The UI polls `/api/run-jobs/{id}` until the chunker reports `succeeded` or `failed`, and job logs stay cached in memory until the server restarts. Successful jobs still rewrite their `matches.json` payloads to persist `form_snapshot`, PDF/page metadata, and language hints.
 
 ## Document JSON layout
 - `source_file`: Absolute path to the processed PDF.
@@ -39,7 +42,7 @@ The project does not persist to a database yet. Instead, Unstructured parses eac
    - `run_config`: metadata about how the run was produced
      - `strategy`, `chunking`, `infer_table_structure`, `match_source`
      - Language hints mirrored from the UI: `primary_language` (`eng` or `ara`), `ocr_languages` (string passed to Tesseract, e.g., `ara+eng`), `languages` (comma list or array of ISO codes forwarded to Unstructured), and `detect_language_per_element` (bool). These help downstream consumers right-align RTL previews when the document is Arabic-heavy.
-     - `chunk_params`: the effective parameters supplied to Unstructured. Keys may include `max_characters`, `new_after_n_chars`, `combine_text_under_n_chars`, `overlap`, `include_orig_elements`, `overlap_all`, `multipage_sections`.
+     - `chunk_params`: the effective parameters supplied to Unstructured. Keys may include `max_characters`, `new_after_n_chars`, `combine_text_under_n_chars`, `overlap`, `include_orig_elements`, `overlap_all`, `multipage_sections`. The pipeline now always populates this object (even when users rely on defaults), so the UI header can display the actual values used instead of `-`.
      - `chunk_summary`: quick stats about emitted chunks (`count`, `min_chars`, `max_chars`, `avg_chars`)
      - `form_snapshot` (UI-only): raw values entered in the New Run modal, including convenience fields like `max_tokens` and the original `pdf`, `pages`, and optional `tag`. The recap bar prefers these when available and falls back to `chunk_params`.
 

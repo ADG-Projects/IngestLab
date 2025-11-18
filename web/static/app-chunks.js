@@ -110,14 +110,18 @@ function renderChunksTab() {
           <select id="chunkReviewFilter">${reviewOptsHtml}</select>
         </label>
       </div>
-      <div class="chunk-types">${typesListHtml}</div>
-      <div class="chunk-stats">
+      <div class="chunk-pagination">
         <div><span class="lab">Chunks (page ${CURRENT_PAGE})</span><span>${chunks.length} of ${summary.count || 0}</span></div>
-        <div><span class="lab">Avg chars</span><span>${(summary.avg_chars || 0).toFixed(1)}</span></div>
-        <div><span class="lab">Min chars</span><span>${summary.min_chars || 0}</span></div>
-        <div><span class="lab">Max chars</span><span>${summary.max_chars || 0}</span></div>
-        <div><span class="lab">Total chars</span><span>${summary.total_chars || 0}</span></div>
-        <div><span class="lab">Reviewed</span><span>${chunkReviewText}</span></div>
+      </div>
+      <div class="collapsible-stats">
+        <div class="chunk-types">${typesListHtml}</div>
+        <div class="chunk-stats">
+          <div><span class="lab">Avg chars</span><span>${(summary.avg_chars || 0).toFixed(1)}</span></div>
+          <div><span class="lab">Min chars</span><span>${summary.min_chars || 0}</span></div>
+          <div><span class="lab">Max chars</span><span>${summary.max_chars || 0}</span></div>
+          <div><span class="lab">Total chars</span><span>${summary.total_chars || 0}</span></div>
+          <div><span class="lab">Reviewed</span><span>${chunkReviewText}</span></div>
+        </div>
       </div>
     </div>
   `;
@@ -250,6 +254,7 @@ function renderChunksTab() {
     listEl.appendChild(card);
   });
   updateReviewSummaryChip();
+  initChunksViewAutoCondense();
 }
 
 async function openChunkDetailsDrawer(chunkId, elementsSublist) {
@@ -257,6 +262,7 @@ async function openChunkDetailsDrawer(chunkId, elementsSublist) {
   if (!ch) return;
   CURRENT_CHUNK_DRAWER_ID = chunkId;
   CURRENT_ELEMENT_DRAWER_ID = null;
+  resetDrawerScrollState();
   $('drawerTitle').textContent = 'Chunk Details';
   $('drawerMeta').innerHTML = `<code>${chunkId}</code> · <span class="chip-tag">${ch.type || '-'}</span> · <span class="chip-tag">${ch.char_len || 0} chars</span>`;
   $('drawerSummary').innerHTML = '';
@@ -278,6 +284,7 @@ async function openChunkDetailsDrawer(chunkId, elementsSublist) {
   pre.style.overflow = 'auto';
   pre.textContent = ch.text || '(empty)';
   applyDirectionalText(pre);
+  registerDrawerScrollTarget(pre);
   textSection.appendChild(pre);
   container.appendChild(textSection);
   const uniq = new Map();

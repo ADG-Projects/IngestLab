@@ -64,6 +64,11 @@ Use `--input-jsonl` when you want to re-evaluate matches from a previously saved
 
 ## Release history
 
+- **v2.1 (2025-11-18)** – Persist actual Unstructured chunking defaults (max_characters, new_after_n_chars, overlap, overlap_all, include_orig_elements, combine_text_under_n_chars, multipage_sections) in `run_config` so the header recap mirrors the values the chunker actually used, and keep drawer table previews in their original chunker column order while cell text alignment still follows the document direction.
+  - Verification steps:
+    1. `uv run python scripts/run_chunking_pipeline.py --input res/<pdf>.pdf --pages 4-6 --emit-matches outputs/unstructured/<slug>.matches.json` and confirm the generated `matches.json` `run_config.chunk_params` object lists the default values even when no chunking flags were passed.
+    2. `uv run uvicorn main:app --reload --host 127.0.0.1 --port 8765`, open an Arabic table match under Metrics, and verify the drawer columns match the PDF layout while each RTL cell text remains right-aligned.
+
 - **v2.0 (2025-11-17)** – Introduced chunk/element review workflows (Good/Bad ratings with notes, filters, and summary chips) while refactoring the frontend into modular scripts so overlays, metrics, and drawers stay in lockstep.
   - Verification steps:
     1. `uv run uvicorn main:app --reload --host 127.0.0.1 --port 8765` and confirm you can add/edit chunk + element reviews, filter by rating, see the header chip update instantly, and watch chunk overlays hide/show with the Inspect filters.
@@ -79,6 +84,7 @@ Use `--input-jsonl` when you want to re-evaluate matches from a previously saved
 Spin up a small local UI to inspect PDFs, table matching, and chunker performance without juggling multiple files. The server reads `PDF_DIR` to find a writable location for PDFs (defaults to `res/` locally). When deployed to Fly.io with a volume mounted at `/data`, set `PDF_DIR=/data/res` to persist uploads.
 
 The UI assets are now composed from targeted modules (`app-state.js`, `app-ui.js`, `app-reviews.js`, `app-overlays.js`, `app-metrics.js`, `app-elements.js`, `app-chunks.js`, `app-runs.js`, and a thin `app.js` entry) so each concern (state, overlays, reviews, element/chunk panels, run wiring) can evolve independently while `index.html` pulls them in sequentially.
+When you start a run, the “New Run” modal collapses into a compact Running state: the form and preview hide, a small status block shows the current PDF name plus a hint that the window will close on completion, and the header “New Run” button switches to `Running…` while the request is in flight. Parameters are still captured in the backend `form_snapshot` and reflected in the Settings Recap bar once the run completes.
 
 Quickstart:
 
@@ -125,6 +131,8 @@ Endpoints (served by FastAPI):
 - `GET /api/element_types/{slug}` — element type inventory for a run (counts by type).
 - `GET /api/boxes/{slug}?page=N&types=Table,Text` — minimal per-page box index for overlays (server-side indexed, avoids heavy scans).
 - `GET /api/chunks/{slug}` — chunk artifacts (summary + JSONL contents) for each run.
+- `GET /api/run-jobs` — inspect the current queue of chunking jobs (status, timestamps, latest log tail).
+- `GET /api/run-jobs/{job_id}` — poll a specific job for live status/log updates; used by the UI progress view.
 - `POST /api/run` — execute a new run. Body:
   - `pdf` (string, required): filename under `res/`.
   - `pages` (string, optional): page list/range (e.g., `4-6`, `4,5,6`). If omitted or blank, the server processes the entire document (equivalent to `1-<num_pages>`). The server trims the PDF first and only processes those pages.
@@ -133,10 +141,12 @@ Endpoints (served by FastAPI):
   - `chunking` (`basic|by_title`, default `by_title`). Additional knobs:
     - Shared: `chunk_max_characters`, `chunk_new_after_n_chars`, `chunk_overlap`, `chunk_include_orig_elements`, `chunk_overlap_all`.
     - Extra for `by_title`: `chunk_combine_under_n_chars`, `chunk_multipage_sections`.
+  - Response: immediately returns a `job` payload (`id`, `status`, `command`, log tails) instead of blocking until the chunker finishes. Use `/api/run-jobs/{id}` to poll; the UI already handles this automatically.
 
 Run on demand via the UI:
 - In the right panel, use the “New Run” card to pick a PDF (or upload one — it uploads immediately after selection), set pages and strategy, choose `basic` or `by_title` chunking, tweak advanced parameters, then click Run.
 - Leave the Pages field blank to chunk the entire PDF; the UI fills `1-<num_pages>` automatically when possible, and the server also falls back to the full range if the field is empty.
+- Runs are now queued asynchronously. The modal switches into a compact “Running…” view that polls `/api/run-jobs/{id}`, streams stderr/stdout tails directly inside the dialog, and only closes once the chunker finishes successfully.
 - The server slices the PDF, runs Unstructured, writes artifacts in `outputs/unstructured/`, and refreshes the run list. The latest run per slug is shown.
 - The New Run modal includes a live PDF preview from `res` with prev/next controls and quick buttons to “Add page” or mark a start/end to append a page range to the Pages field. Advanced chunking controls now expose both `basic` and `by_title` strategies plus every Unstructured flag (including approximate `max_tokens`, `include_orig_elements`, `overlap_all`, and `multipage_sections`).
 - Right next to the strategy dropdown, a Primary Language toggle lets you flag whether the document is predominantly English (default) or Arabic. Choosing Arabic prioritizes Arabic OCR (`ara+eng`), sets Unstructured’s `languages` hint to `["ar", "en"]`, enables per-element language detection, and makes the preview drawers render RTL so Arabic text stays readable.

@@ -17,6 +17,16 @@ from chunking_pipeline.pipeline import (
     run_chunking,
     match_tables_to_gold,
 )
+
+CHUNK_DEFAULTS = {
+    "max_characters": 500,
+    "overlap": 0,
+    "overlap_all": False,
+    "include_orig_elements": True,
+}
+BY_TITLE_DEFAULTS = {
+    "multipage_sections": True,
+}
 def write_jsonl(path: Optional[str], elements: List[Dict[str, Any]]) -> None:
     if not path:
         for el in elements:
@@ -82,6 +92,25 @@ def main(argv: Optional[List[str]] = None) -> int:
     if args.chunk_multipage_sections is not None:
         chunk_params["multipage_sections"] = args.chunk_multipage_sections
 
+    final_max_characters = chunk_params.get("max_characters")
+    if final_max_characters is None:
+        final_max_characters = CHUNK_DEFAULTS["max_characters"]
+        chunk_params["max_characters"] = final_max_characters
+
+    # Dependent defaults (soft max follows hard max when unspecified)
+    if "new_after_n_chars" not in chunk_params:
+        chunk_params["new_after_n_chars"] = final_max_characters
+
+    for key in ("overlap", "overlap_all", "include_orig_elements"):
+        if key not in chunk_params:
+            chunk_params[key] = CHUNK_DEFAULTS[key]
+
+    if args.chunking == "by_title":
+        if "combine_text_under_n_chars" not in chunk_params:
+            chunk_params["combine_text_under_n_chars"] = final_max_characters
+        if "multipage_sections" not in chunk_params:
+            chunk_params["multipage_sections"] = BY_TITLE_DEFAULTS["multipage_sections"]
+
     languages: Optional[List[str]] = None
     if args.languages:
         languages = [part.strip() for part in args.languages.split(",") if part.strip()]
@@ -125,8 +154,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     }
     if primary_language:
         run_config["primary_language"] = primary_language
-    if chunk_params:
-        run_config["chunk_params"] = chunk_params
+    run_config["chunk_params"] = chunk_params
     if chunk_summary:
         run_config["chunk_summary"] = chunk_summary
 

@@ -68,7 +68,7 @@
       <div class="header-left">
         <div class="title-stack">
           <h1>Chunking Visualizer</h1>
-          <span class="version-badge">v2.0</span>
+          <span class="version-badge">v2.1</span>
         </div>
         <div class="view-tabs" role="tablist" aria-label="Primary view">
           <button id="viewTabMetrics" class="tab active" data-view="metrics" role="tab" aria-selected="true">Metrics</button>
@@ -102,7 +102,12 @@
       </div>
       <div class="setting-item">
         <span class="setting-label">LANG <span class="info" tabindex="0">i</span><div class="tip">Primary document language. Arabic toggles RTL previews and prioritizes Arabic OCR.</div></span>
-        <span class="setting-value" id="settingPrimaryLang">-</span>
+        <span class="setting-value">
+          <select id="settingPrimaryLang" class="setting-lang-select" aria-label="Primary document language">
+            <option value="eng">English (LTR)</option>
+            <option value="ara">Arabic (RTL)</option>
+          </select>
+        </span>
       </div>
       <div class="setting-item">
         <span class="setting-label">TOK <span class="info" tabindex="0">i</span><div class="tip">Approximate target tokens per chunk (LLM). If provided, max_characters ≈ tokens × 4.</div></span>
@@ -210,24 +215,29 @@
           <button class="tab" data-inspect="chunks">Chunks</button>
         </div>
         <div id="pane-inspect-elements" class="pane active">
-          <div class="elements">
-            <div class="row">
-              <label>
-                <span class="lab">Type</span>
-                <select id="elementsTypeSelect"></select>
-              </label>
-              <label>
-                <span class="lab">Review</span>
-                <select id="elementsReviewSelect">
-                  <option value="All">All</option>
-                  <option value="Reviewed">Reviewed</option>
-                  <option value="Good">Good only</option>
-                  <option value="Bad">Bad only</option>
-                </select>
-              </label>
-              <span id="elementsReviewSummary" class="review-inline-count">Reviewed: none</span>
+          <div class="elements-view">
+            <div class="card element-summary">
+              <div class="row">
+                <label>
+                  <span class="lab">Type</span>
+                  <select id="elementsTypeSelect"></select>
+                </label>
+                <label>
+                  <span class="lab">Review</span>
+                  <select id="elementsReviewSelect">
+                    <option value="All">All</option>
+                    <option value="Reviewed">Reviewed</option>
+                    <option value="Good">Good only</option>
+                    <option value="Bad">Bad only</option>
+                  </select>
+                </label>
+              </div>
+              <div id="elementPagination" class="element-pagination"></div>
+              <div class="collapsible-stats">
+                <div id="typesList" class="types element-types"></div>
+                <div id="elementsReviewSummary" class="element-stats-detail"></div>
+              </div>
             </div>
-            <div id="typesList" class="types"></div>
             <div class="elements-list" id="elementsList"></div>
           </div>
         </div>
@@ -267,14 +277,23 @@
           <div class="modal-title">New Run</div>
           <button id="closeRunModal" class="btn">Close</button>
         </div>
-        <div class="run-grid">
-          <label>
-            <div class="lab">PDF <span class="info" tabindex="0">i</span><div class="tip">Pick a source PDF from <code>res/</code>. Use Delete to remove the selected file from the server.</div></div>
-            <div class="upload-row">
-              <select id="pdfSelect"></select>
-              <button id="pdfDeleteBtn" class="btn btn-secondary" type="button" title="Delete selected PDF from server">Delete</button>
-            </div>
-          </label>
+        <div class="run-grid" id="runFormGrid">
+          <div class="pdf-lang-row">
+            <label class="pdf-picker">
+              <div class="lab">PDF <span class="info" tabindex="0">i</span><div class="tip">Pick a source PDF from <code>res/</code>. Use Delete to remove the selected file from the server.</div></div>
+              <div class="upload-row">
+                <select id="pdfSelect"></select>
+                <button id="pdfDeleteBtn" class="btn btn-secondary" type="button" title="Delete selected PDF from server">Delete</button>
+              </div>
+            </label>
+            <label class="lang-picker">
+              <div class="lab">Primary language <span class="info" tabindex="0">i</span><div class="tip">Hints OCR and display alignment. Arabic prioritizes Arabic OCR and right-aligns previews.</div></div>
+              <select id="docLanguage">
+                <option value="eng" selected>English (LTR)</option>
+                <option value="ara">Arabic (RTL)</option>
+              </select>
+            </label>
+          </div>
           <div class="upload-row">
             <label>
               <div class="lab">Upload PDF <span class="info" tabindex="0">i</span><div class="tip">Choose a file and it uploads immediately to the server's <code>PDF_DIR</code> (Fly volume mount) so future runs can reuse it.</div></div>
@@ -293,13 +312,6 @@
               <option value="auto">auto</option>
               <option value="fast">fast</option>
               <option value="hi_res">hi_res</option>
-            </select>
-          </label>
-          <label>
-            <div class="lab">Primary language <span class="info" tabindex="0">i</span><div class="tip">Hints OCR and display alignment. Arabic prioritizes Arabic OCR and right-aligns previews.</div></div>
-            <select id="docLanguage">
-              <option value="eng" selected>English (LTR)</option>
-              <option value="ara">Arabic (RTL)</option>
             </select>
           </label>
           <label class="checkbox">
@@ -376,7 +388,7 @@
             <span id="runStatus" class="muted"></span>
           </div>
         </div>
-        <div class="run-preview">
+        <div class="run-preview" id="runPreviewPane">
           <div class="run-preview-controls">
             <button id="runPrev" class="btn">◀</button>
             <span>Page <span id="runPageNum">-</span> / <span id="runPageCount">-</span></span>
@@ -391,17 +403,26 @@
             <canvas id="runPdfCanvas"></canvas>
           </div>
         </div>
+        <div class="run-progress" id="runProgressPane">
+          <div class="run-progress-inner">
+            <div class="run-spinner" aria-hidden="true"></div>
+            <div class="run-progress-text" id="runProgressTitle">Running…</div>
+            <div class="run-progress-status muted" id="runProgressStatus"></div>
+            <div class="run-progress-subtitle muted" id="runProgressHint"></div>
+            <pre id="runProgressLogs" class="run-progress-logs"></pre>
+          </div>
+        </div>
       </div>
     </div>
 
-    <script src="/app-state.js?v=20251117-2" defer></script>
-    <script src="/app-ui.js?v=20251117-2" defer></script>
-    <script src="/app-reviews.js?v=20251117-2" defer></script>
-    <script src="/app-overlays.js?v=20251117-2" defer></script>
-    <script src="/app-metrics.js?v=20251117-2" defer></script>
-    <script src="/app-elements.js?v=20251117-2" defer></script>
-    <script src="/app-chunks.js?v=20251117-2" defer></script>
-    <script src="/app-runs.js?v=20251117-2" defer></script>
-    <script src="/app.js?v=20251117-2" defer></script>
+    <script src="/app-state.js?v=20251118-2" defer></script>
+    <script src="/app-ui.js?v=20251118-2" defer></script>
+    <script src="/app-reviews.js?v=20251118-2" defer></script>
+    <script src="/app-overlays.js?v=20251118-2" defer></script>
+    <script src="/app-metrics.js?v=20251118-2" defer></script>
+    <script src="/app-elements.js?v=20251118-2" defer></script>
+    <script src="/app-chunks.js?v=20251118-2" defer></script>
+    <script src="/app-runs.js?v=20251118-2" defer></script>
+    <script src="/app.js?v=20251118-2" defer></script>
   </body>
   </html>

@@ -1,3 +1,6 @@
+const RUN_JOB_POLL_INTERVAL_MS = 10000;
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 async function loadRun(slug) {
   CURRENT_SLUG = slug;
   CURRENT_RUN = (RUNS_CACHE || []).find(r => r.slug === slug) || null;
@@ -13,6 +16,7 @@ async function loadRun(slug) {
   PDF_DOC = await loadingTask.promise;
   PAGE_COUNT = PDF_DOC.numPages;
   CURRENT_PAGE = 1;
+  SCALE_IS_MANUAL = false;
   $('pageCount').textContent = PAGE_COUNT;
   await renderPage(CURRENT_PAGE);
 
@@ -48,24 +52,95 @@ async function renderPage(num) {
   const page = await PDF_DOC.getPage(num);
   const rotation = page.rotate || 0;
   const container = $('pdfContainer');
-  const containerHeight = container.clientHeight - 24;
+  const containerHeight = Math.max(0, (container?.clientHeight || 0) - 24);
   const baseViewport = page.getViewport({ scale: 1, rotation });
   const scaleToFit = containerHeight / baseViewport.height;
-  const finalScale = Math.min(scaleToFit, SCALE);
-  const viewport = page.getViewport({ scale: finalScale, rotation });
+  if (!SCALE_IS_MANUAL) {
+    SCALE = scaleToFit;
+    const zoomInput = $('zoom');
+    if (zoomInput) {
+      let pct = Math.round(SCALE * 100);
+      const min = zoomInput.min ? Number(zoomInput.min) : null;
+      const max = zoomInput.max ? Number(zoomInput.max) : null;
+      if (min !== null && pct < min) pct = min;
+      if (max !== null && pct > max) pct = max;
+      zoomInput.value = String(pct);
+    }
+  }
+  const viewport = page.getViewport({ scale: SCALE, rotation });
   const canvas = $('pdfCanvas');
+  if (!canvas) return;
   const ctx = canvas.getContext('2d');
-  canvas.width = viewport.width;
-  canvas.height = viewport.height;
-  $('overlay').style.width = `${viewport.width}px`;
-  $('overlay').style.height = `${viewport.height}px`;
+  if (!ctx) return;
+  const deviceScale = window.devicePixelRatio || 1;
+  canvas.style.width = `${viewport.width}px`;
+  canvas.style.height = `${viewport.height}px`;
+  canvas.width = Math.floor(viewport.width * deviceScale);
+  canvas.height = Math.floor(viewport.height * deviceScale);
+  const overlay = $('overlay');
+  if (overlay) {
+    overlay.style.width = `${viewport.width}px`;
+    overlay.style.height = `${viewport.height}px`;
+  }
   $('pageNum').textContent = num;
+  const inflightTask = window.CURRENT_RENDER_TASK;
+  if (inflightTask?.cancel) {
+    try {
+      inflightTask.cancel();
+    } catch (err) {
+      console.warn('Failed to cancel in-flight render', err);
+    }
+  }
   clearBoxes();
-  await page.render({ canvasContext: ctx, viewport }).promise;
+  const renderContext = { canvasContext: ctx, viewport };
+  if (deviceScale !== 1) {
+    renderContext.transform = [deviceScale, 0, 0, deviceScale, 0, 0];
+  }
+  const renderTask = page.render(renderContext);
+  window.CURRENT_RENDER_TASK = renderTask;
+  try {
+    await renderTask.promise;
+  } catch (err) {
+    if (err?.name !== 'RenderingCancelledException') throw err;
+    return;
+  } finally {
+    if (window.CURRENT_RENDER_TASK === renderTask) {
+      window.CURRENT_RENDER_TASK = null;
+    }
+  }
   if (CURRENT_VIEW === 'inspect' && INSPECT_TAB === 'chunks') {
     renderChunksTab();
   }
   redrawOverlaysForCurrentContext();
+}
+
+function resetPdfViewer() {
+  PDF_DOC = null;
+  PAGE_COUNT = 0;
+  CURRENT_PAGE = 1;
+  CURRENT_PAGE_BOXES = null;
+  LAST_SELECTED_MATCH = null;
+  const canvas = $('pdfCanvas');
+  if (canvas) {
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      const w = canvas.width || 0;
+      const h = canvas.height || 0;
+      ctx.clearRect(0, 0, w, h);
+    }
+    canvas.width = 0;
+    canvas.height = 0;
+  }
+  const overlay = $('overlay');
+  if (overlay) {
+    overlay.style.width = '0px';
+    overlay.style.height = '0px';
+    overlay.innerHTML = '';
+  }
+  const pageNumEl = $('pageNum');
+  if (pageNumEl) pageNumEl.textContent = '-';
+  const pageCountEl = $('pageCount');
+  if (pageCountEl) pageCountEl.textContent = '-';
 }
 
 async function init() {
@@ -98,6 +173,7 @@ async function init() {
     if (LAST_SELECTED_MATCH) drawTargetsOnPage(n, LAST_SELECTED_MATCH, LAST_HIGHLIGHT_MODE === 'best');
   });
   $('zoom').addEventListener('input', async (e) => {
+    SCALE_IS_MANUAL = true;
     SCALE = Number(e.target.value) / 100;
     await renderPage(CURRENT_PAGE);
     if (LAST_SELECTED_MATCH) drawTargetsOnPage(CURRENT_PAGE, LAST_SELECTED_MATCH, LAST_HIGHLIGHT_MODE === 'best');
@@ -159,6 +235,7 @@ async function refreshRuns() {
     CURRENT_CHUNKS = null;
     CURRENT_CHUNK_SUMMARY = null;
     CURRENT_CHUNK_LOOKUP = {};
+    resetPdfViewer();
     const ctx = document.getElementById('chart')?.getContext?.('2d');
     if (CHART_INSTANCE) { try { CHART_INSTANCE.destroy(); } catch(e){} CHART_INSTANCE=null; }
     document.getElementById('matchList').innerHTML = '';
@@ -202,6 +279,172 @@ async function loadPdfs(preferredName = null) {
   }
   if (preferredName && KNOWN_PDFS.includes(preferredName)) {
     select.value = preferredName;
+  }
+}
+
+function setRunInProgress(isRunning, context = {}) {
+  const modal = $('runModal');
+  const runBtn = $('runBtn');
+  const cancelBtn = $('cancelRunBtn');
+  const openBtn = $('openRunModal');
+  const status = $('runStatus');
+  const hint = $('runProgressHint');
+  const formGrid = $('runFormGrid');
+  const previewPane = $('runPreviewPane');
+  const progressPane = $('runProgressPane');
+  const progressTitle = $('runProgressTitle');
+  const progressStatus = $('runProgressStatus');
+  const logs = $('runProgressLogs');
+  if (!modal || !runBtn || !status) return;
+
+  if (isRunning) {
+    modal.classList.add('running');
+    if (formGrid) formGrid.style.display = 'none';
+    if (previewPane) previewPane.style.display = 'none';
+    if (progressPane) progressPane.style.display = 'block';
+    runBtn.disabled = true;
+    runBtn.textContent = 'Running…';
+    if (cancelBtn) cancelBtn.disabled = true;
+    if (openBtn) {
+      openBtn.disabled = true;
+      openBtn.textContent = 'Running…';
+    }
+    const pdfName = context.pdf || $('pdfSelect')?.value || '';
+    if (hint) {
+      hint.textContent = pdfName
+        ? `Processing ${pdfName}. This window will close when the run finishes.`
+        : 'Processing PDF. This window will close when the run finishes.';
+    }
+    if (progressTitle) progressTitle.textContent = 'Queued…';
+    if (progressStatus) progressStatus.textContent = 'Waiting for worker…';
+    if (logs) { logs.textContent = ''; logs.style.display = 'none'; }
+    status.textContent = '';
+  } else {
+    modal.classList.remove('running');
+    if (formGrid) formGrid.style.display = '';
+    if (previewPane) previewPane.style.display = '';
+    if (progressPane) progressPane.style.display = '';
+    runBtn.disabled = false;
+    runBtn.textContent = 'Run';
+    if (cancelBtn) cancelBtn.disabled = false;
+    if (openBtn) {
+      openBtn.disabled = false;
+      openBtn.textContent = 'New Run';
+    }
+    if (progressTitle) progressTitle.textContent = 'Run ready';
+    if (progressStatus) progressStatus.textContent = '';
+    if (logs) { logs.textContent = ''; logs.style.display = 'none'; }
+    if (hint) hint.textContent = '';
+    CURRENT_RUN_JOB_ID = null;
+    CURRENT_RUN_JOB_STATUS = null;
+  }
+}
+
+function describeJobStatus(detail) {
+  const status = detail?.status || 'queued';
+  const nowSec = Date.now() / 1000;
+  if (status === 'running') {
+    if (detail?.started_at) {
+      const secs = Math.max(1, Math.round(nowSec - detail.started_at));
+      return `Chunker is running (${secs}s elapsed)`;
+    }
+    return 'Chunker is running…';
+  }
+  if (status === 'queued') {
+    if (detail?.created_at) {
+      const secs = Math.max(1, Math.round(nowSec - detail.created_at));
+      return `Queued for ${secs}s (waiting for worker)`;
+    }
+    return 'Queued – waiting for worker…';
+  }
+  if (status === 'succeeded') return 'Completed';
+  if (status === 'failed') return detail?.error || 'Run failed';
+  return 'Preparing run…';
+}
+
+function updateRunJobProgress(detail) {
+  CURRENT_RUN_JOB_STATUS = detail;
+  const status = detail?.status || 'queued';
+  const pdfName = detail?.pdf || '';
+  const pages = detail?.pages || '';
+  const titleEl = $('runProgressTitle');
+  const hint = $('runProgressHint');
+  const statusEl = $('runProgressStatus');
+  const logsEl = $('runProgressLogs');
+  if (titleEl) {
+    if (status === 'running') titleEl.textContent = 'Chunker is running…';
+    else if (status === 'queued') titleEl.textContent = 'Queued…';
+    else if (status === 'failed') titleEl.textContent = 'Run failed';
+    else if (status === 'succeeded') titleEl.textContent = 'Run completed';
+    else titleEl.textContent = 'Working…';
+  }
+  if (hint) {
+    const suffix = pages ? `pages ${pages}` : 'all pages';
+    hint.textContent = pdfName ? `Processing ${pdfName} (${suffix})` : 'Processing PDF';
+  }
+  if (statusEl) {
+    statusEl.textContent = describeJobStatus(detail);
+  }
+  if (logsEl) {
+    const logText = detail?.stderr_tail || detail?.stdout_tail || '';
+    if (logText) {
+      logsEl.textContent = logText;
+      logsEl.style.display = 'block';
+    } else if (status === 'failed' && detail?.error) {
+      logsEl.textContent = detail.error;
+      logsEl.style.display = 'block';
+    } else {
+      logsEl.textContent = '';
+      logsEl.style.display = 'none';
+    }
+  }
+}
+
+async function pollRunJob(jobId) {
+  CURRENT_RUN_JOB_ID = jobId;
+  const statusSpan = $('runStatus');
+  const openBtn = $('openRunModal');
+  const cancelBtn = $('cancelRunBtn');
+  while (CURRENT_RUN_JOB_ID === jobId) {
+    let detail = null;
+    try {
+      detail = await fetchJSON(`/api/run-jobs/${encodeURIComponent(jobId)}`);
+    } catch (err) {
+      if (statusSpan) statusSpan.textContent = `Polling job… ${err?.message || err}`;
+      await sleep(RUN_JOB_POLL_INTERVAL_MS);
+      continue;
+    }
+    updateRunJobProgress(detail);
+    const status = detail?.status;
+    if (status === 'succeeded') {
+      if (statusSpan) statusSpan.textContent = 'Completed';
+      const slug = detail?.result?.slug;
+      if (slug) CURRENT_SLUG = slug;
+      try {
+        await refreshRuns();
+      } catch (err) {
+        console.warn('Failed to refresh runs after job completion', err);
+      }
+      setRunInProgress(false);
+      closeRunModal();
+      showToast('Run completed', 'ok', 2500);
+      CURRENT_RUN_JOB_ID = null;
+      return;
+    }
+    if (status === 'failed') {
+      const errMsg = detail?.error || 'Run failed';
+      if (statusSpan) statusSpan.textContent = `Failed: ${errMsg}`;
+      if (cancelBtn) cancelBtn.disabled = false;
+      if (openBtn) {
+        openBtn.disabled = false;
+        openBtn.textContent = 'New Run';
+      }
+      const hint = $('runProgressHint');
+      if (hint) hint.textContent = 'Run failed. Close this window to adjust parameters.';
+      CURRENT_RUN_JOB_ID = null;
+      return;
+    }
+    await sleep(RUN_JOB_POLL_INTERVAL_MS);
   }
 }
 
@@ -296,7 +539,6 @@ function wireRunForm() {
     }
     const tagVal = $('variantTag')?.value?.trim();
     if (tagVal) payload.tag = tagVal;
-    if (!payload.pages) { status.textContent = 'Enter pages (e.g., 4-6)'; return; }
     const parseNumber = (id) => {
       const input = $(id);
       if (!input) return null;
@@ -354,26 +596,24 @@ function wireRunForm() {
       languages: payload.languages,
       detect_language_per_element: payload.detect_language_per_element,
     };
-    const btn = $('runBtn');
-    btn.disabled = true; btn.textContent = 'Running…';
+    setRunInProgress(true, { pdf: payload.pdf });
+    let jobId = null;
     try {
       const r = await fetch('/api/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       const data = await r.json();
       if (!r.ok) throw new Error(data?.detail || `HTTP ${r.status}`);
-      await refreshRuns();
-      if (data?.run?.slug) {
-        const sel = $('runSelect');
-        sel.value = data.run.slug;
-        await loadRun(data.run.slug);
-      }
-      status.textContent = 'Completed';
+      jobId = data?.job?.id || null;
+      if (!jobId) throw new Error('Server did not return a job id');
+      if (status) status.textContent = 'Queued…';
       const tagInput = $('variantTag');
       if (tagInput) tagInput.value = '';
-      closeRunModal();
+      await pollRunJob(jobId);
     } catch (e) {
       status.textContent = `Failed: ${e.message}`;
     } finally {
-      btn.disabled = false; btn.textContent = 'Run';
+      if (!jobId) {
+        setRunInProgress(false);
+      }
     }
   });
 
@@ -542,7 +782,14 @@ function wireModal() {
   const closeBtn = $('closeRunModal');
   const backdrop = $('runModalBackdrop');
   const modal = $('runModal');
-  openBtn.addEventListener('click', () => { const s=$('pdfSelect'); if(s) s.disabled=false; modal.classList.remove('hidden'); });
+  openBtn.addEventListener('click', () => {
+    const s = $('pdfSelect');
+    if (s) s.disabled = false;
+    modal.classList.remove('hidden');
+    modal.classList.remove('running');
+    const status = $('runStatus');
+    if (status) status.textContent = '';
+  });
   if (deleteBtn) {
     deleteBtn.addEventListener('click', async () => {
       if (!CURRENT_SLUG) return;
@@ -565,7 +812,12 @@ function wireModal() {
 
 function closeRunModal() {
   const modal = $('runModal');
-  if (modal) modal.classList.add('hidden');
+  if (modal) {
+    const status = $('runStatus');
+    if (status) status.textContent = '';
+    modal.classList.add('hidden');
+    modal.classList.remove('running');
+  }
 }
 
 async function ensurePdfjsReady(maxMs = 5000) {
