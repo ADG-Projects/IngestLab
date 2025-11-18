@@ -41,7 +41,7 @@ The project does not persist to a database yet. Instead, Unstructured parses eac
    - `run_config`: metadata about how the run was produced
      - `strategy`, `chunking`, `infer_table_structure`, `match_source`
      - Language hints mirrored from the UI: `primary_language` (`eng` or `ara`), `ocr_languages` (string passed to Tesseract, e.g., `ara+eng`), `languages` (comma list or array of ISO codes forwarded to Unstructured), and `detect_language_per_element` (bool). These help downstream consumers right-align RTL previews when the document is Arabic-heavy.
-     - `chunk_params`: the effective parameters supplied to Unstructured. Keys may include `max_characters`, `new_after_n_chars`, `combine_text_under_n_chars`, `overlap`, `include_orig_elements`, `overlap_all`, `multipage_sections`.
+     - `chunk_params`: the effective parameters supplied to Unstructured. Keys may include `max_characters`, `new_after_n_chars`, `combine_text_under_n_chars`, `overlap`, `include_orig_elements`, `overlap_all`, `multipage_sections`. The pipeline now always populates this object (even when users rely on defaults), so the UI header can display the actual values used instead of `-`.
      - `chunk_summary`: quick stats about emitted chunks (`count`, `min_chars`, `max_chars`, `avg_chars`)
      - `form_snapshot` (UI-only): raw values entered in the New Run modal, including convenience fields like `max_tokens` and the original `pdf`, `pages`, and optional `tag`. The recap bar prefers these when available and falls back to `chunk_params`.
 

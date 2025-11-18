@@ -159,6 +159,13 @@ header .controls { display: flex; gap: 12px; align-items: center; }
   letter-spacing: 0.01em;
   max-width: 260px; /* allow truncation when needed */
 }
+.setting-value .setting-lang-select {
+  font-size: 12px;
+  font-weight: 600;
+  padding: 2px 8px;
+  min-width: 140px;
+  text-transform: none;
+}
 .settings-recap .truncate {
   max-width: 220px;
   overflow: hidden;

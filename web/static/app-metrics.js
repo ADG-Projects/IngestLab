@@ -11,6 +11,13 @@ function renderMetrics(overall) {
   setMetric('mmicro', overall.micro_coverage);
 }
 
+function setLanguageControl(langCode) {
+  const select = $('settingPrimaryLang');
+  if (!select) return;
+  const normalized = normalizeLangCode(langCode) || 'eng';
+  select.value = normalized;
+}
+
 function buildChart(matches) {
   LAST_CHART_MATCHES = matches || [];
   const canvas = document.getElementById('chart');
@@ -109,8 +116,9 @@ function updateRunConfigCard() {
     if (el) el.textContent = value;
   };
   if (!cfg) {
-    ['Strategy','InferTables','Chunking','PrimaryLang','MaxTokens','MaxChars','NewAfter','CombineUnder','Overlap','IncludeOrig','OverlapAll','Multipage','Pdf','Pages','Tag']
+    ['Strategy','InferTables','Chunking','MaxTokens','MaxChars','NewAfter','CombineUnder','Overlap','IncludeOrig','OverlapAll','Multipage','Pdf','Pages','Tag']
       .forEach(name => set(`setting${name}`, '-'));
+    setLanguageControl('eng');
     CURRENT_DOC_LANGUAGE = 'eng';
     applyLanguageDirection();
     return;
@@ -139,6 +147,7 @@ function updateRunConfigCard() {
   set('settingPages', snap.pages || cfg.form_snapshot?.pages || '-');
   set('settingTag', snap.tag || '-');
   const lang = resolvePrimaryLanguage(cfg.run_config ?? cfg, snap);
+  setLanguageControl(lang);
   CURRENT_DOC_LANGUAGE = lang;
   applyLanguageDirection();
 }

@@ -102,7 +102,12 @@
       </div>
       <div class="setting-item">
         <span class="setting-label">LANG <span class="info" tabindex="0">i</span><div class="tip">Primary document language. Arabic toggles RTL previews and prioritizes Arabic OCR.</div></span>
-        <span class="setting-value" id="settingPrimaryLang">-</span>
+        <span class="setting-value">
+          <select id="settingPrimaryLang" class="setting-lang-select" aria-label="Primary document language">
+            <option value="eng">English (LTR)</option>
+            <option value="ara">Arabic (RTL)</option>
+          </select>
+        </span>
       </div>
       <div class="setting-item">
         <span class="setting-label">TOK <span class="info" tabindex="0">i</span><div class="tip">Approximate target tokens per chunk (LLM). If provided, max_characters ≈ tokens × 4.</div></span>

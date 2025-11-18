@@ -4,6 +4,7 @@
 - [ ] Compare output quality between Unstructured and the Azure Document Intelligence SDK.
 
 ## Completed
+- [x] 2025-11-18 Persist chunking defaults in `run_config` so the UI header shows actual parameter values instead of "-".
 - [x] 2025-11-18 Queue `/api/run` chunking jobs, stream stderr/stdout tails in the New Run modal, and expose status endpoints so Railway runs no longer hit “failed to fetch” timeouts.
 - [x] 2025-11-18 Auto-condense chunk/element drawers based on preview scroll, fade drawer chips/mini-metrics to reclaim space, and reset drawer state whenever new content is opened.
 - [x] 2025-11-18 Collapse New Run modal inputs into a compact “Running…” view (with header button feedback) while runs are in progress so the dialog focuses on status instead of parameters.

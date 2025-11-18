@@ -64,6 +64,11 @@ Use `--input-jsonl` when you want to re-evaluate matches from a previously saved
 
 ## Release history
 
+- **Unreleased (2025-11-18)** – Persist actual Unstructured chunking defaults (max_characters, new_after_n_chars, overlap, overlap_all, include_orig_elements, combine_text_under_n_chars, multipage_sections) in `run_config` so the UI header always shows the values actually used instead of `-`.
+  - Verification steps:
+    1. `uv run python scripts/run_chunking_pipeline.py --input res/<pdf>.pdf --pages 4-6 --emit-matches outputs/unstructured/<slug>.matches.json`
+    2. Confirm the resulting `matches.json` `run_config.chunk_params` object lists the default values even when no chunking flags were passed.
+
 - **v2.0 (2025-11-17)** – Introduced chunk/element review workflows (Good/Bad ratings with notes, filters, and summary chips) while refactoring the frontend into modular scripts so overlays, metrics, and drawers stay in lockstep.
   - Verification steps:
     1. `uv run uvicorn main:app --reload --host 127.0.0.1 --port 8765` and confirm you can add/edit chunk + element reviews, filter by rating, see the header chip update instantly, and watch chunk overlays hide/show with the Inspect filters.
