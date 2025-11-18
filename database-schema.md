@@ -7,6 +7,7 @@ The project does not persist to a database yet. Instead, Unstructured parses eac
 
 - `PDF_DIR` environment variable points to where PDFs live. Locally it defaults to `res/`. In Fly deployments with a volume mounted at `/data`, use `PDF_DIR=/data/res` so uploads persist across deploys.
   - New UI runs now also record a compact “Running” state in the frontend only: while `/api/run` is processing, the New Run modal hides its fields and the header button reflects the in-flight status, but the persisted `run_config.form_snapshot` continues to store the full parameter set as before.
+- `/api/run` enqueues work instead of blocking: the response contains a job descriptor (`id`, `status`, `slug`, `pdf`, `pages`, command preview, stdout/stderr tails). The UI polls `/api/run-jobs/{id}` until the chunker reports `succeeded` or `failed`, and job logs stay cached in memory until the server restarts. Successful jobs still rewrite their `matches.json` payloads to persist `form_snapshot`, PDF/page metadata, and language hints.
 
 ## Document JSON layout
 - `source_file`: Absolute path to the processed PDF.

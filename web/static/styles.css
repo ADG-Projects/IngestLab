@@ -712,8 +712,29 @@ body.drawer-open #right-metrics {
   font-size: 14px;
   font-weight: 500;
 }
+.run-progress-status {
+  font-size: 13px;
+  max-width: 420px;
+  text-align: center;
+}
 .run-progress-subtitle {
   max-width: 360px;
+}
+.run-progress-logs {
+  display: none;
+  width: min(560px, calc(100% - 24px));
+  max-height: 220px;
+  margin-top: 6px;
+  text-align: left;
+  background: #0d0f14;
+  border: 1px solid #22262d;
+  border-radius: 6px;
+  padding: 8px;
+  font-family: ui-monospace, SFMono-Regular, SFMono, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+  font-size: 12px;
+  line-height: 1.35;
+  overflow: auto;
+  color: var(--muted);
 }
 .modal.running #runFormGrid,
 .modal.running #runPreviewPane {

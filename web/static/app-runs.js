@@ -1,3 +1,6 @@
+const RUN_JOB_POLL_INTERVAL_MS = 10000;
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 async function loadRun(slug) {
   CURRENT_SLUG = slug;
   CURRENT_RUN = (RUNS_CACHE || []).find(r => r.slug === slug) || null;
@@ -256,9 +259,12 @@ function setRunInProgress(isRunning, context = {}) {
   const openBtn = $('openRunModal');
   const status = $('runStatus');
   const hint = $('runProgressHint');
-   const formGrid = $('runFormGrid');
-   const previewPane = $('runPreviewPane');
-   const progressPane = $('runProgressPane');
+  const formGrid = $('runFormGrid');
+  const previewPane = $('runPreviewPane');
+  const progressPane = $('runProgressPane');
+  const progressTitle = $('runProgressTitle');
+  const progressStatus = $('runProgressStatus');
+  const logs = $('runProgressLogs');
   if (!modal || !runBtn || !status) return;
 
   if (isRunning) {
@@ -279,6 +285,9 @@ function setRunInProgress(isRunning, context = {}) {
         ? `Processing ${pdfName}. This window will close when the run finishes.`
         : 'Processing PDF. This window will close when the run finishes.';
     }
+    if (progressTitle) progressTitle.textContent = 'Queued…';
+    if (progressStatus) progressStatus.textContent = 'Waiting for worker…';
+    if (logs) { logs.textContent = ''; logs.style.display = 'none'; }
     status.textContent = '';
   } else {
     modal.classList.remove('running');
@@ -292,6 +301,120 @@ function setRunInProgress(isRunning, context = {}) {
       openBtn.disabled = false;
       openBtn.textContent = 'New Run';
     }
+    if (progressTitle) progressTitle.textContent = 'Run ready';
+    if (progressStatus) progressStatus.textContent = '';
+    if (logs) { logs.textContent = ''; logs.style.display = 'none'; }
+    if (hint) hint.textContent = '';
+    CURRENT_RUN_JOB_ID = null;
+    CURRENT_RUN_JOB_STATUS = null;
+  }
+}
+
+function describeJobStatus(detail) {
+  const status = detail?.status || 'queued';
+  const nowSec = Date.now() / 1000;
+  if (status === 'running') {
+    if (detail?.started_at) {
+      const secs = Math.max(1, Math.round(nowSec - detail.started_at));
+      return `Chunker is running (${secs}s elapsed)`;
+    }
+    return 'Chunker is running…';
+  }
+  if (status === 'queued') {
+    if (detail?.created_at) {
+      const secs = Math.max(1, Math.round(nowSec - detail.created_at));
+      return `Queued for ${secs}s (waiting for worker)`;
+    }
+    return 'Queued – waiting for worker…';
+  }
+  if (status === 'succeeded') return 'Completed';
+  if (status === 'failed') return detail?.error || 'Run failed';
+  return 'Preparing run…';
+}
+
+function updateRunJobProgress(detail) {
+  CURRENT_RUN_JOB_STATUS = detail;
+  const status = detail?.status || 'queued';
+  const pdfName = detail?.pdf || '';
+  const pages = detail?.pages || '';
+  const titleEl = $('runProgressTitle');
+  const hint = $('runProgressHint');
+  const statusEl = $('runProgressStatus');
+  const logsEl = $('runProgressLogs');
+  if (titleEl) {
+    if (status === 'running') titleEl.textContent = 'Chunker is running…';
+    else if (status === 'queued') titleEl.textContent = 'Queued…';
+    else if (status === 'failed') titleEl.textContent = 'Run failed';
+    else if (status === 'succeeded') titleEl.textContent = 'Run completed';
+    else titleEl.textContent = 'Working…';
+  }
+  if (hint) {
+    const suffix = pages ? `pages ${pages}` : 'all pages';
+    hint.textContent = pdfName ? `Processing ${pdfName} (${suffix})` : 'Processing PDF';
+  }
+  if (statusEl) {
+    statusEl.textContent = describeJobStatus(detail);
+  }
+  if (logsEl) {
+    const logText = detail?.stderr_tail || detail?.stdout_tail || '';
+    if (logText) {
+      logsEl.textContent = logText;
+      logsEl.style.display = 'block';
+    } else if (status === 'failed' && detail?.error) {
+      logsEl.textContent = detail.error;
+      logsEl.style.display = 'block';
+    } else {
+      logsEl.textContent = '';
+      logsEl.style.display = 'none';
+    }
+  }
+}
+
+async function pollRunJob(jobId) {
+  CURRENT_RUN_JOB_ID = jobId;
+  const statusSpan = $('runStatus');
+  const openBtn = $('openRunModal');
+  const cancelBtn = $('cancelRunBtn');
+  while (CURRENT_RUN_JOB_ID === jobId) {
+    let detail = null;
+    try {
+      detail = await fetchJSON(`/api/run-jobs/${encodeURIComponent(jobId)}`);
+    } catch (err) {
+      if (statusSpan) statusSpan.textContent = `Polling job… ${err?.message || err}`;
+      await sleep(RUN_JOB_POLL_INTERVAL_MS);
+      continue;
+    }
+    updateRunJobProgress(detail);
+    const status = detail?.status;
+    if (status === 'succeeded') {
+      if (statusSpan) statusSpan.textContent = 'Completed';
+      const slug = detail?.result?.slug;
+      if (slug) CURRENT_SLUG = slug;
+      try {
+        await refreshRuns();
+      } catch (err) {
+        console.warn('Failed to refresh runs after job completion', err);
+      }
+      setRunInProgress(false);
+      closeRunModal();
+      showToast('Run completed', 'ok', 2500);
+      CURRENT_RUN_JOB_ID = null;
+      return;
+    }
+    if (status === 'failed') {
+      const errMsg = detail?.error || 'Run failed';
+      if (statusSpan) statusSpan.textContent = `Failed: ${errMsg}`;
+      if (cancelBtn) cancelBtn.disabled = false;
+      if (openBtn) {
+        openBtn.disabled = false;
+        openBtn.textContent = 'New Run';
+      }
+      const hint = $('runProgressHint');
+      if (hint) hint.textContent = 'Run failed. Close this window to adjust parameters.';
+      CURRENT_RUN_JOB_ID = null;
+      return;
+    }
+    await sleep(RUN_JOB_POLL_INTERVAL_MS);
   }
 }
 
@@ -444,24 +567,23 @@ function wireRunForm() {
       detect_language_per_element: payload.detect_language_per_element,
     };
     setRunInProgress(true, { pdf: payload.pdf });
+    let jobId = null;
     try {
       const r = await fetch('/api/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       const data = await r.json();
       if (!r.ok) throw new Error(data?.detail || `HTTP ${r.status}`);
-      await refreshRuns();
-      if (data?.run?.slug) {
-        const sel = $('runSelect');
-        sel.value = data.run.slug;
-        await loadRun(data.run.slug);
-      }
-      status.textContent = 'Completed';
+      jobId = data?.job?.id || null;
+      if (!jobId) throw new Error('Server did not return a job id');
+      if (status) status.textContent = 'Queued…';
       const tagInput = $('variantTag');
       if (tagInput) tagInput.value = '';
-      closeRunModal();
+      await pollRunJob(jobId);
     } catch (e) {
       status.textContent = `Failed: ${e.message}`;
     } finally {
-      setRunInProgress(false);
+      if (!jobId) {
+        setRunInProgress(false);
+      }
     }
   });
 
@@ -661,6 +783,8 @@ function wireModal() {
 function closeRunModal() {
   const modal = $('runModal');
   if (modal) {
+    const status = $('runStatus');
+    if (status) status.textContent = '';
     modal.classList.add('hidden');
     modal.classList.remove('running');
   }
