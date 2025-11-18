@@ -2,6 +2,7 @@
 
 The project does not persist to a database yet. Instead, Unstructured parses each PDF into JSON documents stored under `outputs/`. Source PDFs are read from a configurable directory:
 
+- **v2.1 (2025-11-18)** – Persist chunking defaults in `run_config` so UI recap bars (and downstream checks) see the actual Unstructured parameters, and keep drawer table previews aligned with the chunker’s column order while still right-aligning RTL cell text per document direction.
 - **v2.0 (2025-11-17)** – Chunk/element review workflows and the modularized frontend keep overlays/cards in sync while leaving stored outputs and API payloads untouched.
 - **v1.1 (2025-11-17)** – Chunk overlay/drawer refinements and Metrics view redraws introduced here leave the stored JSON layout unchanged.
 

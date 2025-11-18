@@ -64,14 +64,10 @@ Use `--input-jsonl` when you want to re-evaluate matches from a previously saved
 
 ## Release history
 
-- **Unreleased (2025-11-18)** – Persist actual Unstructured chunking defaults (max_characters, new_after_n_chars, overlap, overlap_all, include_orig_elements, combine_text_under_n_chars, multipage_sections) in `run_config` so the UI header always shows the values actually used instead of `-`.
+- **v2.1 (2025-11-18)** – Persist actual Unstructured chunking defaults (max_characters, new_after_n_chars, overlap, overlap_all, include_orig_elements, combine_text_under_n_chars, multipage_sections) in `run_config` so the header recap mirrors the values the chunker actually used, and keep drawer table previews in their original chunker column order while cell text alignment still follows the document direction.
   - Verification steps:
-    1. `uv run python scripts/run_chunking_pipeline.py --input res/<pdf>.pdf --pages 4-6 --emit-matches outputs/unstructured/<slug>.matches.json`
-    2. Confirm the resulting `matches.json` `run_config.chunk_params` object lists the default values even when no chunking flags were passed.
-- **Unreleased (2025-11-18, Table previews)** – Keep drawer table previews rendering the chunker’s column sequence while RTL documents still right-align text inside each cell.
-  - Verification steps:
-    1. `uv run uvicorn main:app --reload --host 127.0.0.1 --port 8765` and open the Metrics tab.
-    2. Use an RTL run (Arabic) and open a table’s details drawer; confirm the column order matches the PDF and cells align right while English cells stay left-aligned.
+    1. `uv run python scripts/run_chunking_pipeline.py --input res/<pdf>.pdf --pages 4-6 --emit-matches outputs/unstructured/<slug>.matches.json` and confirm the generated `matches.json` `run_config.chunk_params` object lists the default values even when no chunking flags were passed.
+    2. `uv run uvicorn main:app --reload --host 127.0.0.1 --port 8765`, open an Arabic table match under Metrics, and verify the drawer columns match the PDF layout while each RTL cell text remains right-aligned.
 
 - **v2.0 (2025-11-17)** – Introduced chunk/element review workflows (Good/Bad ratings with notes, filters, and summary chips) while refactoring the frontend into modular scripts so overlays, metrics, and drawers stay in lockstep.
   - Verification steps:
