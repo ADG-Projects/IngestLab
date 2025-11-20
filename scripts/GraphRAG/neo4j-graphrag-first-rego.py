@@ -6,10 +6,15 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 from neo4j import Driver, GraphDatabase
+from neo4j.exceptions import Neo4jError
 from neo4j_graphrag.embeddings import OpenAIEmbeddings
 from neo4j_graphrag.experimental.components.entity_relation_extractor import (
     LLMEntityRelationExtractor,
     OnError,
+    DocumentInfo,
+    LexicalGraphConfig,
+    GraphSchema,
+    TextChunks,
     fix_invalid_json,
 )
 from neo4j_graphrag.experimental.components.text_splitters.fixed_size_splitter import (
@@ -33,20 +38,83 @@ from neo4j_graphrag.exceptions import LLMGenerationError
 logging.getLogger("pypdf").setLevel(logging.ERROR)
 logger = logging.getLogger(__name__)
 
-NEO4J_URI = "neo4j://localhost:7687"
-NEO4J_USERNAME = "neo4j"
-NEO4J_PASSWORD = "password"
-NEO4J_DATABASE = "graphrag-test"
-OPENAI_API_KEY_ENV = "OPENAI_API_KEY"
-OPENAI_API_KEY = os.environ.get(OPENAI_API_KEY_ENV)
+ENV_FILE = Path(__file__).resolve().parent / ".env.graphrag"
+OUTPUTS_DIR = Path(__file__).resolve().parent / "outputs"
+FAILED_JSON_DIR = OUTPUTS_DIR / "failed_json"
 
-if not OPENAI_API_KEY:
-    raise RuntimeError(
-        f"{OPENAI_API_KEY_ENV} must be set before running the GraphRAG BRD pipeline."
-    )
+
+def load_env_from_file(path: Path) -> None:
+    """Best-effort .env loader (no dependency on python-dotenv)."""
+    if not path.exists():
+        return
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+        if key and key not in os.environ:
+            os.environ[key] = value
+
+
+# Always load the GraphRAG-local .env first; allow shell values to override.
+load_env_from_file(ENV_FILE)
+
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+NEO4J_URI = os.environ.get("NEO4J_URI", "neo4j://localhost:7687")
+NEO4J_USERNAME = os.environ.get("NEO4J_USERNAME", "neo4j")
+NEO4J_PASSWORD = os.environ.get("NEO4J_PASSWORD", "password")
+# Configured target DB; may be overridden if server is single-DB or the DB is missing.
+NEO4J_DATABASE_CONFIGURED = os.environ.get("NEO4J_DATABASE", "graphrag-test")
+
+def ensure_database_exists(neo4j_driver: Driver, database: str) -> None:
+    """Create the target database when the server supports multi-DB; otherwise no-op."""
+    if not database:
+        return
+    # Aura Free and some single-DB servers do not expose system DB or multi-DB.
+    if hasattr(neo4j_driver, "supports_multi_db") and not neo4j_driver.supports_multi_db():
+        logger.info(
+            "Neo4j server does not support multi-db; skipping database creation."
+        )
+        return
+    if database == "neo4j":
+        return
+    try:
+        with neo4j_driver.session(database="system") as session:
+            session.run(f"CREATE DATABASE `{database}` IF NOT EXISTS")
+            logger.info("Ensured Neo4j database exists: %s", database)
+    except Exception as exc:
+        logger.warning("Database creation skipped for %s: %s", database, exc)
+
 
 # Connect to the Neo4j database
 driver = GraphDatabase.driver(NEO4J_URI, auth=(NEO4J_USERNAME, NEO4J_PASSWORD))
+
+
+def resolve_database(neo4j_driver: Driver, configured_db: str) -> str:
+    """Use configured DB when available; for single-DB servers or missing DB, fall back to 'neo4j'."""
+    target = configured_db or "neo4j"
+    if hasattr(neo4j_driver, "supports_multi_db") and not neo4j_driver.supports_multi_db():
+        if target != "neo4j":
+            logger.info(
+                "Server is single-DB; forcing database to 'neo4j' instead of %s",
+                target,
+            )
+        return "neo4j"
+    try:
+        with neo4j_driver.session(database=target) as session:
+            session.run("RETURN 1").consume()
+        return target
+    except Neo4jError as exc:
+        logger.warning(
+            "Database %s unavailable, falling back to 'neo4j': %s", target, exc
+        )
+        return "neo4j"
+
+
+NEO4J_DATABASE = resolve_database(driver, NEO4J_DATABASE_CONFIGURED)
+ensure_database_exists(driver, NEO4J_DATABASE)
 
 
 def reset_database(neo4j_driver: Driver) -> None:
@@ -153,6 +221,41 @@ Input text:
 {text}
 '''
 
+GRAPH_JSON_SCHEMA = {
+    "type": "object",
+    "properties": {
+        "nodes": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "id": {"type": "string"},
+                    "label": {"type": "string"},
+                    "properties": {"type": "object"},
+                },
+                "required": ["id", "label", "properties"],
+                "additionalProperties": False,
+            },
+        },
+        "relationships": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "type": {"type": "string"},
+                    "start_node_id": {"type": "string"},
+                    "end_node_id": {"type": "string"},
+                    "properties": {"type": "object"},
+                },
+                "required": ["type", "start_node_id", "end_node_id", "properties"],
+                "additionalProperties": False,
+            },
+        },
+    },
+    "required": ["nodes", "relationships"],
+    "additionalProperties": False,
+}
+
 
 class RetryingLLMEntityRelationExtractor(LLMEntityRelationExtractor):
     """LLM extractor that retries JSON repair/validation before giving up."""
@@ -168,6 +271,7 @@ class RetryingLLMEntityRelationExtractor(LLMEntityRelationExtractor):
         initial_backoff: float = 2.0,
         backoff_multiplier: float = 2.0,
         max_backoff: float = 20.0,
+        failure_dir: Optional[Path] = None,
     ) -> None:
         super().__init__(
             llm=llm,
@@ -180,6 +284,7 @@ class RetryingLLMEntityRelationExtractor(LLMEntityRelationExtractor):
         self.initial_backoff = initial_backoff
         self.backoff_multiplier = backoff_multiplier
         self.max_backoff = max_backoff
+        self.failure_dir = failure_dir
 
     async def extract_for_chunk(
         self, schema: Any, examples: str, chunk: TextChunk
@@ -219,6 +324,29 @@ class RetryingLLMEntityRelationExtractor(LLMEntityRelationExtractor):
                 )
                 logger.debug("Final invalid content: %s", llm_result.content)
 
+                if self.failure_dir:
+                    try:
+                        self.failure_dir.mkdir(parents=True, exist_ok=True)
+                        failure_path = self.failure_dir / f"chunk-{chunk.index}.txt"
+                        chunk_path = self.failure_dir / f"chunk-{chunk.index}.source.txt"
+                        prompt_path = self.failure_dir / f"chunk-{chunk.index}.prompt.txt"
+                        failure_path.write_text(
+                            llm_result.content or "", encoding="utf-8"
+                        )
+                        chunk_path.write_text(chunk.text, encoding="utf-8")
+                        prompt_path.write_text(prompt, encoding="utf-8")
+                        logger.info(
+                            "Wrote failing chunk %s artifacts to %s",
+                            chunk.index,
+                            self.failure_dir,
+                        )
+                    except Exception as write_exc:
+                        logger.warning(
+                            "Unable to write failing chunk %s response: %s",
+                            chunk.index,
+                            write_exc,
+                        )
+
                 if self.on_error == OnError.RAISE:
                     raise LLMGenerationError(
                         f"LLM response failed after {self.max_attempts} retries"
@@ -229,14 +357,35 @@ class RetryingLLMEntityRelationExtractor(LLMEntityRelationExtractor):
             raise LLMGenerationError("LLM retries exhausted") from last_exception
         return Neo4jGraph()
 
+    async def run(
+        self,
+        chunks: TextChunks,
+        document_info: Optional[DocumentInfo] = None,
+        lexical_graph_config: Optional[LexicalGraphConfig] = None,
+        schema: Optional[GraphSchema] = None,
+        examples: str = "",
+        **kwargs: Any,
+    ) -> Neo4jGraph:
+        # Delegate to parent run for orchestration/lexical graph while keeping retrying extract.
+        return await super().run(
+            chunks=chunks,
+            document_info=document_info,
+            lexical_graph_config=lexical_graph_config,
+            schema=schema,
+            examples=examples,
+            **kwargs,
+        )
+
 
 class RetryingKGPipelineConfig(SimpleKGPipelineConfig):
     extractor_max_attempts: int = 4
     extractor_initial_backoff: float = 2.0
     extractor_backoff_multiplier: float = 2.0
     extractor_max_backoff: float = 20.0
+    failure_dir: Optional[Path] = None
 
     def _get_extractor(self) -> LLMEntityRelationExtractor:
+        failure_dir = self.failure_dir or FAILED_JSON_DIR
         return RetryingLLMEntityRelationExtractor(
             llm=self.get_default_llm(),
             prompt_template=self.prompt_template,
@@ -245,6 +394,7 @@ class RetryingKGPipelineConfig(SimpleKGPipelineConfig):
             initial_backoff=self.extractor_initial_backoff,
             backoff_multiplier=self.extractor_backoff_multiplier,
             max_backoff=self.extractor_max_backoff,
+            failure_dir=failure_dir,
         )
 
 
@@ -273,6 +423,7 @@ class RetryingSimpleKGPipeline:
         initial_backoff: float = 2.0,
         backoff_multiplier: float = 2.0,
         max_backoff: float = 20.0,
+        failure_dir: Optional[Path] = None,
     ):
         try:
             config = RetryingKGPipelineConfig.model_validate(
@@ -299,6 +450,7 @@ class RetryingSimpleKGPipeline:
                     extractor_initial_backoff=initial_backoff,
                     extractor_backoff_multiplier=backoff_multiplier,
                     extractor_max_backoff=max_backoff,
+                    failure_dir=failure_dir,
                 )
             )
         except (ValidationError, ValueError) as e:
@@ -335,7 +487,13 @@ llm = OpenAILLM(
     model_name="gpt-5.1",
     model_params={
         "max_completion_tokens": 2000,
-        "response_format": {"type": "json_object"},
+        "response_format": {
+            "type": "json_schema",
+            "json_schema": {
+                "name": "graph_extraction",
+                "schema": GRAPH_JSON_SCHEMA,
+            },
+        },
         "temperature": 0,
     },
     api_key=OPENAI_API_KEY,
