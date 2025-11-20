@@ -62,6 +62,16 @@ Use `--input-jsonl` when you want to re-evaluate matches from a previously saved
 
 - Evaluate additional ingestion pipelines (Azure AI Document Intelligence, AWS Textract, etc.) as new experiments land in this sandbox.
 
+## GraphRAG BRD → Rego (Neo4j)
+
+- Script: `scripts/GraphRAG/neo4j-graphrag-first-rego.py` ingests `scripts/GraphRAG/BRD-examples/Business_Inspection_Policy_Document.pdf`, extracts a policy graph into Neo4j, and emits a Rego module plus an IR JSONL under `scripts/GraphRAG/outputs/`.
+- Requirements: running Neo4j at `neo4j://localhost:7687` (defaults in the script), and `OPENAI_API_KEY` set in your shell (embedder + LLM). The script wipes the `graphrag-test` database at startup so each run is clean.
+- Reliability: extraction now uses a retrying `LLMEntityRelationExtractor` that replays failed chunks up to four times with exponential backoff (2s → 30s). Malformed JSON or schema validation errors log the chunk index; persistent failures return an empty graph for that chunk instead of silently dropping work.
+- Run locally:
+  ```bash
+  OPENAI_API_KEY=<key> uv run python scripts/GraphRAG/neo4j-graphrag-first-rego.py
+  ```
+
 ## Release history
 
 - **v2.1 (2025-11-18)** – Persist actual Unstructured chunking defaults (max_characters, new_after_n_chars, overlap, overlap_all, include_orig_elements, combine_text_under_n_chars, multipage_sections) in `run_config` so the header recap mirrors the values the chunker actually used, and keep drawer table previews in their original chunker column order while cell text alignment still follows the document direction.
