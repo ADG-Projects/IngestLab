@@ -393,7 +393,7 @@ async function openElementDetails(elementId) {
     const html = data.text_as_html;
     if (html) {
       const scroll = document.createElement('div');
-      scroll.className = 'scrollbox';
+      scroll.className = 'scrollbox drawer-markdown';
       const wrapper = document.createElement('div');
       wrapper.innerHTML = html;
       scroll.appendChild(wrapper);
@@ -404,10 +404,23 @@ async function openElementDetails(elementId) {
       registerDrawerScrollTarget(scroll);
       container.appendChild(scroll);
     } else {
-      const pre = document.createElement('pre');
-      pre.textContent = data.text || '(no text)';
-      applyDirectionalText(pre);
-      container.appendChild(pre);
+      const md = await renderMarkdownSafe(data.text);
+      if (md) {
+        const scroll = document.createElement('div');
+        scroll.className = 'scrollbox drawer-markdown';
+        const body = document.createElement('div');
+        body.className = 'markdown-body';
+        body.innerHTML = md;
+        scroll.appendChild(body);
+        applyDirectionalText(body);
+        registerDrawerScrollTarget(scroll);
+        container.appendChild(scroll);
+      } else {
+        const pre = document.createElement('pre');
+        pre.textContent = data.text || '(no text)';
+        applyDirectionalText(pre);
+        container.appendChild(pre);
+      }
     }
   } catch (e) {
     showToast(`Failed to load element: ${e.message}`, 'err');

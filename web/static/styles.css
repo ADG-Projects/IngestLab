@@ -1622,6 +1622,49 @@ body.drawer-open #right-metrics {
   line-height: 1.5;
 }
 
+.drawer-markdown {
+  background: #0f131a;
+  border: 1px solid #242a33;
+  padding: 10px 12px;
+}
+
+.markdown-body {
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.6;
+  word-break: break-word;
+}
+
+.markdown-body p {
+  margin: 0 0 8px;
+}
+
+.markdown-body p:last-child {
+  margin-bottom: 0;
+}
+
+.markdown-body ul,
+.markdown-body ol {
+  margin: 0 0 8px 18px;
+  padding: 0;
+}
+
+.markdown-body code {
+  background: #1e232d;
+  color: var(--muted);
+  padding: 2px 4px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.markdown-body pre {
+  background: #1e232d;
+  color: var(--text);
+  padding: 8px;
+  border-radius: 6px;
+  overflow: auto;
+}
+
 /* Mini metrics in drawer */
 .mini-metrics {
   display: grid;

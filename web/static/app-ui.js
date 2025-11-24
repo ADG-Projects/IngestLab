@@ -41,6 +41,19 @@ function typeBorderColor(t) {
   return color || '#6bbcff';
 }
 
+async function renderMarkdownSafe(text) {
+  if (!text || !window.__mdReady) return null;
+  try {
+    const deps = await window.__mdReady;
+    if (!deps || !deps.marked || !deps.DOMPurify) return null;
+    const raw = deps.marked.parse(String(text));
+    return deps.DOMPurify.sanitize(raw, { USE_PROFILES: { html: true } });
+  } catch (e) {
+    console.warn('Markdown render failed', e);
+    return null;
+  }
+}
+
 let DRAWER_CONDENSED = false;
 const DRAWER_SCROLL_TARGETS = new Set();
 

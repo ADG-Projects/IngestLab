@@ -4,6 +4,7 @@
 - [ ] Verify Azure Content Understanding overlays align with trimmed PDFs and log any analyzer-specific quirks.
 
 ## Completed
+- [x] 2025-11-24 Render markdown from Azure providers in chunk/element drawers (sanitized, falls back to text/html tables).
 - [x] 2025-11-24 Capture Azure detected languages in run_config and flip the UI to RTL when detection reports Arabic-heavy documents.
 - [x] 2025-11-24 Add Azure element outline toggle in the UI with per-type grouping and drawer breadcrumbs.
 - [x] 2025-11-24 Emit Azure Document Intelligence paragraph roles as element types so UI overlays and filters show pageHeader/pageNumber/title classifications.
