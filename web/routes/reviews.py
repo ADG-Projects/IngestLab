@@ -6,38 +6,40 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 
-from ..config import REVIEWS_DIR
+from ..config import DEFAULT_PROVIDER, get_out_dir
 
 router = APIRouter()
 
 
-def review_file_path(slug: str) -> Path:
+def review_file_path(slug: str, provider: str = DEFAULT_PROVIDER) -> Path:
     safe = re.sub(r"[^A-Za-z0-9._\\-]+", "-", slug or "").strip(".-_")
     if not safe:
         raise HTTPException(status_code=400, detail="Invalid slug for reviews")
-    return REVIEWS_DIR / f"{safe}.reviews.json"
+    base = get_out_dir(provider) / "reviews"
+    base.mkdir(parents=True, exist_ok=True)
+    return base / f"{safe}.reviews.json"
 
 
-def _load_reviews(slug: str) -> Dict[str, Dict[str, Any]]:
-    path = review_file_path(slug)
+def _load_reviews(slug: str, provider: str) -> Dict[str, Dict[str, Any]]:
+    path = review_file_path(slug, provider=provider)
     if not path.exists():
-        return {"slug": slug, "items": {}}
+        return {"slug": slug, "items": {}, "provider": provider}
     try:
         with path.open("r", encoding="utf-8") as f:
             data = json.load(f)
     except Exception:
-        return {"slug": slug, "items": {}}
+        return {"slug": slug, "items": {}, "provider": provider}
     items = data.get("items")
     if not isinstance(items, dict):
         items = {}
-    return {"slug": slug, "items": items}
+    return {"slug": slug, "items": items, "provider": provider}
 
 
-def _save_reviews(slug: str, items: Dict[str, Any]) -> None:
-    path = review_file_path(slug)
-    payload = {"slug": slug, "items": items}
+def _save_reviews(slug: str, items: Dict[str, Any], provider: str) -> None:
+    path = review_file_path(slug, provider=provider)
+    payload = {"slug": slug, "items": items, "provider": provider}
     tmp = path.with_name(path.name + ".tmp")
     with tmp.open("w", encoding="utf-8") as f:
         json.dump(payload, f, ensure_ascii=False, indent=2)
@@ -99,16 +101,17 @@ def _normalize_note(value: Any) -> str:
 
 
 @router.get("/api/reviews/{slug}")
-def api_get_reviews(slug: str) -> Dict[str, Any]:
-    stored = _load_reviews(slug)
+def api_get_reviews(slug: str, provider: str = Query(default=None)) -> Dict[str, Any]:
+    stored = _load_reviews(slug, provider or DEFAULT_PROVIDER)
     return _format_reviews(slug, stored.get("items") or {})
 
 
 @router.post("/api/reviews/{slug}")
-def api_update_review(slug: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+def api_update_review(slug: str, payload: Dict[str, Any], provider: str = Query(default=None)) -> Dict[str, Any]:
+    provider_key = provider or DEFAULT_PROVIDER
     if not isinstance(payload, dict):
         raise HTTPException(status_code=400, detail="Invalid payload")
-    stored = _load_reviews(slug)
+    stored = _load_reviews(slug, provider_key)
     items = stored.get("items") or {}
 
     kind = _normalize_kind(payload.get("kind"))
@@ -122,12 +125,11 @@ def api_update_review(slug: str, payload: Dict[str, Any]) -> Dict[str, Any]:
 
     key = f"{kind}:{item_id}"
     if rating is None:
-        # Remove review when rating cleared
         items.pop(key, None)
         if items:
-            _save_reviews(slug, items)
+            _save_reviews(slug, items, provider_key)
         else:
-            path = review_file_path(slug)
+            path = review_file_path(slug, provider_key)
             if path.exists():
                 try:
                     path.unlink()
@@ -144,5 +146,5 @@ def api_update_review(slug: str, payload: Dict[str, Any]) -> Dict[str, Any]:
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }
     items[key] = review
-    _save_reviews(slug, items)
+    _save_reviews(slug, items, provider_key)
     return {"status": "ok", "review": review, "reviews": _format_reviews(slug, items)}

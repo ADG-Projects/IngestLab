@@ -1,6 +1,11 @@
 # Data Notes
 
-The project does not persist to a database yet. Instead, Unstructured parses each PDF into JSON documents stored under `outputs/`. Source PDFs are read from a configurable directory:
+The project does not persist to a database yet. Instead, artifacts are written to `outputs/`:
+- `outputs/unstructured/` — Unstructured runs (existing behavior).
+- `outputs/azure/document_intelligence/` and `outputs/azure/content_understanding/` — Azure runs (Document Intelligence Layout and Content Understanding prebuilt analyzers). API endpoints accept an optional `provider` query parameter to resolve the correct directory.
+- Reviews are stored per provider under `<provider_out_dir>/reviews/<slug>.reviews.json`.
+
+Source PDFs are read from a configurable directory:
 
 - **v2.1 (2025-11-18)** – Persist chunking defaults in `run_config` so UI recap bars (and downstream checks) see the actual Unstructured parameters, and keep drawer table previews aligned with the chunker’s column order while still right-aligning RTL cell text per document direction.
 - **v2.0 (2025-11-17)** – Chunk/element review workflows and the modularized frontend keep overlays/cards in sync while leaving stored outputs and API payloads untouched.
@@ -41,6 +46,7 @@ The project does not persist to a database yet. Instead, Unstructured parses eac
      - `micro_coverage`: coverage weighted by gold-row counts
    - `run_config`: metadata about how the run was produced
      - `strategy`, `chunking`, `infer_table_structure`, `match_source`
+     - `provider`: `unstructured`, `azure-di`, or `azure-cu`. Azure runs also record `model_id`, `api_version`, `features`, `locale`, `string_index_type`, `output_content_format`, `query_fields`, and `analyzer_id`.
      - Language hints mirrored from the UI: `primary_language` (`eng` or `ara`), `ocr_languages` (string passed to Tesseract, e.g., `ara+eng`), `languages` (comma list or array of ISO codes forwarded to Unstructured), and `detect_language_per_element` (bool). These help downstream consumers right-align RTL previews when the document is Arabic-heavy.
      - `chunk_params`: the effective parameters supplied to Unstructured. Keys may include `max_characters`, `new_after_n_chars`, `combine_text_under_n_chars`, `overlap`, `include_orig_elements`, `overlap_all`, `multipage_sections`. The pipeline now always populates this object (even when users rely on defaults), so the UI header can display the actual values used instead of `-`.
      - `chunk_summary`: quick stats about emitted chunks (`count`, `min_chars`, `max_chars`, `avg_chars`)

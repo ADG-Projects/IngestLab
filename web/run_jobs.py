@@ -12,7 +12,7 @@ from pathlib import Path
 from queue import Queue
 from typing import Any, Dict, List, Optional
 
-from .config import relative_to_root
+from .config import DEFAULT_PROVIDER, relative_to_root
 
 logger = logging.getLogger("chunking.run_jobs")
 
@@ -46,6 +46,7 @@ class RunJob:
             "id": self.id,
             "status": self.status,
             "slug": self.metadata.get("slug_with_pages"),
+            "provider": self.metadata.get("provider", DEFAULT_PROVIDER),
             "pdf": self.metadata.get("pdf_name"),
             "pages": self.metadata.get("pages"),
             "created_at": self.created_at,
@@ -152,6 +153,7 @@ class RunJobManager:
             run_cfg["form_snapshot"] = form_snapshot
             run_cfg["pdf"] = job.metadata.get("pdf_name")
             run_cfg["pages"] = job.metadata.get("pages")
+            run_cfg["provider"] = job.metadata.get("provider") or DEFAULT_PROVIDER
             safe_tag = job.metadata.get("safe_tag")
             raw_tag = job.metadata.get("raw_tag")
             primary_lang = job.metadata.get("primary_language")
@@ -182,6 +184,7 @@ class RunJobManager:
 
         job.result = {
             "slug": slug_with_pages,
+            "provider": job.metadata.get("provider", DEFAULT_PROVIDER),
             "page_tag": page_tag,
             "tables_file": _relpath(job.metadata.get("tables_path")),
             "pdf_file": _relpath(job.metadata.get("trimmed_path")),

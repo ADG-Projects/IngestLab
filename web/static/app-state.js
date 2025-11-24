@@ -57,6 +57,7 @@ let CURRENT_CHUNK_DRAWER_ID = null;
 let CURRENT_ELEMENT_DRAWER_ID = null;
 let CURRENT_RUN_JOB_ID = null;
 let CURRENT_RUN_JOB_STATUS = null;
+let CURRENT_PROVIDER = 'unstructured';
 
 const RTL_AWARE_ELEMENTS = new Set();
 const TABLE_PREVIEW_ELEMENTS = new Set();
@@ -190,6 +191,16 @@ function resolvePrimaryLanguage(cfg, snap) {
     normalizeLangCode(cfg?.ocr_languages) ||
     'eng'
   );
+}
+
+function providerParam(provider = CURRENT_PROVIDER || 'unstructured') {
+  const p = provider || 'unstructured';
+  return `provider=${encodeURIComponent(p)}`;
+}
+
+function withProvider(url, provider = CURRENT_PROVIDER || 'unstructured') {
+  const param = providerParam(provider);
+  return url.includes('?') ? `${url}&${param}` : `${url}?${param}`;
 }
 
 function pxRect(points) {

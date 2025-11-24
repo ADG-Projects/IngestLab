@@ -6,20 +6,26 @@ from typing import Any, Dict, List, Optional
 
 from fastapi import APIRouter, HTTPException, Query
 
+from ..config import DEFAULT_PROVIDER
 from ..file_utils import resolve_slug_file
 
 router = APIRouter()
 _INDEX_CACHE: Dict[str, Dict[str, Any]] = {}
 
 
-def clear_index_cache(slug: str) -> None:
-    _INDEX_CACHE.pop(slug, None)
+def _cache_key(slug: str, provider: str) -> str:
+    return f"{provider}::{slug}"
 
 
-def _ensure_index(slug: str) -> Dict[str, Any]:
-    path = resolve_slug_file(slug, "{slug}.pages*.tables.jsonl")
+def clear_index_cache(slug: str, provider: str) -> None:
+    _INDEX_CACHE.pop(_cache_key(slug, provider), None)
+
+
+def _ensure_index(slug: str, provider: str) -> Dict[str, Any]:
+    key = _cache_key(slug, provider)
+    path = resolve_slug_file(slug, "{slug}.pages*.tables.jsonl", provider=provider)
     mtime = path.stat().st_mtime
-    cached = _INDEX_CACHE.get(slug)
+    cached = _INDEX_CACHE.get(key)
     if cached and cached.get("mtime") == mtime and cached.get("path") == path:
         return cached
 
@@ -76,20 +82,26 @@ def _ensure_index(slug: str) -> Dict[str, Any]:
         "by_page": by_page,
         "type_counts": type_counts,
     }
-    _INDEX_CACHE[slug] = cached
+    _INDEX_CACHE[key] = cached
     return cached
 
 
 @router.get("/api/elements/{slug}")
-def api_elements(slug: str, ids: str = Query(..., description="Comma-separated element IDs")) -> Dict[str, Any]:
+def api_elements(
+    slug: str,
+    ids: str = Query(..., description="Comma-separated element IDs"),
+    provider: str = Query(default=None, description="Data provider id"),
+) -> Dict[str, Any]:
     wanted = [s for s in (ids or "").split(",") if s]
-    idx = _ensure_index(slug)["by_id"]
+    provider_key = provider or DEFAULT_PROVIDER
+    idx = _ensure_index(slug, provider_key)["by_id"]
     return {i: idx.get(i) for i in wanted if i in idx}
 
 
 @router.get("/api/element_types/{slug}")
-def api_element_types(slug: str) -> Dict[str, Any]:
-    idx = _ensure_index(slug)
+def api_element_types(slug: str, provider: str = Query(default=None)) -> Dict[str, Any]:
+    provider_key = provider or DEFAULT_PROVIDER
+    idx = _ensure_index(slug, provider_key)
     counts = idx.get("type_counts", {})
     items = sorted(([k, int(v)] for k, v in counts.items()), key=lambda t: (-t[1], t[0]))
     return {"types": [{"type": k, "count": v} for k, v in items]}
@@ -100,8 +112,10 @@ def api_boxes(
     slug: str,
     page: int = Query(..., ge=1),
     types: Optional[str] = Query(None, description="Comma-separated element types to include; omit for all"),
+    provider: str = Query(default=None),
 ) -> Dict[str, Any]:
-    cache = _ensure_index(slug)
+    provider_key = provider or DEFAULT_PROVIDER
+    cache = _ensure_index(slug, provider_key)
     by_id = cache["by_id"]
     by_page = cache.get("by_page", {})
     ids = by_page.get(page, [])
@@ -119,8 +133,8 @@ def api_boxes(
     return result
 
 
-def _scan_element(slug: str, element_id: str) -> Optional[Dict[str, Any]]:
-    path = resolve_slug_file(slug, "{slug}.pages*.tables.jsonl")
+def _scan_element(slug: str, element_id: str, provider: str) -> Optional[Dict[str, Any]]:
+    path = resolve_slug_file(slug, "{slug}.pages*.tables.jsonl", provider=provider)
     with path.open("r", encoding="utf-8") as f:
         for line in f:
             line = line.strip()
@@ -136,8 +150,9 @@ def _scan_element(slug: str, element_id: str) -> Optional[Dict[str, Any]]:
 
 
 @router.get("/api/element/{slug}/{element_id}")
-def api_element(slug: str, element_id: str) -> Dict[str, Any]:
-    obj = _scan_element(slug, element_id)
+def api_element(slug: str, element_id: str, provider: str = Query(default=None)) -> Dict[str, Any]:
+    provider_key = provider or DEFAULT_PROVIDER
+    obj = _scan_element(slug, element_id, provider_key)
     if not obj:
         raise HTTPException(status_code=404, detail=f"Element {element_id} not found")
     md = obj.get("metadata", {})

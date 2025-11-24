@@ -89,6 +89,22 @@
     <!-- Settings Recap Bar -->
     <div id="settingsRecap" class="settings-recap">
       <div class="setting-item">
+        <span class="setting-label">PROV <span class="info" tabindex="0">i</span><div class="tip">Run provider: Unstructured chunker, Azure Document Intelligence Layout, or Azure Content Understanding Document Search.</div></span>
+        <span class="setting-value" id="settingProvider">-</span>
+      </div>
+      <div class="setting-item">
+        <span class="setting-label">MODEL <span class="info" tabindex="0">i</span><div class="tip">Model/analyzer id used for this run (e.g., prebuilt-layout, prebuilt-documentSearch).</div></span>
+        <span class="setting-value" id="settingModel">-</span>
+      </div>
+      <div class="setting-item">
+        <span class="setting-label">API <span class="info" tabindex="0">i</span><div class="tip">API version sent to the provider (DI defaults to 2024-07-31-preview; CU defaults to 2025-11-01).</div></span>
+        <span class="setting-value" id="settingApiVersion">-</span>
+      </div>
+      <div class="setting-item">
+        <span class="setting-label">FEAT <span class="info" tabindex="0">i</span><div class="tip">Feature flags passed to the provider (comma-separated).</div></span>
+        <span class="setting-value" id="settingFeatures">-</span>
+      </div>
+      <div class="setting-item">
         <span class="setting-label">STRAT <span class="info" tabindex="0">i</span><div class="tip">Extraction strategy in Unstructured: auto lets the library pick, fast is lighter, hi_res uses high‑resolution vision for layout accuracy.</div></span>
         <span class="setting-value" id="settingStrategy">-</span>
       </div>
@@ -277,61 +293,118 @@
           <div class="modal-title">New Run</div>
           <button id="closeRunModal" class="btn">Close</button>
         </div>
-        <div class="run-grid" id="runFormGrid">
-          <div class="pdf-lang-row">
-            <label class="pdf-picker">
-              <div class="lab">PDF <span class="info" tabindex="0">i</span><div class="tip">Pick a source PDF from <code>res/</code>. Use Delete to remove the selected file from the server.</div></div>
-              <div class="upload-row">
-                <select id="pdfSelect"></select>
-                <button id="pdfDeleteBtn" class="btn btn-secondary" type="button" title="Delete selected PDF from server">Delete</button>
-              </div>
+        <div class="run-modal-body">
+          <div class="run-preview" id="runPreviewPane">
+            <div class="run-preview-controls">
+              <button id="runPrev" class="btn">◀</button>
+              <span>Page <span id="runPageNum">-</span> / <span id="runPageCount">-</span></span>
+              <button id="runNext" class="btn">▶</button>
+              <span class="sep"></span>
+              <button id="addPageBtn" class="btn">Add page</button>
+              <button id="markStartBtn" class="btn">Mark start</button>
+              <button id="markEndBtn" class="btn">Mark end</button>
+              <span id="rangeHint" class="muted"></span>
+            </div>
+            <div class="run-canvas-wrap">
+              <canvas id="runPdfCanvas"></canvas>
+            </div>
+          </div>
+          <div class="run-grid" id="runFormGrid">
+            <div class="pdf-lang-row">
+              <label class="pdf-picker">
+                <div class="lab">PDF <span class="info" tabindex="0">i</span><div class="tip">Pick a source PDF from <code>res/</code>. Use Delete to remove the selected file from the server.</div></div>
+                <div class="upload-row">
+                  <select id="pdfSelect"></select>
+                  <button id="pdfDeleteBtn" class="btn btn-secondary" type="button" title="Delete selected PDF from server">Delete</button>
+                </div>
+              </label>
+              <label class="lang-picker">
+                <div class="lab">Primary language <span class="info" tabindex="0">i</span><div class="tip">Hints OCR and display alignment. Arabic prioritizes Arabic OCR and right-aligns previews.</div></div>
+                <select id="docLanguage">
+                  <option value="eng" selected>English (LTR)</option>
+                  <option value="ara">Arabic (RTL)</option>
+                </select>
+              </label>
+              <label class="provider-picker">
+                <div class="lab">Provider <span class="info" tabindex="0">i</span><div class="tip">Unstructured keeps chunking; Azure options run Document Intelligence or Content Understanding and return layout-only elements.</div></div>
+                <select id="providerSelect">
+                  <option value="unstructured">Unstructured</option>
+                  <option value="azure-di">Azure Document Intelligence (Layout)</option>
+                  <option value="azure-cu">Azure Content Understanding (Document Search)</option>
+                </select>
+              </label>
+            </div>
+            <div class="upload-row">
+              <label>
+                <div class="lab">Upload PDF <span class="info" tabindex="0">i</span><div class="tip">Choose a file and it uploads immediately to the server's <code>PDF_DIR</code> (Fly volume mount) so future runs can reuse it.</div></div>
+                <input id="pdfUploadInput" type="file" accept=".pdf" />
+              </label>
+              <button id="pdfUploadBtn" class="btn" type="button" style="display:none;">Upload</button>
+              <span id="pdfUploadStatus" class="muted"></span>
+            </div>
+            <label>
+              <div class="lab">Pages <span class="info" tabindex="0">i</span><div class="tip">Comma‑separated pages and ranges, e.g., <code>5-7,12</code>. Leave blank to process the entire document.</div></div>
+              <input id="pagesInput" placeholder="e.g. 4-6 or 4,5,6 (blank = all)" />
             </label>
-            <label class="lang-picker">
-              <div class="lab">Primary language <span class="info" tabindex="0">i</span><div class="tip">Hints OCR and display alignment. Arabic prioritizes Arabic OCR and right-aligns previews.</div></div>
-              <select id="docLanguage">
-                <option value="eng" selected>English (LTR)</option>
-                <option value="ara">Arabic (RTL)</option>
+            <label class="unstructured-only">
+              <div class="lab">Strategy <span class="info" tabindex="0">i</span><div class="tip">Unstructured extraction mode: <b>auto</b> (choose for you), <b>fast</b> (lighter), <b>hi_res</b> (vision‑heavy, better layout).</div></div>
+              <select id="strategySelect">
+                <option value="auto">auto</option>
+                <option value="fast">fast</option>
+                <option value="hi_res">hi_res</option>
               </select>
             </label>
-          </div>
-          <div class="upload-row">
-            <label>
-              <div class="lab">Upload PDF <span class="info" tabindex="0">i</span><div class="tip">Choose a file and it uploads immediately to the server's <code>PDF_DIR</code> (Fly volume mount) so future runs can reuse it.</div></div>
-              <input id="pdfUploadInput" type="file" accept=".pdf" />
+            <label class="checkbox unstructured-only">
+              <input id="inferTables" type="checkbox" checked />
+              <span class="lab">Infer table structure <span class="info" tabindex="0">i</span><div class="tip">Rebuild table rows and cells from lines/glyphs for more accurate tables.</div></span>
             </label>
-            <button id="pdfUploadBtn" class="btn" type="button" style="display:none;">Upload</button>
-            <span id="pdfUploadStatus" class="muted"></span>
-          </div>
-          <label>
-            <div class="lab">Pages <span class="info" tabindex="0">i</span><div class="tip">Comma‑separated pages and ranges, e.g., <code>5-7,12</code>. Leave blank to process the entire document.</div></div>
-            <input id="pagesInput" placeholder="e.g. 4-6 or 4,5,6 (blank = all)" />
-          </label>
-          <label>
-            <div class="lab">Strategy <span class="info" tabindex="0">i</span><div class="tip">Unstructured extraction mode: <b>auto</b> (choose for you), <b>fast</b> (lighter), <b>hi_res</b> (vision‑heavy, better layout).</div></div>
-            <select id="strategySelect">
-              <option value="auto">auto</option>
-              <option value="fast">fast</option>
-              <option value="hi_res">hi_res</option>
-            </select>
-          </label>
-          <label class="checkbox">
-            <input id="inferTables" type="checkbox" checked />
-            <span class="lab">Infer table structure <span class="info" tabindex="0">i</span><div class="tip">Rebuild table rows and cells from lines/glyphs for more accurate tables.</div></span>
-          </label>
-          <label>
-            <div class="lab">Chunking <span class="info" tabindex="0">i</span><div class="tip">Group output into chunks: <b>by_title</b> uses section titles; <b>basic</b> uses size‑only chunking.</div></div>
-            <select id="chunkingSelect">
-              <option value="by_title" selected>by_title</option>
-              <option value="basic">basic</option>
-            </select>
-          </label>
-          <label>
-            <div class="lab">Variant tag (optional) <span class="info" tabindex="0">i</span><div class="tip">Optional label appended to the run slug for side‑by‑side comparisons (e.g., <code>hires-2k</code>).</div></div>
-            <input id="variantTag" placeholder="e.g. hi-res-tuned" />
-          </label>
-          <div id="chunkAdv" class="chunk-adv">
-            <details>
-              <summary>Advanced chunking</summary>
+            <label class="unstructured-only">
+              <div class="lab">Chunking <span class="info" tabindex="0">i</span><div class="tip">Group output into chunks: <b>by_title</b> uses section titles; <b>basic</b> uses size‑only chunking.</div></div>
+              <select id="chunkingSelect">
+                <option value="none" selected>none (elements only)</option>
+                <option value="by_title">by_title</option>
+                <option value="basic">basic</option>
+              </select>
+            </label>
+            <label>
+              <div class="lab">Variant tag (optional) <span class="info" tabindex="0">i</span><div class="tip">Optional label appended to the run slug for side‑by‑side comparisons (e.g., <code>hires-2k</code>).</div></div>
+              <input id="variantTag" placeholder="e.g. hi-res-tuned" />
+            </label>
+            <div id="azureSettings" class="azure-settings hidden">
+              <label>
+                <div class="lab">Model id / Analyzer <span class="info" tabindex="0">i</span><div class="tip">Document Intelligence defaults to <code>prebuilt-layout</code>. Content Understanding defaults to <code>prebuilt-documentSearch</code>.</div></div>
+                <input id="azureModelId" placeholder="prebuilt-layout or prebuilt-documentSearch" />
+              </label>
+              <label>
+                <div class="lab">API version <span class="info" tabindex="0">i</span><div class="tip">Document Intelligence default: 2024-07-31-preview. Content Understanding default: 2025-11-01.</div></div>
+                <input id="azureApiVersion" placeholder="e.g. 2025-11-01" />
+              </label>
+              <label>
+                <div class="lab">Features <span class="info" tabindex="0">i</span><div class="tip">Comma-separated feature list the API accepts (e.g., <code>ocrHighResolution,keyValuePairs,barcodes,formulas</code>).</div></div>
+                <input id="azureFeatures" placeholder="ocrHighResolution,keyValuePairs" />
+              </label>
+              <label>
+                <div class="lab">Locale <span class="info" tabindex="0">i</span><div class="tip">Locale hint for OCR/analysis (e.g., <code>en-US</code>, <code>ar-AE</code>).</div></div>
+                <input id="azureLocale" placeholder="e.g. en-US" />
+              </label>
+              <label>
+                <div class="lab">String index type <span class="info" tabindex="0">i</span><div class="tip">String index type (e.g., <code>textElements</code>, <code>unicodeCodePoint</code>).</div></div>
+                <input id="azureStringIndexType" placeholder="e.g. unicodeCodePoint" />
+              </label>
+              <label>
+                <div class="lab">Output content format <span class="info" tabindex="0">i</span><div class="tip">Optional content format (e.g., <code>text</code> or <code>markdown</code> for certain models).</div></div>
+                <input id="azureContentFormat" placeholder="e.g. text" />
+              </label>
+              <label>
+                <div class="lab">Query fields <span class="info" tabindex="0">i</span><div class="tip">Comma-separated fields when using query-based extraction.</div></div>
+                <input id="azureQueryFields" placeholder="e.g. invoiceDate,total" />
+              </label>
+              <label id="azureAnalyzerRow" class="hidden">
+                <div class="lab">Analyzer id (Content Understanding) <span class="info" tabindex="0">i</span><div class="tip">Override analyzer for Content Understanding (defaults to <code>prebuilt-documentSearch</code>).</div></div>
+                <input id="azureAnalyzerId" placeholder="prebuilt-documentSearch" />
+              </label>
+            </div>
+            <div id="chunkAdv" class="chunk-adv unstructured-only">
               <div class="adv-grid">
                 <label>
                   <div class="lab">max_tokens <span class="info" tabindex="0">i</span><div class="tip">Target tokens per chunk. When set, <code>max_characters</code> is derived as <code>tokens × 4</code>.</div></div>
@@ -380,27 +453,12 @@
                   </select>
                 </label>
               </div>
-            </details>
-          </div>
-          <div class="run-actions">
-            <button id="cancelRunBtn" class="btn btn-secondary" type="button">Cancel</button>
-            <button id="runBtn" class="btn">Run</button>
-            <span id="runStatus" class="muted"></span>
-          </div>
-        </div>
-        <div class="run-preview" id="runPreviewPane">
-          <div class="run-preview-controls">
-            <button id="runPrev" class="btn">◀</button>
-            <span>Page <span id="runPageNum">-</span> / <span id="runPageCount">-</span></span>
-            <button id="runNext" class="btn">▶</button>
-            <span class="sep"></span>
-            <button id="addPageBtn" class="btn">Add page</button>
-            <button id="markStartBtn" class="btn">Mark start</button>
-            <button id="markEndBtn" class="btn">Mark end</button>
-            <span id="rangeHint" class="muted"></span>
-          </div>
-          <div class="run-canvas-wrap">
-            <canvas id="runPdfCanvas"></canvas>
+            </div>
+            <div class="run-actions">
+              <button id="cancelRunBtn" class="btn btn-secondary" type="button">Cancel</button>
+              <button id="runBtn" class="btn">Run</button>
+              <span id="runStatus" class="muted"></span>
+            </div>
           </div>
         </div>
         <div class="run-progress" id="runProgressPane">

@@ -1,6 +1,6 @@
-async function loadChunksForRun(slug) {
+async function loadChunksForRun(slug, provider = CURRENT_PROVIDER) {
   try {
-    const data = await fetchJSON(`/api/chunks/${encodeURIComponent(slug)}`);
+    const data = await fetchJSON(withProvider(`/api/chunks/${encodeURIComponent(slug)}`, provider));
     CURRENT_CHUNKS = data;
   } catch (e) {
     CURRENT_CHUNKS = { error: e.message, summary: null, chunks: [] };

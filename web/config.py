@@ -20,6 +20,12 @@ else:
     OUT_DIR = ROOT / "outputs" / "unstructured"
 REVIEWS_DIR = OUT_DIR / "reviews"
 
+AZURE_OUT_DIR = (
+    Path(os.environ.get("AZURE_OUTPUT_DIR"))
+    if os.environ.get("AZURE_OUTPUT_DIR")
+    else (Path(_DATA_DIR) / "outputs" / "azure" if _DATA_DIR else ROOT / "outputs" / "azure")
+)
+
 _PDF_DIR_ENV = os.environ.get("PDF_DIR")
 if _PDF_DIR_ENV:
     RES_DIR = Path(_PDF_DIR_ENV)
@@ -34,12 +40,30 @@ PDFJS_VERSION = "3.11.174"
 CHART_VENDOR_DIR = STATIC_DIR / "vendor" / "chartjs"
 CHARTJS_VERSION = "4.4.1"
 
+PROVIDERS = {
+    "unstructured": {"id": "unstructured", "label": "Unstructured", "out_dir": OUT_DIR},
+    "azure-di": {
+        "id": "azure-di",
+        "label": "Azure Document Intelligence",
+        "out_dir": AZURE_OUT_DIR / "document_intelligence",
+    },
+    "azure-cu": {
+        "id": "azure-cu",
+        "label": "Azure Content Understanding",
+        "out_dir": AZURE_OUT_DIR / "content_understanding",
+    },
+}
+DEFAULT_PROVIDER = "unstructured"
+
 
 def ensure_dirs() -> None:
     RES_DIR.mkdir(parents=True, exist_ok=True)
     REVIEWS_DIR.mkdir(parents=True, exist_ok=True)
     VENDOR_DIR.mkdir(parents=True, exist_ok=True)
     CHART_VENDOR_DIR.mkdir(parents=True, exist_ok=True)
+    AZURE_OUT_DIR.mkdir(parents=True, exist_ok=True)
+    for cfg in PROVIDERS.values():
+        cfg["out_dir"].mkdir(parents=True, exist_ok=True)
 
 
 def env_true(name: str) -> bool:
@@ -60,6 +84,13 @@ def relative_to_root(path: Path) -> str:
         return str(path.relative_to(ROOT))
     except ValueError:
         return str(path)
+
+
+def get_out_dir(provider: str) -> Path:
+    cfg = PROVIDERS.get(provider)
+    if not cfg:
+        raise ValueError(f"Unknown provider: {provider}")
+    return cfg["out_dir"]
 
 
 def safe_pages_tag(pages: str) -> str:

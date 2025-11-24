@@ -1,0 +1,13 @@
+[phases.install]
+# Ensure dependencies are installed with uv, then replace OpenCV with the headless build
+# to avoid libGL runtime requirements in headless environments (e.g., Railway).
+cmds = [
+  "uv sync --frozen",
+  "uv pip uninstall -y opencv-python || true",
+  "uv pip install --no-deps opencv-python-headless==4.11.0.86",
+]
+
+# Optional: define an explicit start command for clarity (matches README/dev usage)
+[start]
+cmd = "uv run uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"
+

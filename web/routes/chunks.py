@@ -7,30 +7,31 @@ from html.parser import HTMLParser
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 
 from chunking_pipeline.chunker import decode_orig_elements
 
-from ..config import OUT_DIR
+from ..config import DEFAULT_PROVIDER, get_out_dir
 
 router = APIRouter()
 
 
-def _resolve_chunk_file(slug: str) -> Path:
-    path = OUT_DIR / f"{slug}.chunks.jsonl"
+def _resolve_chunk_file(slug: str, provider: str) -> Path:
+    out_dir = get_out_dir(provider)
+    path = out_dir / f"{slug}.chunks.jsonl"
     if path.exists():
         return path
     base, sep, rest = slug.partition(".pages")
     if sep:
-        candidate = OUT_DIR / f"{base}.pages{rest}.chunks.jsonl"
+        candidate = out_dir / f"{base}.pages{rest}.chunks.jsonl"
         if candidate.exists():
             return candidate
     raise HTTPException(status_code=404, detail=f"Chunk file not found for {slug}")
 
 
 @router.get("/api/chunks/{slug}")
-def api_chunks(slug: str) -> Dict[str, Any]:
-    path = _resolve_chunk_file(slug)
+def api_chunks(slug: str, provider: str = Query(default=None)) -> Dict[str, Any]:
+    path = _resolve_chunk_file(slug, provider or DEFAULT_PROVIDER)
     chunks: List[Dict[str, Any]] = []
     count = 0
     total = 0

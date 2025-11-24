@@ -1,6 +1,21 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
+
+
+def _load_local_env() -> None:
+    try:
+        from dotenv import load_dotenv
+    except ImportError:
+        return
+    root = Path(__file__).resolve().parent
+    for candidate in (root / ".env", root / ".env.local"):
+        if candidate.exists():
+            load_dotenv(candidate)
+
+
+_load_local_env()
 
 from web.server import app
 

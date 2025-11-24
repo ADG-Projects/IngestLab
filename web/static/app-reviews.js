@@ -113,9 +113,9 @@ function updateReviewSummaryChip() {
   chip.classList.toggle('active', chunksActive || elementsActive);
 }
 
-async function loadReviews(slug) {
+async function loadReviews(slug, provider = CURRENT_PROVIDER) {
   try {
-    const data = await fetchJSON(`/api/reviews/${encodeURIComponent(slug)}`);
+    const data = await fetchJSON(withProvider(`/api/reviews/${encodeURIComponent(slug)}`, provider));
     setReviewState(data);
   } catch (e) {
     setReviewState(_emptyReviewState(slug));
@@ -156,7 +156,7 @@ async function saveReview(kind, itemId, overrides = {}) {
   }
   const payload = { kind, item_id: itemId, rating, note };
   try {
-    const res = await fetch(`/api/reviews/${encodeURIComponent(CURRENT_SLUG)}`, {
+    const res = await fetch(withProvider(`/api/reviews/${encodeURIComponent(CURRENT_SLUG)}`), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),

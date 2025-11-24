@@ -1,6 +1,6 @@
-async function loadElementTypes(slug) {
+async function loadElementTypes(slug, provider = CURRENT_PROVIDER) {
   try {
-    const res = await fetchJSON(`/api/element_types/${encodeURIComponent(slug)}`);
+    const res = await fetchJSON(withProvider(`/api/element_types/${encodeURIComponent(slug)}`, provider));
     ELEMENT_TYPES = (res.types || []).map(t => ({ type: t.type, count: Number(t.count || 0) }));
   } catch (e) {
     ELEMENT_TYPES = [];
@@ -36,7 +36,7 @@ async function drawBoxesForCurrentPage() {
   const type = CURRENT_TYPE_FILTER;
   const param = type && type !== 'All' ? `&types=${encodeURIComponent(type)}` : '';
   try {
-    const boxes = await fetchJSON(`/api/boxes/${encodeURIComponent(CURRENT_SLUG)}?page=${CURRENT_PAGE}${param}`) || {};
+    const boxes = await fetchJSON(withProvider(`/api/boxes/${encodeURIComponent(CURRENT_SLUG)}?page=${CURRENT_PAGE}${param}`)) || {};
     CURRENT_PAGE_BOXES = boxes || {};
     const entries = sortElementEntries(Object.entries(CURRENT_PAGE_BOXES));
     const availableTypes = new Set();
@@ -210,7 +210,7 @@ function renderElementsListForCurrentPage(boxes) {
     host.appendChild(card);
     (async () => {
       try {
-        const data = await fetchJSON(`/api/element/${encodeURIComponent(CURRENT_SLUG)}/${encodeURIComponent(id)}`);
+        const data = await fetchJSON(withProvider(`/api/element/${encodeURIComponent(CURRENT_SLUG)}/${encodeURIComponent(id)}`));
         let txt = data.text || '';
         if (!txt && data.text_as_html) {
           txt = String(data.text_as_html).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
@@ -245,7 +245,7 @@ function revealElementInList(elementId, retries = 12) {
 
 async function openElementDetails(elementId) {
   try {
-    const data = await fetchJSON(`/api/element/${encodeURIComponent(CURRENT_SLUG)}/${encodeURIComponent(elementId)}`);
+    const data = await fetchJSON(withProvider(`/api/element/${encodeURIComponent(CURRENT_SLUG)}/${encodeURIComponent(elementId)}`));
     const container = $('preview');
     resetDrawerScrollState();
     CURRENT_ELEMENT_DRAWER_ID = elementId;
@@ -289,7 +289,7 @@ async function openElementDetails(elementId) {
 
 async function findStableIdByOrig(origId, page) {
   try {
-    const boxes = await fetchJSON(`/api/boxes/${encodeURIComponent(CURRENT_SLUG)}?page=${page}`);
+    const boxes = await fetchJSON(withProvider(`/api/boxes/${encodeURIComponent(CURRENT_SLUG)}?page=${page}`));
     for (const [eid, entry] of Object.entries(boxes)) {
       if (entry.orig_id && entry.orig_id === origId) return eid;
     }

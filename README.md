@@ -1,10 +1,11 @@
 # ChunkingTests
 
-Local playground for document ingestion experiments. The first iteration focuses on using the open-source Unstructured library to break PDFs into structured JSON.
+Local playground for document ingestion experiments. It now supports both the open-source Unstructured chunker and Azure providers (Document Intelligence Layout and Content Understanding Document Search) so you can compare layout/ocr quality side by side.
 
 Two helper scripts exist today:
-- `process_unstructured.py`: interactive full-document runs (see below).
-- `scripts/preview_unstructured_pages.py`: fast page slicing + gold-table matching for targeted QA.
+- `process_unstructured.py`: interactive full-document runs against Unstructured.
+- `scripts/preview_unstructured_pages.py`: fast page slicing + gold-table matching for targeted QA (Unstructured).
+- `python -m chunking_pipeline.azure_pipeline`: run Azure Document Intelligence (`--provider document_intelligence`) or Content Understanding (`--provider content_understanding`) straight from the CLI.
 
 ## Prerequisites
 
@@ -17,7 +18,7 @@ Two helper scripts exist today:
 uv sync
 ```
 
-`uv sync` creates a `.venv` in the project root and installs all required packages, including `unstructured[pdf]`.
+`uv sync` creates a `.venv` in the project root and installs all required packages, including `unstructured[pdf]` and `azure-ai-documentintelligence`.
 
 ## Process a PDF
 
@@ -58,25 +59,54 @@ What it does:
 
 Use `--input-jsonl` when you want to re-evaluate matches from a previously saved JSONL without reprocessing the PDF, and `--trimmed-out` if you want to keep the sliced PDF for debugging.
 
+## Azure runs (Document Intelligence + Content Understanding)
+
+Set the Azure credentials before running either via CLI or the UI. You can drop them into a local `.env` (see `.env.example`) and they will be auto-loaded by the app and the CLI helpers. Foundry deployments use a single endpoint/key for both providers:
+- `AZURE_FT_ENDPOINT` / `AZURE_FT_KEY`
+
+Document Intelligence runs target `api-version=2024-11-30` (v4.0); older service versions are not supported.
+
+CLI example (Document Intelligence layout):
+```bash
+AZURE_FT_ENDPOINT=<endpoint> AZURE_FT_KEY=<key> \
+uv run python -m chunking_pipeline.azure_pipeline \
+  --provider document_intelligence \
+  --input res/V3.0_Reviewed_translation_EN_full\ 4.pdf \
+  --pages 4-6 \
+  --output outputs/azure/document_intelligence/V3_0_EN_4.pages4-6.tables.jsonl \
+  --trimmed-out outputs/azure/document_intelligence/V3_0_EN_4.pages4-6.pdf \
+  --emit-matches outputs/azure/document_intelligence/V3_0_EN_4.pages4-6.matches.json \
+  --model-id prebuilt-layout \
+  --features ocrHighResolution,keyValuePairs,barcodes,formulas \
+  --api-version 2024-11-30
+```
+
+CLI example (Content Understanding Document Search):
+```bash
+AZURE_FT_ENDPOINT=<endpoint> AZURE_FT_KEY=<key> \
+uv run python -m chunking_pipeline.azure_pipeline \
+  --provider content_understanding \
+  --input res/V3.0_Reviewed_translation_EN_full\ 4.pdf \
+  --pages 1-2 \
+  --output outputs/azure/content_understanding/V3_0_EN_4.pages1-2.tables.jsonl \
+  --trimmed-out outputs/azure/content_understanding/V3_0_EN_4.pages1-2.pdf \
+  --emit-matches outputs/azure/content_understanding/V3_0_EN_4.pages1-2.matches.json \
+  --model-id prebuilt-documentSearch \
+  --api-version 2025-11-01
+```
+
+Outputs for Azure runs live under `outputs/azure/document_intelligence/` or `outputs/azure/content_understanding/` with the same filename suffix pattern used by Unstructured.
+Reviews are stored per-provider (e.g., `outputs/azure/document_intelligence/reviews/<slug>.reviews.json`).
+
 ## Next ideas
 
 - Evaluate additional ingestion pipelines (Azure AI Document Intelligence, AWS Textract, etc.) as new experiments land in this sandbox.
-
-## GraphRAG BRD → Rego (Neo4j)
-
-- Script: `scripts/GraphRAG/neo4j-graphrag-first-rego.py` ingests `scripts/GraphRAG/BRD-examples/Business_Inspection_Policy_Document.pdf`, extracts a policy graph into Neo4j, and emits a Rego module plus an IR JSONL under `scripts/GraphRAG/outputs/`.
-- Requirements: running Neo4j at `neo4j://localhost:7687` (defaults in the script), and `OPENAI_API_KEY` set in your shell (embedder + LLM). The script wipes the `graphrag-test` database at startup so each run is clean.
-- Reliability: extraction now uses a retrying `LLMEntityRelationExtractor` that replays failed chunks up to four times with exponential backoff (2s → 30s). Malformed JSON or schema validation errors log the chunk index; persistent failures return an empty graph for that chunk instead of silently dropping work.
-- Run locally:
-  ```bash
-  OPENAI_API_KEY=<key> uv run python scripts/GraphRAG/neo4j-graphrag-first-rego.py
-  ```
 
 ## Release history
 
 - **v2.1 (2025-11-18)** – Persist actual Unstructured chunking defaults (max_characters, new_after_n_chars, overlap, overlap_all, include_orig_elements, combine_text_under_n_chars, multipage_sections) in `run_config` so the header recap mirrors the values the chunker actually used, and keep drawer table previews in their original chunker column order while cell text alignment still follows the document direction.
   - Verification steps:
-    1. `uv run python scripts/run_chunking_pipeline.py --input res/<pdf>.pdf --pages 4-6 --emit-matches outputs/unstructured/<slug>.matches.json` and confirm the generated `matches.json` `run_config.chunk_params` object lists the default values even when no chunking flags were passed.
+    1. `uv run python -m chunking_pipeline.run_chunking --input res/<pdf>.pdf --pages 4-6 --emit-matches outputs/unstructured/<slug>.matches.json` and confirm the generated `matches.json` `run_config.chunk_params` object lists the default values even when no chunking flags were passed.
     2. `uv run uvicorn main:app --reload --host 127.0.0.1 --port 8765`, open an Arabic table match under Metrics, and verify the drawer columns match the PDF layout while each RTL cell text remains right-aligned.
 
 - **v2.0 (2025-11-17)** – Introduced chunk/element review workflows (Good/Bad ratings with notes, filters, and summary chips) while refactoring the frontend into modular scripts so overlays, metrics, and drawers stay in lockstep.
@@ -108,6 +138,7 @@ What you get:
 - Two top-level views while keeping the PDF visible:
   - Metrics: run config, overall metrics bars, F1 chart, and table match cards with per-table actions (Highlight all/best, Details).
   - Inspect: focused tools for chunk and element inspection, with overlay toggles and type filter, plus sub-tabs for Chunks and Elements.
+- Provider-aware runs: pick Unstructured, Azure Document Intelligence (Layout), or Azure Content Understanding (Document Search) in the New Run modal. Azure runs hide chunking controls and expose model id, API version, features, locale, string index type, content format, query fields, and (for CU) analyzer id. Outputs go under `outputs/azure/...`.
 - Per-table cards with coverage, cohesion, F1, and chunk count, and one-click highlighting on the PDF from Metrics.
 - A compact single-line settings recap with rich tooltips for each parameter; the New Run modal mirrors the same tooltips so behavior is clear where you edit values.
 - Overlay UX improvements:
@@ -133,24 +164,22 @@ Data sources used by the UI:
 Endpoints (served by FastAPI):
 - `GET /api/pdfs` — list PDFs available in `res/` (for new runs).
  - `POST /api/pdfs` — upload a PDF to `PDF_DIR` (auto-saves on selection in the New Run modal).
- - `GET /api/runs` — discover available runs under `outputs/unstructured/`.
- - `DELETE /api/run/{slug}` — delete a run by its UI slug.
- - `GET /api/matches/{slug}` — load the matches JSON.
- - `GET /api/tables/{slug}` — load and parse the tables JSONL.
- - `GET /pdf/{slug}` — stream the trimmed PDF.
-- `GET /api/element_types/{slug}` — element type inventory for a run (counts by type).
-- `GET /api/boxes/{slug}?page=N&types=Table,Text` — minimal per-page box index for overlays (server-side indexed, avoids heavy scans).
-- `GET /api/chunks/{slug}` — chunk artifacts (summary + JSONL contents) for each run.
+ - `GET /api/runs` — discover available runs (Unstructured + Azure).
+ - `DELETE /api/run/{slug}?provider=...` — delete a run by its UI slug.
+ - `GET /api/matches/{slug}?provider=...` — load the matches JSON.
+ - `GET /api/tables/{slug}?provider=...` — load and parse the tables JSONL.
+ - `GET /pdf/{slug}?provider=...` — stream the trimmed PDF.
+- `GET /api/element_types/{slug}?provider=...` — element type inventory for a run (counts by type).
+- `GET /api/boxes/{slug}?provider=...&page=N&types=Table,Text` — minimal per-page box index for overlays (server-side indexed, avoids heavy scans).
+- `GET /api/chunks/{slug}?provider=...` — chunk artifacts (summary + JSONL contents) for each run.
 - `GET /api/run-jobs` — inspect the current queue of chunking jobs (status, timestamps, latest log tail).
 - `GET /api/run-jobs/{job_id}` — poll a specific job for live status/log updates; used by the UI progress view.
 - `POST /api/run` — execute a new run. Body:
   - `pdf` (string, required): filename under `res/`.
   - `pages` (string, optional): page list/range (e.g., `4-6`, `4,5,6`). If omitted or blank, the server processes the entire document (equivalent to `1-<num_pages>`). The server trims the PDF first and only processes those pages.
-  - `strategy` (`auto|fast|hi_res`, default `auto`).
-  - `infer_table_structure` (bool, default `true`).
-  - `chunking` (`basic|by_title`, default `by_title`). Additional knobs:
-    - Shared: `chunk_max_characters`, `chunk_new_after_n_chars`, `chunk_overlap`, `chunk_include_orig_elements`, `chunk_overlap_all`.
-    - Extra for `by_title`: `chunk_combine_under_n_chars`, `chunk_multipage_sections`.
+  - `provider` (`unstructured|azure-di|azure-cu`, default `unstructured`).
+  - Unstructured: `strategy` (`auto|fast|hi_res`, default `auto`); `infer_table_structure` (bool, default `true`); `chunking` (`basic|by_title`, default `by_title`) plus the chunking knobs (`chunk_max_characters`, `chunk_new_after_n_chars`, `chunk_overlap`, `chunk_include_orig_elements`, `chunk_overlap_all`, `chunk_combine_under_n_chars`, `chunk_multipage_sections`).
+  - Azure: `model_id`, `api_version`, `features`, `locale`, `string_index_type`, `output_content_format`, `query_fields`, and (for Content Understanding) `analyzer_id`. Chunking flags are ignored for Azure providers.
   - Response: immediately returns a `job` payload (`id`, `status`, `command`, log tails) instead of blocking until the chunker finishes. Use `/api/run-jobs/{id}` to poll; the UI already handles this automatically.
 
 Run on demand via the UI:

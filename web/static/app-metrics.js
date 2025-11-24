@@ -132,7 +132,7 @@ function updateRunConfigCard() {
     if (el) el.textContent = ensureDisplay(value);
   };
   if (!cfg) {
-    ['Strategy','InferTables','Chunking','MaxTokens','MaxChars','NewAfter','CombineUnder','Overlap','IncludeOrig','OverlapAll','Multipage','Pdf','Pages','Tag']
+    ['Provider','Model','ApiVersion','Features','Strategy','InferTables','Chunking','MaxTokens','MaxChars','NewAfter','CombineUnder','Overlap','IncludeOrig','OverlapAll','Multipage','Pdf','Pages','Tag']
       .forEach(name => set(`setting${name}`, '-'));
     setLanguageControl('eng');
     CURRENT_DOC_LANGUAGE = 'eng';
@@ -141,64 +141,76 @@ function updateRunConfigCard() {
   }
   const chunkParams = cfg.chunk_params || {};
   const snap = cfg.form_snapshot || cfg.ui_form || {};
-  set('settingStrategy', cfg.strategy || 'auto');
-  set('settingInferTables', String(cfg.infer_table_structure !== false));
-  set('settingChunking', cfg.chunking || 'by_title');
-  const maxCharsRaw = preferValues(
-    chunkParams.max_characters,
-    chunkParams.chunk_max_characters,
-    snap.chunk_max_characters,
-    snap.max_characters
-  );
-  const mtSource = preferValues(
-    snap.max_tokens,
-    snap.chunk_max_tokens,
-    chunkParams.max_tokens
-  );
-  const inferredTokens =
-    mtSource == null && maxCharsRaw != null && Number.isFinite(Number(maxCharsRaw))
-      ? Math.round(Number(maxCharsRaw) / 4)
-      : null;
-  const tokensDisplay = preferValues(mtSource, inferredTokens);
-  set('settingMaxTokens', tokensDisplay ?? '-');
-  set('settingMaxChars', maxCharsRaw ?? '-');
-  set('settingNewAfter', preferValues(
-    chunkParams.new_after_n_chars,
-    chunkParams.chunk_new_after_n_chars,
-    snap.chunk_new_after_n_chars,
-    snap.new_after_n_chars
-  ) ?? '-');
-  set('settingCombineUnder', preferValues(
-    chunkParams.combine_text_under_n_chars,
-    chunkParams.chunk_combine_under_n_chars,
-    snap.chunk_combine_under_n_chars,
-    snap.combine_under_n_chars
-  ) ?? '-');
-  set('settingOverlap', preferValues(
-    chunkParams.overlap,
-    chunkParams.chunk_overlap,
-    snap.chunk_overlap,
-    snap.overlap
-  ) ?? '-');
-  set('settingIncludeOrig', preferValues(
-    chunkParams.include_orig_elements,
-    chunkParams.chunk_include_orig_elements,
-    snap.chunk_include_orig_elements,
-    snap.include_orig_elements
-  ) ?? '-');
-  set('settingOverlapAll', preferValues(
-    chunkParams.overlap_all,
-    chunkParams.chunk_overlap_all,
-    snap.chunk_overlap_all,
-    snap.overlap_all
-  ) ?? '-');
-  set('settingMultipage', preferValues(
-    chunkParams.multipage_sections,
-    chunkParams.chunk_multipage_sections,
-    snap.chunk_multipage_sections,
-    snap.multipage_sections,
-    snap.chunk_multipage
-  ) ?? '-');
+  const provider = preferValues(cfg.provider, snap.provider, 'unstructured');
+  set('settingProvider', provider);
+  const featuresRaw = preferValues(cfg.features, snap.features);
+  const featuresDisplay = Array.isArray(featuresRaw) ? featuresRaw.join(', ') : featuresRaw;
+  set('settingModel', preferValues(cfg.model_id, snap.model_id, provider === 'azure-cu' ? 'prebuilt-documentSearch' : 'prebuilt-layout'));
+  set('settingApiVersion', preferValues(cfg.api_version, snap.api_version, provider === 'azure-cu' ? '2025-11-01' : '2024-07-31-preview'));
+  set('settingFeatures', featuresDisplay);
+  if (provider === 'unstructured') {
+    set('settingStrategy', cfg.strategy || 'auto');
+    set('settingInferTables', String(cfg.infer_table_structure !== false));
+    set('settingChunking', cfg.chunking || 'by_title');
+    const maxCharsRaw = preferValues(
+      chunkParams.max_characters,
+      chunkParams.chunk_max_characters,
+      snap.chunk_max_characters,
+      snap.max_characters
+    );
+    const mtSource = preferValues(
+      snap.max_tokens,
+      snap.chunk_max_tokens,
+      chunkParams.max_tokens
+    );
+    const inferredTokens =
+      mtSource == null && maxCharsRaw != null && Number.isFinite(Number(maxCharsRaw))
+        ? Math.round(Number(maxCharsRaw) / 4)
+        : null;
+    const tokensDisplay = preferValues(mtSource, inferredTokens);
+    set('settingMaxTokens', tokensDisplay ?? '-');
+    set('settingMaxChars', maxCharsRaw ?? '-');
+    set('settingNewAfter', preferValues(
+      chunkParams.new_after_n_chars,
+      chunkParams.chunk_new_after_n_chars,
+      snap.chunk_new_after_n_chars,
+      snap.new_after_n_chars
+    ) ?? '-');
+    set('settingCombineUnder', preferValues(
+      chunkParams.combine_text_under_n_chars,
+      chunkParams.chunk_combine_under_n_chars,
+      snap.chunk_combine_under_n_chars,
+      snap.combine_under_n_chars
+    ) ?? '-');
+    set('settingOverlap', preferValues(
+      chunkParams.overlap,
+      chunkParams.chunk_overlap,
+      snap.chunk_overlap,
+      snap.overlap
+    ) ?? '-');
+    set('settingIncludeOrig', preferValues(
+      chunkParams.include_orig_elements,
+      chunkParams.chunk_include_orig_elements,
+      snap.chunk_include_orig_elements,
+      snap.include_orig_elements
+    ) ?? '-');
+    set('settingOverlapAll', preferValues(
+      chunkParams.overlap_all,
+      chunkParams.chunk_overlap_all,
+      snap.chunk_overlap_all,
+      snap.overlap_all
+    ) ?? '-');
+    set('settingMultipage', preferValues(
+      chunkParams.multipage_sections,
+      chunkParams.chunk_multipage_sections,
+      snap.chunk_multipage_sections,
+      snap.multipage_sections,
+      snap.chunk_multipage
+    ) ?? '-');
+  } else {
+    ['Strategy','InferTables','Chunking','MaxTokens','MaxChars','NewAfter','CombineUnder','Overlap','IncludeOrig','OverlapAll','Multipage']
+      .forEach(name => set(`setting${name}`, 'n/a'));
+  }
   set('settingPdf', preferValues(snap.pdf, cfg.pdf) ?? '-');
   set('settingPages', preferValues(snap.pages, cfg.pages) ?? '-');
   set('settingTag', preferValues(snap.tag, snap.variant_tag, cfg.tag, cfg.variant_tag) ?? '-');
@@ -236,7 +248,7 @@ async function openDetails(tableMatch) {
 
 async function loadElementPreview(elementId) {
   try {
-    const payload = await fetchJSON(`/api/element/${encodeURIComponent(CURRENT_SLUG)}/${encodeURIComponent(elementId)}`);
+    const payload = await fetchJSON(withProvider(`/api/element/${encodeURIComponent(CURRENT_SLUG)}/${encodeURIComponent(elementId)}`));
     return payload;
   } catch (e) {
     showToast(`Failed to load element preview: ${e.message}`, 'err');

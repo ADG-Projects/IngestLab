@@ -7,16 +7,8 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
-if str(REPO_ROOT) not in sys.path:
-    sys.path.insert(0, str(REPO_ROOT))
-
-from chunking_pipeline.pages import parse_pages
-from chunking_pipeline.pipeline import (
-    partition_document,
-    run_chunking,
-    match_tables_to_gold,
-)
+from .pages import parse_pages
+from .pipeline import match_tables_to_gold, partition_document, run_chunking
 
 CHUNK_DEFAULTS = {
     "max_characters": 500,
@@ -27,6 +19,8 @@ CHUNK_DEFAULTS = {
 BY_TITLE_DEFAULTS = {
     "multipage_sections": True,
 }
+
+
 def write_jsonl(path: Optional[str], elements: List[Dict[str, Any]]) -> None:
     if not path:
         for el in elements:
@@ -107,7 +101,7 @@ def main(argv: Optional[List[str]] = None) -> int:
 
         if args.chunking == "by_title":
             if "combine_text_under_n_chars" not in chunk_params:
-                chunk_params["combine_text_under_n_chars"] = final_max_characters
+                chunk_params["combine_text_under_n_chars"] = chunk_params["max_characters"]
             if "multipage_sections" not in chunk_params:
                 chunk_params["multipage_sections"] = BY_TITLE_DEFAULTS["multipage_sections"]
 
@@ -128,26 +122,25 @@ def main(argv: Optional[List[str]] = None) -> int:
         detect_language_per_element=args.detect_language_per_element,
     )
     args.trimmed_out = trimmed
-    # Base partition elements (dict form) for UI overlays/types
+
     base_elements: List[Dict[str, Any]] = dict_elements
 
     if not raw_elements:
-        raise SystemExit("Partitioning produced no elements")
+        raise SystemExit("Chunking requires partitioning the PDF in this run (no --input-jsonl)")
 
-    if args.chunking == "none":
-        match_elements = base_elements
-        chunk_summary = None
-        chunk_elements = None
-        resolved_source = "elements"
-    else:
-        chunk_input = raw_elements
-        if args.only_tables:
-            chunk_input = [el for el in raw_elements if getattr(el, "category", "") == "Table" or el.__class__.__name__ == "Table"]
+    chunk_input = raw_elements
+    if args.only_tables:
+        chunk_input = [el for el in raw_elements if getattr(el, "category", "") == "Table" or el.__class__.__name__ == "Table"]
+    if args.chunking != "none":
         chunk_elements, chunk_summary = run_chunking(args.chunking, chunk_input, chunk_params)
         if not chunk_elements:
             raise SystemExit("Chunking produced no elements")
         match_elements = chunk_elements
         resolved_source = "chunks"
+    else:
+        chunk_elements = None
+        match_elements = chunk_input
+        resolved_source = "orig_elements"
 
     run_config: Dict[str, Any] = {
         "strategy": args.strategy,
@@ -165,10 +158,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     if chunk_summary:
         run_config["chunk_summary"] = chunk_summary
 
-    # Persist base partition elements for UI element overlays/types
-    if args.output:
+    if args.output and base_elements:
         write_jsonl(args.output, base_elements)
-    # Persist chunk elements separately when available
     if args.chunk_output and chunk_elements:
         write_jsonl(args.chunk_output, chunk_elements)
 

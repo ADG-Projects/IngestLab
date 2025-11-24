@@ -4,6 +4,12 @@ const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 async function loadRun(slug) {
   CURRENT_SLUG = slug;
   CURRENT_RUN = (RUNS_CACHE || []).find(r => r.slug === slug) || null;
+  CURRENT_PROVIDER = (CURRENT_RUN && CURRENT_RUN.provider) || CURRENT_PROVIDER || 'unstructured';
+  const providerSel = $('providerSelect');
+  if (providerSel) {
+    providerSel.value = CURRENT_PROVIDER;
+    providerSel.dispatchEvent(new Event('change'));
+  }
   CURRENT_RUN_HAS_CHUNKS = Boolean(CURRENT_RUN && CURRENT_RUN.chunks_file);
   CURRENT_CHUNK_LOOKUP = {};
   CURRENT_CHUNK_TYPE_FILTER = 'All';
@@ -11,7 +17,7 @@ async function loadRun(slug) {
   CURRENT_ELEMENT_REVIEW_FILTER = 'All';
   BOX_INDEX = {};
   CURRENT_PAGE_BOXES = null;
-  const pdfUrl = `/pdf/${encodeURIComponent(slug)}`;
+  const pdfUrl = withProvider(`/pdf/${encodeURIComponent(slug)}`, CURRENT_PROVIDER);
   const loadingTask = window['pdfjsLib'].getDocument(pdfUrl);
   PDF_DOC = await loadingTask.promise;
   PAGE_COUNT = PDF_DOC.numPages;
@@ -20,7 +26,7 @@ async function loadRun(slug) {
   $('pageCount').textContent = PAGE_COUNT;
   await renderPage(CURRENT_PAGE);
 
-  const matches = await fetchJSON(`/api/matches/${encodeURIComponent(slug)}`);
+  const matches = await fetchJSON(withProvider(`/api/matches/${encodeURIComponent(slug)}`, CURRENT_PROVIDER));
   MATCHES = matches;
   CURRENT_RUN_CONFIG = matches.run_config || CURRENT_RUN?.run_config || null;
   CURRENT_CHUNK_SUMMARY = matches.chunk_summary || CURRENT_RUN?.chunk_summary || null;
@@ -30,7 +36,7 @@ async function loadRun(slug) {
   refreshMatchesView();
   updateRunConfigCard();
   if (CURRENT_RUN_HAS_CHUNKS) {
-    await loadChunksForRun(slug);
+    await loadChunksForRun(slug, CURRENT_PROVIDER);
   } else {
     CURRENT_CHUNKS = null;
     renderChunksTab();
@@ -40,11 +46,11 @@ async function loadRun(slug) {
     showUnmatchedCb._wired = true;
     showUnmatchedCb.addEventListener('change', () => { SHOW_UNMATCHED = showUnmatchedCb.checked; refreshMatchesView(); });
   }
-  await loadElementTypes(slug);
+  await loadElementTypes(slug, CURRENT_PROVIDER);
   populateTypeSelectors();
   const elemReviewSel = $('elementsReviewSelect');
   if (elemReviewSel) elemReviewSel.value = CURRENT_ELEMENT_REVIEW_FILTER;
-  await loadReviews(slug);
+  await loadReviews(slug, CURRENT_PROVIDER);
 }
 
 async function renderPage(num) {
@@ -218,15 +224,17 @@ async function refreshRuns() {
     const opt = document.createElement('option');
     opt.value = r.slug;
     const tag = r.page_range ? ` · pages ${r.page_range}` : '';
-    opt.textContent = `${r.slug}${tag}`;
+    const providerLabel = r.provider ? ` · ${r.provider}` : '';
+    opt.textContent = `${r.slug}${providerLabel}${tag}`;
     sel.appendChild(opt);
   }
   if (runs.length) {
     const exists = runs.find(r => r.slug === CURRENT_SLUG);
-    const chosen = exists ? CURRENT_SLUG : runs[0].slug;
-    CURRENT_SLUG = chosen;
-    sel.value = chosen;
-    await loadRun(chosen);
+    const chosenRun = exists ? runs.find(r => r.slug === CURRENT_SLUG) : runs[0];
+    CURRENT_SLUG = chosenRun.slug;
+    CURRENT_PROVIDER = chosenRun.provider || 'unstructured';
+    sel.value = CURRENT_SLUG;
+    await loadRun(CURRENT_SLUG);
   } else {
     CURRENT_SLUG = null;
     CURRENT_RUN = null;
@@ -248,6 +256,8 @@ async function refreshRuns() {
   }
   sel.onchange = async () => {
     CURRENT_SLUG = sel.value;
+    const selected = (RUNS_CACHE || []).find(r => r.slug === CURRENT_SLUG);
+    if (selected && selected.provider) CURRENT_PROVIDER = selected.provider;
     await loadRun(CURRENT_SLUG);
   };
 }
@@ -419,6 +429,8 @@ async function pollRunJob(jobId) {
     if (status === 'succeeded') {
       if (statusSpan) statusSpan.textContent = 'Completed';
       const slug = detail?.result?.slug;
+      const provider = detail?.provider || detail?.result?.provider || CURRENT_PROVIDER || 'unstructured';
+      if (provider) CURRENT_PROVIDER = provider;
       if (slug) CURRENT_SLUG = slug;
       try {
         await refreshRuns();
@@ -449,16 +461,39 @@ async function pollRunJob(jobId) {
 }
 
 function wireRunForm() {
+  const providerSel = $('providerSelect');
   const chunkSel = $('chunkingSelect');
   const combineRow = $('chunkCombineRow');
   const multipageRow = $('chunkMultipageRow');
+  const unstructuredBlocks = document.querySelectorAll('.unstructured-only');
+  const azureSettings = $('azureSettings');
+  const azureAnalyzerRow = $('azureAnalyzerRow');
   const toggleAdv = () => {
-    const isByTitle = chunkSel.value === 'by_title';
+    const chunkVal = chunkSel ? chunkSel.value : 'by_title';
+    const isByTitle = chunkVal === 'by_title';
+    const isNone = chunkVal === 'none';
+    
     if (combineRow) combineRow.classList.toggle('hidden', !isByTitle);
     if (multipageRow) multipageRow.classList.toggle('hidden', !isByTitle);
+    
+    // Hide entire advanced section if chunking is none
+    const advSection = document.querySelector('#chunkAdv');
+    if (advSection) advSection.classList.toggle('hidden', isNone);
   };
-  chunkSel.addEventListener('change', toggleAdv);
-  toggleAdv();
+  if (chunkSel) {
+    chunkSel.addEventListener('change', toggleAdv);
+    toggleAdv();
+  }
+  const handleProviderChange = () => {
+    const val = providerSel ? providerSel.value : 'unstructured';
+    CURRENT_PROVIDER = val || 'unstructured';
+    const isUnstructured = val === 'unstructured';
+    unstructuredBlocks.forEach((el) => { if (el) el.classList.toggle('hidden', !isUnstructured); });
+    if (azureSettings) azureSettings.classList.toggle('hidden', isUnstructured);
+    if (azureAnalyzerRow) azureAnalyzerRow.classList.toggle('hidden', val !== 'azure-cu');
+  };
+  if (providerSel) providerSel.addEventListener('change', handleProviderChange);
+  handleProviderChange();
 
   const uploadInput = $('pdfUploadInput');
   const uploadStatus = $('pdfUploadStatus');
@@ -519,11 +554,9 @@ function wireRunForm() {
     const status = $('runStatus');
     status.textContent = '';
     const payload = {
+      provider: providerSel ? providerSel.value : 'unstructured',
       pdf: $('pdfSelect').value,
       pages: $('pagesInput').value.trim(),
-      strategy: $('strategySelect').value,
-      infer_table_structure: $('inferTables').checked,
-      chunking: $('chunkingSelect').value,
     };
     const langSel = $('docLanguage');
     const docLang = langSel ? (langSel.value || 'eng') : 'eng';
@@ -554,48 +587,76 @@ function wireRunForm() {
       if (val === '') return null;
       return val === 'true';
     };
-    const maxTokens = parseNumber('chunkMaxTokens');
-    const maxChars = parseNumber('chunkMaxChars');
-    if (maxTokens != null) {
-      payload.chunk_max_tokens = maxTokens;
-      payload.chunk_max_characters = Math.max(1, Math.round(maxTokens * 4));
-    } else if (maxChars != null) {
-      payload.chunk_max_characters = maxChars;
-    }
-    const newAfter = parseNumber('chunkNewAfter');
-    if (newAfter != null) payload.chunk_new_after_n_chars = newAfter;
-    const overlap = parseNumber('chunkOverlap');
-    if (overlap != null) payload.chunk_overlap = overlap;
-    const includeOrig = parseBoolSelect('chunkIncludeOrig');
-    if (includeOrig != null) payload.chunk_include_orig_elements = includeOrig;
-    const overlapAll = parseBoolSelect('chunkOverlapAll');
-    if (overlapAll != null) payload.chunk_overlap_all = overlapAll;
-    if (payload.chunking === 'by_title') {
-      const combine = parseNumber('chunkCombineUnder');
-      if (combine != null) payload.chunk_combine_under_n_chars = combine;
-      const multipage = parseBoolSelect('chunkMultipage');
-      if (multipage != null) payload.chunk_multipage_sections = multipage;
+    if (payload.provider === 'unstructured') {
+      payload.strategy = $('strategySelect').value;
+      payload.infer_table_structure = $('inferTables').checked;
+      payload.chunking = $('chunkingSelect').value;
+      const maxTokens = parseNumber('chunkMaxTokens');
+      const maxChars = parseNumber('chunkMaxChars');
+      if (maxTokens != null) {
+        payload.chunk_max_tokens = maxTokens;
+        payload.chunk_max_characters = Math.max(1, Math.round(maxTokens * 4));
+      } else if (maxChars != null) {
+        payload.chunk_max_characters = maxChars;
+      }
+      const newAfter = parseNumber('chunkNewAfter');
+      if (newAfter != null) payload.chunk_new_after_n_chars = newAfter;
+      const overlap = parseNumber('chunkOverlap');
+      if (overlap != null) payload.chunk_overlap = overlap;
+      const includeOrig = parseBoolSelect('chunkIncludeOrig');
+      if (includeOrig != null) payload.chunk_include_orig_elements = includeOrig;
+      const overlapAll = parseBoolSelect('chunkOverlapAll');
+      if (overlapAll != null) payload.chunk_overlap_all = overlapAll;
+      if (payload.chunking === 'by_title') {
+        const combine = parseNumber('chunkCombineUnder');
+        if (combine != null) payload.chunk_combine_under_n_chars = combine;
+        const multipage = parseBoolSelect('chunkMultipage');
+        if (multipage != null) payload.chunk_multipage_sections = multipage;
+      }
+    } else {
+      payload.model_id = ($('azureModelId')?.value || '').trim();
+      payload.api_version = ($('azureApiVersion')?.value || '').trim();
+      payload.features = ($('azureFeatures')?.value || '').trim();
+      payload.locale = ($('azureLocale')?.value || '').trim();
+      payload.string_index_type = ($('azureStringIndexType')?.value || '').trim();
+      payload.output_content_format = ($('azureContentFormat')?.value || '').trim();
+      payload.query_fields = ($('azureQueryFields')?.value || '').trim();
+      if (payload.provider === 'azure-cu') {
+        payload.analyzer_id = ($('azureAnalyzerId')?.value || '').trim();
+      }
     }
     payload.form_snapshot = {
       pdf: payload.pdf,
       pages: payload.pages,
-      strategy: payload.strategy,
-      infer_table_structure: payload.infer_table_structure,
-      chunking: payload.chunking,
       tag: tagVal || null,
-      max_tokens: parseNumber('chunkMaxTokens'),
-      max_characters: parseNumber('chunkMaxChars'),
-      new_after_n_chars: parseNumber('chunkNewAfter'),
-      combine_under_n_chars: parseNumber('chunkCombineUnder'),
-      overlap: parseNumber('chunkOverlap'),
-      include_orig_elements: parseBoolSelect('chunkIncludeOrig'),
-      overlap_all: parseBoolSelect('chunkOverlapAll'),
-      multipage_sections: parseBoolSelect('chunkMultipage'),
       primary_language: docLang,
       ocr_languages: payload.ocr_languages,
       languages: payload.languages,
       detect_language_per_element: payload.detect_language_per_element,
+      provider: payload.provider,
     };
+    if (payload.provider === 'unstructured') {
+      payload.form_snapshot.strategy = payload.strategy;
+      payload.form_snapshot.infer_table_structure = payload.infer_table_structure;
+      payload.form_snapshot.chunking = payload.chunking;
+      payload.form_snapshot.max_tokens = parseNumber('chunkMaxTokens');
+      payload.form_snapshot.max_characters = parseNumber('chunkMaxChars');
+      payload.form_snapshot.new_after_n_chars = parseNumber('chunkNewAfter');
+      payload.form_snapshot.combine_under_n_chars = parseNumber('chunkCombineUnder');
+      payload.form_snapshot.overlap = parseNumber('chunkOverlap');
+      payload.form_snapshot.include_orig_elements = parseBoolSelect('chunkIncludeOrig');
+      payload.form_snapshot.overlap_all = parseBoolSelect('chunkOverlapAll');
+      payload.form_snapshot.multipage_sections = parseBoolSelect('chunkMultipage');
+    } else {
+      payload.form_snapshot.model_id = payload.model_id;
+      payload.form_snapshot.api_version = payload.api_version;
+      payload.form_snapshot.features = payload.features;
+      payload.form_snapshot.locale = payload.locale;
+      payload.form_snapshot.string_index_type = payload.string_index_type;
+      payload.form_snapshot.output_content_format = payload.output_content_format;
+      payload.form_snapshot.query_fields = payload.query_fields;
+      payload.form_snapshot.analyzer_id = payload.analyzer_id;
+    }
     setRunInProgress(true, { pdf: payload.pdf });
     let jobId = null;
     try {
@@ -686,7 +747,7 @@ function setupInspectTabs() {
           let okCount = 0, failCount = 0;
           for (const rr of runs) {
             try {
-              const dr = await fetch(`/api/run/${encodeURIComponent(rr.slug)}`, { method: 'DELETE' });
+              const dr = await fetch(withProvider(`/api/run/${encodeURIComponent(rr.slug)}`, rr.provider || CURRENT_PROVIDER), { method: 'DELETE' });
               if (!dr.ok) failCount++; else okCount++;
             } catch (_) {
               failCount++;
@@ -796,7 +857,7 @@ function wireModal() {
       const ok = confirm(`Delete run: ${CURRENT_SLUG}? This removes its matches, tables JSONL, and trimmed PDF.`);
       if (!ok) return;
       try {
-        const r = await fetch(`/api/run/${encodeURIComponent(CURRENT_SLUG)}`, { method: 'DELETE' });
+        const r = await fetch(withProvider(`/api/run/${encodeURIComponent(CURRENT_SLUG)}`, CURRENT_PROVIDER), { method: 'DELETE' });
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         await refreshRuns();
         showToast('Run deleted', 'ok', 2000);
