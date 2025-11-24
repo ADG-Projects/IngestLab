@@ -6,6 +6,7 @@ Two helper scripts exist today:
 - `process_unstructured.py`: interactive full-document runs against Unstructured.
 - `scripts/preview_unstructured_pages.py`: fast page slicing + gold-table matching for targeted QA (Unstructured).
 - `python -m chunking_pipeline.azure_pipeline`: run Azure Document Intelligence (`--provider document_intelligence`) or Content Understanding (`--provider content_understanding`) straight from the CLI.
+- Azure Document Intelligence exports paragraph roles as element types (e.g., `pageHeader`, `pageNumber`, `title`) so the UI type filters mirror the service categorization.
 
 ## Prerequisites
 
@@ -153,6 +154,7 @@ What you get:
 - Inspect → Elements: browse element types and overlay boxes for the current page; filter by type.
   - Leave quick Good/Bad reviews (and keep optional notes in the drawer) for any chunk or element, filter by review state, and use the header review chip to jump straight into previously scored chunks.
   - Elements list shows colored cards per type and an inline text preview; cards display the source element’s original ID for clarity.
+  - Azure-only outline toggle: switch Elements between a flat list and a page outline grouped by pageHeader/pageNumber/Tables/Paragraphs/Lines, ordered by page reading order with per-type numbering; element drawers show a Document → Page → Type breadcrumb.
   - Overlays now follow the active Inspect tab: select Chunks to show chunk overlays, or Elements to show element overlays. The redundant quick controls were removed.
   - Interactions: click an overlay on the PDF to open its details (element or chunk). In Chunks, clicking a chunk expands a sublist of its elements; clicking an element there opens its details and focuses its overlay.
   - Overlay parity: clicking a chunk overlay behaves like clicking the chunk card — it focuses the chunk on the same page and expands its element list without opening a separate chunk drawer. Closing an element opened from that sublist returns you to the chunk view and preserves scroll.

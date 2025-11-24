@@ -247,6 +247,12 @@
                     <option value="Bad">Bad only</option>
                   </select>
                 </label>
+                <div id="elementViewToggle" class="view-toggle hidden" role="group" aria-label="Element view mode">
+                  <button type="button" class="toggle-btn active" data-mode="flat">Flat</button>
+                  <button type="button" class="toggle-btn" data-mode="outline">Outline</button>
+                  <span class="info" tabindex="0">i</span>
+                  <div class="tip">Outline (Azure runs only) orders elements by reading position per page, groups into Page Header/Number, Tables, Paragraphs, and Lines, numbers each type, and lets you collapse long pages.</div>
+                </div>
               </div>
               <div id="elementPagination" class="element-pagination"></div>
               <div class="collapsible-stats">

@@ -4,6 +4,8 @@
 - [ ] Verify Azure Content Understanding overlays align with trimmed PDFs and log any analyzer-specific quirks.
 
 ## Completed
+- [x] 2025-11-24 Add Azure element outline toggle in the UI with per-type grouping and drawer breadcrumbs.
+- [x] 2025-11-24 Emit Azure Document Intelligence paragraph roles as element types so UI overlays and filters show pageHeader/pageNumber/title classifications.
 - [x] 2025-11-24 Fix Azure Document Intelligence overlays by converting AnalyzeResult payloads to dicts and scaling polygons to PDF points so tables/elements render in the UI.
 - [x] 2025-11-20 Add Azure Document Intelligence + Content Understanding providers (UI toggle, provider-aware API paths, new `run_azure_pipeline.py`, and outputs under `outputs/azure`).
 - [x] 2025-11-18 Release v2.1 (persist chunking defaults in `run_config` and ship drawer table previews that keep the chunker column order while still aligning RTL cell text per document direction).

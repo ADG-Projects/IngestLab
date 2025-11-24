@@ -16,6 +16,17 @@ document.addEventListener('DOMContentLoaded', () => {
     renderElementsListForCurrentPage(CURRENT_PAGE_BOXES);
     refreshElementOverlaysForCurrentPage();
   });
+  const elementViewToggle = $('elementViewToggle');
+  if (elementViewToggle) {
+    elementViewToggle.addEventListener('click', (ev) => {
+      const btn = ev.target.closest('button[data-mode]');
+      if (!btn) return;
+      const mode = btn.dataset.mode === 'outline' ? 'outline' : 'flat';
+      setElementViewMode(mode);
+      syncElementViewToggle();
+      renderElementsListForCurrentPage(CURRENT_PAGE_BOXES);
+    });
+  }
   const langSel = $('settingPrimaryLang');
   if (langSel) langSel.addEventListener('change', () => {
     const nextLang = normalizeLangCode(langSel.value) || 'eng';
