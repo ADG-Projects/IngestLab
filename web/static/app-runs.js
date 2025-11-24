@@ -445,14 +445,14 @@ async function pollRunJob(jobId) {
     }
     if (status === 'failed') {
       const errMsg = detail?.error || 'Run failed';
+      setRunInProgress(false);
       if (statusSpan) statusSpan.textContent = `Failed: ${errMsg}`;
       if (cancelBtn) cancelBtn.disabled = false;
       if (openBtn) {
         openBtn.disabled = false;
         openBtn.textContent = 'New Run';
       }
-      const hint = $('runProgressHint');
-      if (hint) hint.textContent = 'Run failed. Close this window to adjust parameters.';
+      showToast(`Run failed: ${errMsg}`, 'err', 3500);
       CURRENT_RUN_JOB_ID = null;
       return;
     }
