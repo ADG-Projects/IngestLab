@@ -1,8 +1,25 @@
 from __future__ import annotations
 
 import os
+import sys
 import tempfile
-from typing import List, Optional
+from typing import List, Optional, Tuple
+
+
+def _partition_pages(pages: List[int], max_page: int) -> Tuple[List[int], List[int]]:
+    unique_pages = sorted(set(pages))
+    valid = [p for p in unique_pages if 1 <= p <= max_page]
+    dropped = [p for p in unique_pages if p < 1 or p > max_page]
+    return valid, dropped
+
+
+def resolve_pages_in_document(input_pdf: str, pages: List[int]) -> Tuple[List[int], List[int], int]:
+    from pypdf import PdfReader
+
+    reader = PdfReader(input_pdf)
+    max_page = len(reader.pages)
+    valid, dropped = _partition_pages(pages, max_page)
+    return valid, dropped, max_page
 
 
 def parse_pages(pages_arg: str) -> List[int]:
@@ -20,16 +37,19 @@ def parse_pages(pages_arg: str) -> List[int]:
     return sorted(set(pages))
 
 
-def slice_pdf(input_pdf: str, pages: List[int], output_pdf: Optional[str] = None) -> str:
+def slice_pdf(input_pdf: str, pages: List[int], output_pdf: Optional[str] = None, warn_on_drop: bool = True) -> str:
     from pypdf import PdfReader, PdfWriter
 
     reader = PdfReader(input_pdf)
     writer = PdfWriter()
 
     max_page = len(reader.pages)
-    for p in sorted(set(pages)):
-        if p < 1 or p > max_page:
-            continue
+    valid_pages, dropped = _partition_pages(pages, max_page)
+    if not valid_pages:
+        raise ValueError(f"No valid pages found in {input_pdf}; document has {max_page} pages.")
+    if warn_on_drop and dropped:
+        sys.stderr.write(f"Warning: dropping out-of-range pages {dropped}; document has {max_page} pages.\n")
+    for p in valid_pages:
         writer.add_page(reader.pages[p - 1])
 
     if output_pdf is None:

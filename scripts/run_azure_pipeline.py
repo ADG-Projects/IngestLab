@@ -14,7 +14,7 @@ from azure.ai.documentintelligence import DocumentIntelligenceClient
 from azure.core.credentials import AzureKeyCredential
 
 from chunking_pipeline.chunker import ensure_stable_element_id
-from chunking_pipeline.pages import parse_pages, slice_pdf
+from chunking_pipeline.pages import parse_pages, resolve_pages_in_document, slice_pdf
 
 DEFAULT_ENDPOINT_ENV = "AZURE_FT_ENDPOINT"
 DEFAULT_KEY_ENV = "AZURE_FT_KEY"
@@ -145,6 +145,23 @@ def _page_layouts(an_result: Dict[str, Any]) -> Dict[int, Tuple[Optional[float],
 def normalize_elements(an_result: Dict[str, Any]) -> List[Dict[str, Any]]:
     elements: List[Dict[str, Any]] = []
     layouts = _page_layouts(an_result)
+    for para in an_result.get("paragraphs") or []:
+        regions = para.get("bounding_regions") or para.get("boundingRegions") or []
+        region = regions[0] if regions else {}
+        page_num = region.get("page_number") if "page_number" in region else region.get("pageNumber")
+        layout_w, layout_h = layouts.get(int(page_num or 0), (None, None))
+        coords = _coords_from_polygon(region.get("polygon"), layout_w, layout_h)
+        if not coords:
+            continue
+        role = para.get("role")
+        el_type = role or "Paragraph"
+        el = {
+            "type": el_type,
+            "text": para.get("content"),
+            "metadata": {"page_number": page_num, "coordinates": coords, "role": role},
+        }
+        ensure_stable_element_id(el)
+        elements.append(el)
     for page in an_result.get("pages") or []:
         page_num = page.get("page_number") if "page_number" in page else page.get("pageNumber")
         layout_w, layout_h = layouts.get(int(page_num or 0), (None, None))
@@ -345,7 +362,14 @@ def main(argv: Optional[List[str]] = None) -> int:
     args = parser.parse_args(argv)
 
     pages = parse_pages(args.pages)
-    trimmed = slice_pdf(args.input, pages, args.trimmed_out)
+    valid_pages, dropped_pages, max_page = resolve_pages_in_document(args.input, pages)
+    if not valid_pages:
+        raise SystemExit(f"No valid pages requested; {args.input} has {max_page} pages.")
+    if dropped_pages:
+        sys.stderr.write(f"Warning: dropping out-of-range pages {dropped_pages}; document has {max_page} pages.\n")
+    trimmed = slice_pdf(args.input, valid_pages, args.trimmed_out, warn_on_drop=False)
+    args.pages = ",".join(str(p) for p in valid_pages)
+    di_pages = list(range(1, len(valid_pages) + 1))
     elems: List[Dict[str, Any]] = []
 
     provider = args.provider
@@ -362,7 +386,7 @@ def main(argv: Optional[List[str]] = None) -> int:
             trimmed_pdf=trimmed,
             model_id=model_id,
             api_version=api_version,
-            pages=pages,
+            pages=di_pages,
             features=features,
             locale=args.locale,
             string_index_type=args.string_index_type,
