@@ -140,6 +140,79 @@ def _extract_analyze_result(payload: Any) -> Dict[str, Any]:
     return payload
 
 
+def _extract_detected_languages(an_result: Dict[str, Any]) -> List[Dict[str, Any]]:
+    def _as_float(value: Any) -> Optional[float]:
+        try:
+            return float(value)
+        except Exception:
+            return None
+
+    def _push(locale: Optional[str], confidence: Optional[float], acc: List[Dict[str, Any]], seen: set) -> None:
+        if not locale:
+            return
+        code = str(locale).strip()
+        if not code:
+            return
+        key = code.lower()
+        if key in seen:
+            return
+        seen.add(key)
+        acc.append({"locale": code, "confidence": confidence})
+
+    def _parse_entry(entry: Any, acc: List[Dict[str, Any]], seen: set) -> None:
+        if not entry:
+            return
+        if isinstance(entry, str):
+            _push(entry, None, acc, seen)
+            return
+        if isinstance(entry, dict):
+            locale = (
+                entry.get("locale")
+                or entry.get("language")
+                or entry.get("language_code")
+                or entry.get("languageCode")
+            )
+            confidence = _as_float(entry.get("confidence") or entry.get("score"))
+            _push(locale, confidence, acc, seen)
+
+    detected: List[Dict[str, Any]] = []
+    seen_locales: set = set()
+    candidates = (
+        an_result.get("languages")
+        or an_result.get("detected_languages")
+        or an_result.get("detectedLanguages")
+    )
+    if isinstance(candidates, list):
+        for item in candidates:
+            _parse_entry(item, detected, seen_locales)
+    elif isinstance(candidates, dict):
+        _parse_entry(candidates, detected, seen_locales)
+    else:
+        _parse_entry(candidates, detected, seen_locales)
+
+    for doc in an_result.get("documents") or []:
+        _parse_entry(doc.get("detected_languages") or doc.get("detectedLanguages"), detected, seen_locales)
+
+    detected.sort(key=lambda item: (item.get("confidence") is not None, item.get("confidence") or 0), reverse=True)
+    return detected
+
+
+def _pick_primary_detected_language(detected: List[Dict[str, Any]]) -> Optional[str]:
+    if not detected:
+        return None
+    preferred: Optional[str] = None
+    for item in detected:
+        locale = (item.get("locale") or "").strip()
+        if not locale:
+            continue
+        norm = locale.lower()
+        if norm.startswith("ar"):
+            return "ara"
+        if preferred is None:
+            preferred = locale
+    return preferred
+
+
 def _page_layouts(an_result: Dict[str, Any]) -> Dict[int, Tuple[Optional[float], Optional[float], Optional[str]]]:
     layouts: Dict[int, Tuple[Optional[float], Optional[float], Optional[str]]] = {}
     for page in an_result.get("pages") or []:
@@ -406,6 +479,13 @@ def main(argv: Optional[List[str]] = None) -> int:
         elems = normalize_elements(an_result)
         run_provider = "azure-cu"
         run_config = build_run_config(run_provider, args, features=_parse_features(args.features), endpoint=endpoint)
+
+    detected_langs = _extract_detected_languages(an_result)
+    if detected_langs:
+        run_config["detected_languages"] = detected_langs
+        primary_detected = _pick_primary_detected_language(detected_langs)
+        if primary_detected:
+            run_config["detected_primary_language"] = primary_detected
 
     write_jsonl(args.output, elems)
     matches_payload = {

@@ -167,24 +167,56 @@ function normalizeLangCode(value) {
 function extractLangFromList(value) {
   if (!value) return null;
   if (Array.isArray(value)) {
+    let fallback = null;
     for (const part of value) {
-      const code = normalizeLangCode(part);
-      if (code) return code;
+      if (part && typeof part === 'object') {
+        const candidate =
+          part.locale ||
+          part.language ||
+          part.language_code ||
+          part.languageCode ||
+          part.code;
+        const code = normalizeLangCode(candidate);
+        if (code === 'ara') return 'ara';
+        if (!fallback && code) fallback = code;
+      } else {
+        const code = normalizeLangCode(part);
+        if (code === 'ara') return 'ara';
+        if (!fallback && code) fallback = code;
+      }
     }
-    return null;
+    return fallback;
   }
   if (typeof value === 'string') {
     const parts = value.split(/[\s,;+]+/);
+    let fallback = null;
     for (const part of parts) {
       const code = normalizeLangCode(part);
-      if (code) return code;
+      if (code === 'ara') return 'ara';
+      if (!fallback && code) fallback = code;
     }
+    if (fallback) return fallback;
+  }
+  if (value && typeof value === 'object') {
+    const code = normalizeLangCode(
+      value.locale ||
+      value.language ||
+      value.language_code ||
+      value.languageCode ||
+      value.code,
+    );
+    if (code === 'ara') return 'ara';
+    if (code) return code;
   }
   return null;
 }
 
 function resolvePrimaryLanguage(cfg, snap) {
   return (
+    normalizeLangCode(cfg?.detected_primary_language) ||
+    normalizeLangCode(snap?.detected_primary_language) ||
+    extractLangFromList(cfg?.detected_languages) ||
+    extractLangFromList(snap?.detected_languages) ||
     normalizeLangCode(snap?.primary_language) ||
     normalizeLangCode(cfg?.primary_language) ||
     extractLangFromList(snap?.languages) ||
