@@ -466,6 +466,7 @@ function wireRunForm() {
   const combineRow = $('chunkCombineRow');
   const multipageRow = $('chunkMultipageRow');
   const unstructuredBlocks = document.querySelectorAll('.unstructured-only');
+  const azureHideables = document.querySelectorAll('.azure-hidden');
   const azureSettings = $('azureSettings');
   const azureAnalyzerRow = $('azureAnalyzerRow');
   const toggleAdv = () => {
@@ -488,9 +489,11 @@ function wireRunForm() {
     const val = providerSel ? providerSel.value : 'unstructured';
     CURRENT_PROVIDER = val || 'unstructured';
     const isUnstructured = val === 'unstructured';
+    const isAzure = !isUnstructured;
     unstructuredBlocks.forEach((el) => { if (el) el.classList.toggle('hidden', !isUnstructured); });
     if (azureSettings) azureSettings.classList.toggle('hidden', isUnstructured);
     if (azureAnalyzerRow) azureAnalyzerRow.classList.toggle('hidden', val !== 'azure-cu');
+    azureHideables.forEach((el) => { if (el) el.classList.toggle('hidden', isAzure); });
   };
   if (providerSel) providerSel.addEventListener('change', handleProviderChange);
   handleProviderChange();
@@ -553,6 +556,7 @@ function wireRunForm() {
   $('runBtn').addEventListener('click', async () => {
     const status = $('runStatus');
     status.textContent = '';
+    const isAzure = (providerSel ? providerSel.value : 'unstructured') !== 'unstructured';
     const payload = {
       provider: providerSel ? providerSel.value : 'unstructured',
       pdf: $('pdfSelect').value,
@@ -560,14 +564,21 @@ function wireRunForm() {
     };
     const langSel = $('docLanguage');
     const docLang = langSel ? (langSel.value || 'eng') : 'eng';
-    payload.primary_language = docLang;
-    if (docLang === 'ara') {
-      payload.ocr_languages = 'ara+eng';
-      payload.languages = 'ar,en';
-      payload.detect_language_per_element = true;
+    if (!isAzure) {
+      payload.primary_language = docLang;
+      if (docLang === 'ara') {
+        payload.ocr_languages = 'ara+eng';
+        payload.languages = 'ar,en';
+        payload.detect_language_per_element = true;
+      } else {
+        payload.ocr_languages = 'eng+ara';
+        payload.languages = 'en,ar';
+        payload.detect_language_per_element = false;
+      }
     } else {
-      payload.ocr_languages = 'eng+ara';
-      payload.languages = 'en,ar';
+      payload.primary_language = docLang;
+      payload.ocr_languages = null;
+      payload.languages = null;
       payload.detect_language_per_element = false;
     }
     const tagVal = $('variantTag')?.value?.trim();
@@ -614,12 +625,22 @@ function wireRunForm() {
         if (multipage != null) payload.chunk_multipage_sections = multipage;
       }
     } else {
+      const azureFeatures = [];
+      const pushIf = (el, val) => { if (el && el.checked) azureFeatures.push(val); };
+      pushIf($('azureFigureImage'), 'figures');
+      pushIf($('azureBarcodes'), 'barcodes');
+      pushIf($('azureLanguage'), 'languages');
+      pushIf($('azureKvp'), 'keyValuePairs');
+      pushIf($('azureHighRes'), 'ocrHighResolution');
+      pushIf($('azureStyleFont'), 'styleFont');
+      pushIf($('azureFormulas'), 'formulas');
+      payload.features = azureFeatures.join(','); // Azure detection on by default via "languages"
+      const fmt = document.querySelector('input[name=\"azureOutputFormat\"]:checked');
+      payload.output_content_format = fmt ? fmt.value : 'markdown';
       payload.model_id = ($('azureModelId')?.value || '').trim();
       payload.api_version = ($('azureApiVersion')?.value || '').trim();
-      payload.features = ($('azureFeatures')?.value || '').trim();
       payload.locale = ($('azureLocale')?.value || '').trim();
       payload.string_index_type = ($('azureStringIndexType')?.value || '').trim();
-      payload.output_content_format = ($('azureContentFormat')?.value || '').trim();
       payload.query_fields = ($('azureQueryFields')?.value || '').trim();
       if (payload.provider === 'azure-cu') {
         payload.analyzer_id = ($('azureAnalyzerId')?.value || '').trim();
@@ -648,12 +669,12 @@ function wireRunForm() {
       payload.form_snapshot.overlap_all = parseBoolSelect('chunkOverlapAll');
       payload.form_snapshot.multipage_sections = parseBoolSelect('chunkMultipage');
     } else {
+      payload.form_snapshot.features = payload.features;
+      payload.form_snapshot.output_content_format = payload.output_content_format;
       payload.form_snapshot.model_id = payload.model_id;
       payload.form_snapshot.api_version = payload.api_version;
-      payload.form_snapshot.features = payload.features;
       payload.form_snapshot.locale = payload.locale;
       payload.form_snapshot.string_index_type = payload.string_index_type;
-      payload.form_snapshot.output_content_format = payload.output_content_format;
       payload.form_snapshot.query_fields = payload.query_fields;
       payload.form_snapshot.analyzer_id = payload.analyzer_id;
     }

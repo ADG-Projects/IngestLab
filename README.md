@@ -97,6 +97,7 @@ uv run python -m chunking_pipeline.azure_pipeline \
 
 Outputs for Azure runs live under `outputs/azure/document_intelligence/` or `outputs/azure/content_understanding/` with the same filename suffix pattern used by Unstructured.
 Reviews are stored per-provider (e.g., `outputs/azure/document_intelligence/reviews/<slug>.reviews.json`).
+If you ever see Azure `.tables.jsonl` files that are empty, rerun the slice: the helper now uses the SDK's `as_dict` output and scales polygons to PDF points so overlays render correctly.
 
 ## Next ideas
 

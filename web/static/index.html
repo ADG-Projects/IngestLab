@@ -318,8 +318,8 @@
                   <button id="pdfDeleteBtn" class="btn btn-secondary" type="button" title="Delete selected PDF from server">Delete</button>
                 </div>
               </label>
-              <label class="lang-picker">
-                <div class="lab">Primary language <span class="info" tabindex="0">i</span><div class="tip">Hints OCR and display alignment. Arabic prioritizes Arabic OCR and right-aligns previews.</div></div>
+              <label class="lang-picker azure-hidden">
+                <div class="lab">UI primary language <span class="info" tabindex="0">i</span><div class="tip">Affects preview direction only. Azure runs rely on built-in language detection; Unstructured also forwards OCR hints.</div></div>
                 <select id="docLanguage">
                   <option value="eng" selected>English (LTR)</option>
                   <option value="ara">Arabic (RTL)</option>
@@ -346,113 +346,137 @@
               <div class="lab">Pages <span class="info" tabindex="0">i</span><div class="tip">Comma‑separated pages and ranges, e.g., <code>5-7,12</code>. Leave blank to process the entire document.</div></div>
               <input id="pagesInput" placeholder="e.g. 4-6 or 4,5,6 (blank = all)" />
             </label>
-            <label class="unstructured-only">
-              <div class="lab">Strategy <span class="info" tabindex="0">i</span><div class="tip">Unstructured extraction mode: <b>auto</b> (choose for you), <b>fast</b> (lighter), <b>hi_res</b> (vision‑heavy, better layout).</div></div>
-              <select id="strategySelect">
-                <option value="auto">auto</option>
-                <option value="fast">fast</option>
-                <option value="hi_res">hi_res</option>
-              </select>
-            </label>
-            <label class="checkbox unstructured-only">
-              <input id="inferTables" type="checkbox" checked />
-              <span class="lab">Infer table structure <span class="info" tabindex="0">i</span><div class="tip">Rebuild table rows and cells from lines/glyphs for more accurate tables.</div></span>
-            </label>
-            <label class="unstructured-only">
-              <div class="lab">Chunking <span class="info" tabindex="0">i</span><div class="tip">Group output into chunks: <b>by_title</b> uses section titles; <b>basic</b> uses size‑only chunking.</div></div>
-              <select id="chunkingSelect">
-                <option value="none" selected>none (elements only)</option>
-                <option value="by_title">by_title</option>
-                <option value="basic">basic</option>
-              </select>
-            </label>
+            <div id="unstructuredSettings" class="unstructured-settings unstructured-only">
+              <div class="lab">Unstructured options</div>
+              <div class="unstructured-options">
+                <label>
+                  <div class="lab">Strategy <span class="info" tabindex="0">i</span><div class="tip">Unstructured extraction mode: <b>auto</b> (choose for you), <b>fast</b> (lighter), <b>hi_res</b> (vision‑heavy, better layout).</div></div>
+                  <select id="strategySelect">
+                    <option value="auto">auto</option>
+                    <option value="fast">fast</option>
+                    <option value="hi_res">hi_res</option>
+                  </select>
+                </label>
+                <label class="checkbox">
+                  <input id="inferTables" type="checkbox" checked />
+                  <span class="lab">Infer table structure <span class="info" tabindex="0">i</span><div class="tip">Rebuild table rows and cells from lines/glyphs for more accurate tables.</div></span>
+                </label>
+                <label>
+                  <div class="lab">Chunking <span class="info" tabindex="0">i</span><div class="tip">Group output into chunks: <b>by_title</b> uses section titles; <b>basic</b> uses size‑only chunking.</div></div>
+                  <select id="chunkingSelect">
+                    <option value="none" selected>none (elements only)</option>
+                    <option value="by_title">by_title</option>
+                    <option value="basic">basic</option>
+                  </select>
+                </label>
+              </div>
+              <div id="chunkAdv" class="chunk-adv">
+                <div class="adv-grid">
+                  <label>
+                    <div class="lab">max_tokens <span class="info" tabindex="0">i</span><div class="tip">Target tokens per chunk. When set, <code>max_characters</code> is derived as <code>tokens × 4</code>.</div></div>
+                    <input id="chunkMaxTokens" type="number" min="50" step="10" placeholder="e.g. 500" />
+                  </label>
+                  <label>
+                    <div class="lab">max_characters <span class="info" tabindex="0">i</span><div class="tip">Hard character cap per chunk. Used when <code>max_tokens</code> is not provided.</div></div>
+                    <input id="chunkMaxChars" type="number" min="50" step="10" placeholder="e.g. 2000" />
+                  </label>
+                  <label>
+                    <div class="lab">new_after_n_chars <span class="info" tabindex="0">i</span><div class="tip">Start a new chunk after N characters have been appended.</div></div>
+                    <input id="chunkNewAfter" type="number" min="50" step="10" placeholder="e.g. 1500" />
+                  </label>
+                  <label id="chunkCombineRow">
+                    <div class="lab">combine_under_n_chars <span class="info" tabindex="0">i</span><div class="tip">Merge small chunks below N characters with the next chunk. Applies to <b>by_title</b>.</div></div>
+                    <input id="chunkCombineUnder" type="number" min="0" step="10" placeholder="e.g. 500" />
+                  </label>
+                  <label>
+                    <div class="lab">overlap <span class="info" tabindex="0">i</span><div class="tip">Overlap N trailing characters between adjacent chunks to preserve context.</div></div>
+                    <input id="chunkOverlap" type="number" min="0" step="10" placeholder="e.g. 100" />
+                  </label>
+                </div>
+                <div class="adv-grid">
+                  <label>
+                    <div class="lab">include_orig_elements <span class="info" tabindex="0">i</span><div class="tip">Include original atomic elements alongside chunk spans in outputs/overlays.</div></div>
+                    <select id="chunkIncludeOrig">
+                      <option value="">default (true)</option>
+                      <option value="true">true</option>
+                      <option value="false">false</option>
+                    </select>
+                  </label>
+                  <label>
+                    <div class="lab">overlap_all <span class="info" tabindex="0">i</span><div class="tip">Apply overlap to all boundaries, including section breaks.</div></div>
+                    <select id="chunkOverlapAll">
+                      <option value="">default (false)</option>
+                      <option value="true">true</option>
+                      <option value="false">false</option>
+                    </select>
+                  </label>
+                  <label id="chunkMultipageRow">
+                    <div class="lab">multipage_sections <span class="info" tabindex="0">i</span><div class="tip">Allow <b>by_title</b> chunks to span multiple pages until the next title.</div></div>
+                    <select id="chunkMultipage">
+                      <option value="">default (true)</option>
+                      <option value="true">true</option>
+                      <option value="false">false</option>
+                    </select>
+                  </label>
+                </div>
+              </div>
+            </div>
             <label>
               <div class="lab">Variant tag (optional) <span class="info" tabindex="0">i</span><div class="tip">Optional label appended to the run slug for side‑by‑side comparisons (e.g., <code>hires-2k</code>).</div></div>
               <input id="variantTag" placeholder="e.g. hi-res-tuned" />
             </label>
             <div id="azureSettings" class="azure-settings hidden">
-              <label>
-                <div class="lab">Model id / Analyzer <span class="info" tabindex="0">i</span><div class="tip">Document Intelligence defaults to <code>prebuilt-layout</code>. Content Understanding defaults to <code>prebuilt-documentSearch</code>.</div></div>
-                <input id="azureModelId" placeholder="prebuilt-layout or prebuilt-documentSearch" />
-              </label>
-              <label>
-                <div class="lab">API version <span class="info" tabindex="0">i</span><div class="tip">Document Intelligence default: 2024-07-31-preview. Content Understanding default: 2025-11-01.</div></div>
-                <input id="azureApiVersion" placeholder="e.g. 2025-11-01" />
-              </label>
-              <label>
-                <div class="lab">Features <span class="info" tabindex="0">i</span><div class="tip">Comma-separated feature list the API accepts (e.g., <code>ocrHighResolution,keyValuePairs,barcodes,formulas</code>).</div></div>
-                <input id="azureFeatures" placeholder="ocrHighResolution,keyValuePairs" />
-              </label>
-              <label>
-                <div class="lab">Locale <span class="info" tabindex="0">i</span><div class="tip">Locale hint for OCR/analysis (e.g., <code>en-US</code>, <code>ar-AE</code>).</div></div>
-                <input id="azureLocale" placeholder="e.g. en-US" />
-              </label>
-              <label>
-                <div class="lab">String index type <span class="info" tabindex="0">i</span><div class="tip">String index type (e.g., <code>textElements</code>, <code>unicodeCodePoint</code>).</div></div>
-                <input id="azureStringIndexType" placeholder="e.g. unicodeCodePoint" />
-              </label>
-              <label>
-                <div class="lab">Output content format <span class="info" tabindex="0">i</span><div class="tip">Optional content format (e.g., <code>text</code> or <code>markdown</code> for certain models).</div></div>
-                <input id="azureContentFormat" placeholder="e.g. text" />
-              </label>
-              <label>
-                <div class="lab">Query fields <span class="info" tabindex="0">i</span><div class="tip">Comma-separated fields when using query-based extraction.</div></div>
-                <input id="azureQueryFields" placeholder="e.g. invoiceDate,total" />
-              </label>
-              <label id="azureAnalyzerRow" class="hidden">
-                <div class="lab">Analyzer id (Content Understanding) <span class="info" tabindex="0">i</span><div class="tip">Override analyzer for Content Understanding (defaults to <code>prebuilt-documentSearch</code>).</div></div>
-                <input id="azureAnalyzerId" placeholder="prebuilt-documentSearch" />
-              </label>
-            </div>
-            <div id="chunkAdv" class="chunk-adv unstructured-only">
-              <div class="adv-grid">
-                <label>
-                  <div class="lab">max_tokens <span class="info" tabindex="0">i</span><div class="tip">Target tokens per chunk. When set, <code>max_characters</code> is derived as <code>tokens × 4</code>.</div></div>
-                  <input id="chunkMaxTokens" type="number" min="50" step="10" placeholder="e.g. 500" />
-                </label>
-                <label>
-                  <div class="lab">max_characters <span class="info" tabindex="0">i</span><div class="tip">Hard character cap per chunk. Used when <code>max_tokens</code> is not provided.</div></div>
-                  <input id="chunkMaxChars" type="number" min="50" step="10" placeholder="e.g. 2000" />
-                </label>
-                <label>
-                  <div class="lab">new_after_n_chars <span class="info" tabindex="0">i</span><div class="tip">Start a new chunk after N characters have been appended.</div></div>
-                  <input id="chunkNewAfter" type="number" min="50" step="10" placeholder="e.g. 1500" />
-                </label>
-                <label id="chunkCombineRow">
-                  <div class="lab">combine_under_n_chars <span class="info" tabindex="0">i</span><div class="tip">Merge small chunks below N characters with the next chunk. Applies to <b>by_title</b>.</div></div>
-                  <input id="chunkCombineUnder" type="number" min="0" step="10" placeholder="e.g. 500" />
-                </label>
-                <label>
-                  <div class="lab">overlap <span class="info" tabindex="0">i</span><div class="tip">Overlap N trailing characters between adjacent chunks to preserve context.</div></div>
-                  <input id="chunkOverlap" type="number" min="0" step="10" placeholder="e.g. 100" />
-                </label>
+              <div class="lab">Azure Analyze options</div>
+              <div class="azure-options">
+                <div class="opt-group">
+                  <div class="lab sm">Output format</div>
+                  <label class="radio"><input type="radio" name="azureOutputFormat" value="text" /> Text</label>
+                  <label class="radio"><input type="radio" name="azureOutputFormat" value="markdown" checked /> Markdown</label>
+                </div>
+                <div class="opt-group">
+                  <div class="lab sm">Optional output</div>
+                  <label class="checkbox"><input type="checkbox" id="azureFigureImage" /> Figure image</label>
+                </div>
+                <div class="opt-group">
+                  <div class="lab sm">Optional detection</div>
+                  <label class="checkbox"><input type="checkbox" id="azureBarcodes" /> Barcodes</label>
+                  <label class="checkbox"><input type="checkbox" id="azureLanguage" checked /> Language</label>
+                  <label class="checkbox"><input type="checkbox" id="azureKvp" /> Key-value pairs</label>
+                </div>
+                <div class="opt-group">
+                  <div class="lab sm">Premium detection</div>
+                  <label class="checkbox"><input type="checkbox" id="azureHighRes" /> High resolution</label>
+                  <label class="checkbox"><input type="checkbox" id="azureStyleFont" /> Style font</label>
+                  <label class="checkbox"><input type="checkbox" id="azureFormulas" /> Formulas</label>
+                </div>
               </div>
-              <div class="adv-grid">
+              <details class="azure-advanced">
+                <summary>Advanced (model, API version, locale…)</summary>
                 <label>
-                  <div class="lab">include_orig_elements <span class="info" tabindex="0">i</span><div class="tip">Include original atomic elements alongside chunk spans in outputs/overlays.</div></div>
-                  <select id="chunkIncludeOrig">
-                    <option value="">default (true)</option>
-                    <option value="true">true</option>
-                    <option value="false">false</option>
-                  </select>
+                  <div class="lab">Model id / Analyzer <span class="info" tabindex="0">i</span><div class="tip">Document Intelligence defaults to <code>prebuilt-layout</code>. Content Understanding defaults to <code>prebuilt-documentSearch</code>.</div></div>
+                  <input id="azureModelId" placeholder="prebuilt-layout or prebuilt-documentSearch" />
                 </label>
                 <label>
-                  <div class="lab">overlap_all <span class="info" tabindex="0">i</span><div class="tip">Apply overlap to all boundaries, including section breaks.</div></div>
-                  <select id="chunkOverlapAll">
-                    <option value="">default (false)</option>
-                    <option value="true">true</option>
-                    <option value="false">false</option>
-                  </select>
+                  <div class="lab">API version <span class="info" tabindex="0">i</span><div class="tip">Document Intelligence default: 2024-11-30. Content Understanding default: 2025-11-01.</div></div>
+                  <input id="azureApiVersion" placeholder="e.g. 2025-11-01" />
                 </label>
-                <label id="chunkMultipageRow">
-                  <div class="lab">multipage_sections <span class="info" tabindex="0">i</span><div class="tip">Allow <b>by_title</b> chunks to span multiple pages until the next title.</div></div>
-                  <select id="chunkMultipage">
-                    <option value="">default (true)</option>
-                    <option value="true">true</option>
-                    <option value="false">false</option>
-                  </select>
+                <label>
+                  <div class="lab">Locale <span class="info" tabindex="0">i</span><div class="tip">Locale hint for OCR/analysis (e.g., <code>en-US</code>, <code>ar-AE</code>).</div></div>
+                  <input id="azureLocale" placeholder="e.g. en-US" />
                 </label>
-              </div>
+                <label>
+                  <div class="lab">String index type <span class="info" tabindex="0">i</span><div class="tip">String index type (e.g., <code>unicodeCodePoint</code>).</div></div>
+                  <input id="azureStringIndexType" placeholder="e.g. unicodeCodePoint" />
+                </label>
+                <label>
+                  <div class="lab">Query fields <span class="info" tabindex="0">i</span><div class="tip">Comma-separated fields when using query-based extraction.</div></div>
+                  <input id="azureQueryFields" placeholder="e.g. invoiceDate,total" />
+                </label>
+                <label id="azureAnalyzerRow" class="hidden">
+                  <div class="lab">Analyzer id (Content Understanding) <span class="info" tabindex="0">i</span><div class="tip">Override analyzer for Content Understanding (defaults to <code>prebuilt-documentSearch</code>).</div></div>
+                  <input id="azureAnalyzerId" placeholder="prebuilt-documentSearch" />
+                </label>
+              </details>
             </div>
             <div class="run-actions">
               <button id="cancelRunBtn" class="btn btn-secondary" type="button">Cancel</button>
@@ -473,14 +497,14 @@
       </div>
     </div>
 
-    <script src="/app-state.js?v=20251118-2" defer></script>
-    <script src="/app-ui.js?v=20251118-2" defer></script>
-    <script src="/app-reviews.js?v=20251118-2" defer></script>
-    <script src="/app-overlays.js?v=20251118-2" defer></script>
-    <script src="/app-metrics.js?v=20251118-2" defer></script>
-    <script src="/app-elements.js?v=20251118-2" defer></script>
-    <script src="/app-chunks.js?v=20251118-2" defer></script>
-    <script src="/app-runs.js?v=20251118-2" defer></script>
-    <script src="/app.js?v=20251118-2" defer></script>
+    <script src="/app-state.js?v=20251124" defer></script>
+    <script src="/app-ui.js?v=20251124" defer></script>
+    <script src="/app-reviews.js?v=20251124" defer></script>
+    <script src="/app-overlays.js?v=20251124" defer></script>
+    <script src="/app-metrics.js?v=20251124" defer></script>
+    <script src="/app-elements.js?v=20251124" defer></script>
+    <script src="/app-chunks.js?v=20251124" defer></script>
+    <script src="/app-runs.js?v=20251124" defer></script>
+    <script src="/app.js?v=20251124" defer></script>
   </body>
   </html>

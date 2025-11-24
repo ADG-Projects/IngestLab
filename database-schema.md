@@ -4,6 +4,7 @@ The project does not persist to a database yet. Instead, artifacts are written t
 - `outputs/unstructured/` — Unstructured runs (existing behavior).
 - `outputs/azure/document_intelligence/` and `outputs/azure/content_understanding/` — Azure runs (Document Intelligence Layout and Content Understanding prebuilt analyzers). API endpoints accept an optional `provider` query parameter to resolve the correct directory.
 - Reviews are stored per provider under `<provider_out_dir>/reviews/<slug>.reviews.json`.
+- Azure AnalyzeResult payloads are now coerced via the SDK `as_dict` helper and polygon coordinates are scaled to PDF points (72/in) so overlays line up; rerun any older Azure slices that produced empty `.tables.jsonl` files.
 
 Source PDFs are read from a configurable directory:
 

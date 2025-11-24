@@ -83,11 +83,20 @@ def _bbox_from_polygon(poly: Optional[List[float]]) -> Optional[Tuple[float, flo
     return min(xs), min(ys), max(xs), max(ys)
 
 
-def _coords_from_polygon(poly: Optional[List[float]], layout_w: Optional[float], layout_h: Optional[float]) -> Optional[Dict[str, Any]]:
+def _coords_from_polygon(
+    poly: Optional[List[float]],
+    layout_w: Optional[float],
+    layout_h: Optional[float],
+    unit: Optional[str],
+) -> Optional[Dict[str, Any]]:
     bbox = _bbox_from_polygon(poly or [])
     if not bbox or layout_w is None or layout_h is None:
         return None
     min_x, min_y, max_x, max_y = bbox
+    converted = [_convert_units(v, unit) for v in (min_x, min_y, max_x, max_y)]
+    if any(v is None for v in converted):
+        return None
+    min_x, min_y, max_x, max_y = converted
     return {
         "layout_width": layout_w,
         "layout_height": layout_h,
@@ -131,14 +140,15 @@ def _extract_analyze_result(payload: Any) -> Dict[str, Any]:
     return payload
 
 
-def _page_layouts(an_result: Dict[str, Any]) -> Dict[int, Tuple[Optional[float], Optional[float]]]:
-    layouts: Dict[int, Tuple[Optional[float], Optional[float]]] = {}
+def _page_layouts(an_result: Dict[str, Any]) -> Dict[int, Tuple[Optional[float], Optional[float], Optional[str]]]:
+    layouts: Dict[int, Tuple[Optional[float], Optional[float], Optional[str]]] = {}
     for page in an_result.get("pages") or []:
         num = page.get("page_number") if "page_number" in page else page.get("pageNumber")
-        width = _convert_units(page.get("width"), page.get("unit"))
-        height = _convert_units(page.get("height"), page.get("unit"))
+        unit = page.get("unit")
+        width = _convert_units(page.get("width"), unit)
+        height = _convert_units(page.get("height"), unit)
         if num is not None:
-            layouts[int(num)] = (width, height)
+            layouts[int(num)] = (width, height, unit)
     return layouts
 
 
@@ -147,9 +157,9 @@ def normalize_elements(an_result: Dict[str, Any]) -> List[Dict[str, Any]]:
     layouts = _page_layouts(an_result)
     for page in an_result.get("pages") or []:
         page_num = page.get("page_number") if "page_number" in page else page.get("pageNumber")
-        layout_w, layout_h = layouts.get(int(page_num or 0), (None, None))
+        layout_w, layout_h, unit = layouts.get(int(page_num or 0), (None, None, None))
         for line in page.get("lines") or []:
-            coords = _coords_from_polygon(line.get("polygon"), layout_w, layout_h)
+            coords = _coords_from_polygon(line.get("polygon"), layout_w, layout_h, unit)
             if not coords:
                 continue
             el = {
@@ -160,7 +170,7 @@ def normalize_elements(an_result: Dict[str, Any]) -> List[Dict[str, Any]]:
             ensure_stable_element_id(el)
             elements.append(el)
         for mark in page.get("selection_marks") or page.get("selectionMarks") or []:
-            coords = _coords_from_polygon(mark.get("polygon"), layout_w, layout_h)
+            coords = _coords_from_polygon(mark.get("polygon"), layout_w, layout_h, unit)
             if not coords:
                 continue
             el = {
@@ -175,8 +185,8 @@ def normalize_elements(an_result: Dict[str, Any]) -> List[Dict[str, Any]]:
         regions = table.get("bounding_regions") or table.get("boundingRegions") or []
         region = regions[0] if regions else {}
         page_num = region.get("page_number") if "page_number" in region else region.get("pageNumber")
-        layout_w, layout_h = layouts.get(int(page_num or 0), (None, None))
-        coords = _coords_from_polygon(region.get("polygon"), layout_w, layout_h)
+        layout_w, layout_h, unit = layouts.get(int(page_num or 0), (None, None, None))
+        coords = _coords_from_polygon(region.get("polygon"), layout_w, layout_h, unit)
         html = _table_html(table)
         el = {
             "type": "Table",
@@ -247,7 +257,11 @@ def run_di_analysis(
         logger = getattr(sys.modules.get(__name__), "logger", None)
         if logger:
             logger.info("DI analyze_document completed in %.2fs", time.time() - start)
-        return result.to_dict() if hasattr(result, "to_dict") else result  # type: ignore[no-any-return]
+        if hasattr(result, "as_dict"):
+            return result.as_dict()  # type: ignore[no-any-return]
+        if hasattr(result, "to_dict"):
+            return result.to_dict()  # type: ignore[no-any-return]
+        return result  # type: ignore[no-any-return]
 
 
 def run_cu_analysis(trimmed_pdf: str, api_version: str, analyzer_id: str, endpoint: str, key: str) -> Dict[str, Any]:
