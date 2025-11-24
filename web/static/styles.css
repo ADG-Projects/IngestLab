@@ -1079,11 +1079,18 @@ section.right {
   padding: 8px;
 }
 
-.element-card.element-card-compact .review-buttons {
-  display: none;
+.element-card.element-card-compact .element-card-meta span {
+  font-size: 11px;
 }
 
-.element-card.element-card-compact .element-card-meta span {
+.element-card.element-card-compact .review-buttons {
+  display: inline-flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.element-card.element-card-compact .review-btn {
+  padding: 2px 8px;
   font-size: 11px;
 }
 
