@@ -23,6 +23,16 @@ function outlineCollapseState(page) {
   };
 }
 
+function outlineExpansionState(id) {
+  const map = ELEMENT_OUTLINE_STATE?.expanded || {};
+  return {
+    get: () => !!map[id],
+    set: (v) => {
+      ELEMENT_OUTLINE_STATE.expanded = { ...map, [id]: !!v };
+    },
+  };
+}
+
 function setElementViewMode(mode) {
   const isAzure = isAzureProvider();
   CURRENT_ELEMENT_VIEW_MODE = (mode === 'outline' && isAzure) ? 'outline' : 'flat';
@@ -286,6 +296,36 @@ function renderElementOutline(host, filtered) {
     const cardWrap = document.createElement('div');
     cardWrap.className = 'elements-outline-card';
     const card = buildElementCard(id, entry, review);
+    const canExpand = entry && entry.type === 'Table';
+    let children = [];
+    if (canExpand) {
+      children = findContainedElements(entry, sorted);
+      if (children.length) row.classList.add('outline-has-children');
+    }
+    if (canExpand && children.length) {
+      const state = outlineExpansionState(id);
+      const expanded = state.get();
+      const toggle = document.createElement('button');
+      toggle.type = 'button';
+      toggle.className = 'outline-child-toggle';
+      toggle.textContent = expanded ? 'Hide contents' : 'Show contents';
+      toggle.addEventListener('click', (ev) => {
+        ev.stopPropagation();
+        state.set(!expanded);
+        renderElementsListForCurrentPage(CURRENT_PAGE_BOXES);
+      });
+      cardWrap.appendChild(toggle);
+      if (expanded) {
+        const childWrap = document.createElement('div');
+        childWrap.className = 'elements-outline-children';
+        for (const child of children) {
+          const [cid, centry, creview] = child;
+          const childCard = buildElementCard(cid, centry, creview, { compact: true });
+          childWrap.appendChild(childCard);
+        }
+        cardWrap.appendChild(childWrap);
+      }
+    }
     cardWrap.appendChild(card);
     row.appendChild(cardWrap);
     body.appendChild(row);
@@ -372,9 +412,11 @@ async function findStableIdByOrig(origId, page) {
   return null;
 }
 
-function buildElementCard(id, entry, review) {
+function buildElementCard(id, entry, review, opts = {}) {
+  const compact = !!opts.compact;
   const card = document.createElement('div');
   card.className = 'chunk-card element-card';
+  if (compact) card.classList.add('element-card-compact');
   if (review && review.rating) {
     card.classList.add('has-review');
     card.classList.add(review.rating === 'good' ? 'review-good' : 'review-bad');
@@ -432,4 +474,46 @@ function buildElementCard(id, entry, review) {
     }
   })();
   return card;
+}
+function findContainedElements(parentEntry, items) {
+  if (!parentEntry) return [];
+  const px = Number(parentEntry.x || 0);
+  const py = Number(parentEntry.y || 0);
+  const pw = Number(parentEntry.w || 0);
+  const ph = Number(parentEntry.h || 0);
+  const pw2 = px + pw;
+  const ph2 = py + ph;
+  const page = parentEntry.page_trimmed || parentEntry.page || CURRENT_PAGE;
+  if (!(pw && ph)) return [];
+  const inside = [];
+  for (const item of items) {
+    const [id, entry, review] = item;
+    if (!entry || entry === parentEntry) continue;
+    if ((entry.page_trimmed || entry.page) !== page) continue;
+    const cx = Number(entry.x || 0);
+    const cy = Number(entry.y || 0);
+    const cw = Number(entry.w || 0);
+    const ch = Number(entry.h || 0);
+    if (!(cw && ch)) continue;
+    const cx2 = cx + cw;
+    const cy2 = cy + ch;
+    const margin = 2;
+    const fits =
+      cx >= px - margin &&
+      cy >= py - margin &&
+      cx2 <= pw2 + margin &&
+      cy2 <= ph2 + margin;
+    if (!fits) continue;
+    if (entry.type === 'Paragraph' || entry.type === 'Line') {
+      inside.push(item);
+    }
+  }
+  inside.sort((a, b) => {
+    const ea = a[1] || {};
+    const eb = b[1] || {};
+    const ya = Number(ea.y || 0) - Number(eb.y || 0);
+    if (ya !== 0) return ya;
+    return Number(ea.x || 0) - Number(eb.x || 0);
+  });
+  return inside;
 }

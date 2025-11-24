@@ -1044,8 +1044,47 @@ section.right {
   z-index: 1;
 }
 
+.outline-has-children .outline-badge {
+  border-color: var(--accent);
+}
+
 .elements-outline-card .element-card {
   margin: 0;
+}
+
+.outline-child-toggle {
+  margin-top: 6px;
+  background: #1f2430;
+  border: 1px solid #2a2f38;
+  color: var(--text);
+  border-radius: 8px;
+  padding: 4px 10px;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.outline-child-toggle:hover {
+  border-color: var(--accent);
+}
+
+.elements-outline-children {
+  border-left: 1px dashed #2a2f38;
+  margin-top: 8px;
+  padding-left: 10px;
+  display: grid;
+  gap: 6px;
+}
+
+.element-card.element-card-compact {
+  padding: 8px;
+}
+
+.element-card.element-card-compact .review-buttons {
+  display: none;
+}
+
+.element-card.element-card-compact .element-card-meta span {
+  font-size: 11px;
 }
 
 .element-structure {
