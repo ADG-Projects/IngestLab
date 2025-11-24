@@ -21,7 +21,6 @@ from .routes import (
     pdfs_router,
     reviews_router,
     runs_router,
-    tables_router,
 )
 from .run_jobs import RUN_JOB_MANAGER  # noqa: F401 - ensure job manager thread starts
 
@@ -64,7 +63,6 @@ def healthz() -> Dict[str, Any]:
 
 app.include_router(runs_router)
 app.include_router(pdfs_router)
-app.include_router(tables_router)
 app.include_router(elements_router)
 app.include_router(chunks_router)
 app.include_router(reviews_router)

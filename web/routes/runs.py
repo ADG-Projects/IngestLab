@@ -5,40 +5,33 @@ import logging
 import re
 import sys
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from fastapi import APIRouter, HTTPException, Query
 
 from ..config import (
-    DATASET_DIR,
     DEFAULT_PROVIDER,
     PROVIDERS,
     RES_DIR,
-    ROOT,
-    env_true,
     get_out_dir,
-    latest_by_mtime,
+    env_true,
     relative_to_root,
     safe_pages_tag,
 )
 from ..run_jobs import RUN_JOB_MANAGER
-from .elements import clear_index_cache
 from .reviews import review_file_path
+from .elements import clear_index_cache
 
 router = APIRouter()
 logger = logging.getLogger("chunking.routes.runs")
 
 
-def _parse_matches(p: Path) -> Dict[str, Optional[str]]:
-    stem = p.name[:-len(".json")] if p.name.endswith(".json") else p.stem
-    m = re.match(r"^(?P<slug>.+?)\.pages(?P<range>[0-9_\-,]+)\.matches$", stem)
-    if m:
-        base = m.group("slug")
-        tag = m.group("range")
-        return {"ui_slug": f"{base}.pages{tag}", "base_slug": base, "page_tag": tag}
-    if stem.endswith(".matches"):
-        stem = stem[:-len(".matches")]
-    return {"ui_slug": stem, "base_slug": stem, "page_tag": None}
+def _parse_slug_from_chunk(path: Path) -> Tuple[str, Optional[str]]:
+    stem = path.name[:-len(".chunks.jsonl")] if path.name.endswith(".chunks.jsonl") else path.stem
+    m = re.match(r"^(?P<slug>.+?)\.pages(?P<range>[0-9_\-,]+)$", stem)
+    if not m:
+        return stem, None
+    return f"{m.group('slug')}.pages{m.group('range')}", m.group("range")
 
 
 def discover_runs(provider: Optional[str] = None) -> List[Dict[str, Any]]:
@@ -48,51 +41,28 @@ def discover_runs(provider: Optional[str] = None) -> List[Dict[str, Any]]:
         out_dir = get_out_dir(prov)
         if not out_dir.exists():
             continue
-        matches_files = sorted(out_dir.glob("*.matches.json"), key=lambda p: p.stat().st_mtime, reverse=True)
-        for m in matches_files:
-            meta = _parse_matches(m)
-            ui_slug = meta["ui_slug"] or ""
-            base_slug = meta["base_slug"] or ""
-            page_tag = meta.get("page_tag")
-
-            if page_tag:
-                tables_path = out_dir / f"{base_slug}.pages{page_tag}.tables.jsonl"
-                pdf_path = out_dir / f"{base_slug}.pages{page_tag}.pdf"
-                if not tables_path.exists():
-                    tables_path = None
-                if not pdf_path.exists():
-                    pdf_path = None
-                page_range = (page_tag or "").replace("_", ",") or None
-            else:
-                tables = sorted(out_dir.glob(f"{base_slug}.pages*.tables.jsonl"))
-                pdfs = sorted(out_dir.glob(f"{base_slug}.pages*.pdf"))
-                tables_path = latest_by_mtime(tables)
-                pdf_path = latest_by_mtime(pdfs)
-                page_range = None
-
-            chunk_path = out_dir / f"{ui_slug}.chunks.jsonl"
-            if not chunk_path.exists() and page_tag:
-                candidate = out_dir / f"{base_slug}.pages{page_tag}.chunks.jsonl"
-                if candidate.exists():
-                    chunk_path = candidate
-            if not chunk_path.exists():
-                chunk_path = None
-
-            with m.open("r", encoding="utf-8") as f:
-                matches_json = json.load(f)
-
+        chunk_files = sorted(out_dir.glob("*.chunks.jsonl"), key=lambda p: p.stat().st_mtime, reverse=True)
+        for chunk_file in chunk_files:
+            ui_slug, page_tag = _parse_slug_from_chunk(chunk_file)
+            base_stem = chunk_file.name[:-len(".chunks.jsonl")]
+            pdf_path = out_dir / f"{base_stem}.pdf"
+            meta_path = out_dir / f"{base_stem}.run.json"
+            page_range = (page_tag or "").replace("_", ",") or None
+            run_config: Dict[str, Any] = {}
+            if meta_path.exists():
+                try:
+                    with meta_path.open("r", encoding="utf-8") as fh:
+                        run_config = json.load(fh)
+                except json.JSONDecodeError:
+                    run_config = {}
             runs.append(
                 {
                     "slug": ui_slug,
                     "provider": prov,
-                    "matches_file": relative_to_root(m),
-                    "tables_file": relative_to_root(tables_path) if tables_path else None,
-                    "pdf_file": relative_to_root(pdf_path) if pdf_path else None,
+                    "pdf_file": relative_to_root(pdf_path) if pdf_path.exists() else None,
                     "page_range": page_range,
-                    "overall": matches_json.get("overall", {}),
-                    "chunks_file": relative_to_root(chunk_path) if chunk_path else None,
-                    "chunk_summary": matches_json.get("chunk_summary"),
-                    "run_config": matches_json.get("run_config"),
+                    "chunks_file": relative_to_root(chunk_file),
+                    "run_config": run_config or None,
                 }
             )
 
@@ -121,19 +91,15 @@ def api_runs(provider: Optional[str] = Query(default=None)) -> List[Dict[str, An
 def api_delete_run(slug: str, provider: str = Query(default=DEFAULT_PROVIDER)) -> Dict[str, Any]:
     out_dir = get_out_dir(provider)
     removed: List[str] = []
+    patterns = [f"{slug}.chunks.jsonl", f"{slug}.pdf", f"{slug}.run.json"]
     if ".pages" in slug:
-        for suff in ["matches.json", "tables.jsonl", "pdf", "chunks.jsonl"]:
-            p = out_dir / f"{slug}.{suff}"
+        base, _, rest = slug.partition(".pages")
+        patterns.append(f"{base}.pages{rest}.chunks.jsonl")
+        patterns.append(f"{base}.pages{rest}.pdf")
+        patterns.append(f"{base}.pages{rest}.run.json")
+    for globpat in patterns:
+        for p in out_dir.glob(globpat):
             if p.exists():
-                p.unlink()
-                removed.append(relative_to_root(p))
-    else:
-        m = out_dir / f"{slug}.matches.json"
-        if m.exists():
-            m.unlink()
-            removed.append(relative_to_root(m))
-        for globpat in [f"{slug}.pages*.tables.jsonl", f"{slug}.pages*.pdf", f"{slug}.pages*.chunks.jsonl"]:
-            for p in out_dir.glob(globpat):
                 p.unlink()
                 removed.append(relative_to_root(p))
     try:
@@ -299,23 +265,22 @@ def api_run(payload: Dict[str, Any]) -> Dict[str, Any]:
 
     def build_paths(slug_val: str):
         return (
-            out_dir / f"{slug_val}.{pages_tag}.tables.jsonl",
-            out_dir / f"{slug_val}.{pages_tag}.matches.json",
             out_dir / f"{slug_val}.{pages_tag}.pdf",
             out_dir / f"{slug_val}.{pages_tag}.chunks.jsonl",
+            out_dir / f"{slug_val}.{pages_tag}.run.json",
         )
 
-    tables_out, matches_out, trimmed_out, chunk_out = build_paths(run_slug)
+    trimmed_out, chunk_out, meta_out = build_paths(run_slug)
 
-    if matches_out.exists() or tables_out.exists() or trimmed_out.exists():
+    if trimmed_out.exists() or chunk_out.exists():
         n = 2
         base_variant = run_slug
         while True:
             candidate = f"{base_variant}__r{n}"
-            t_out, m_out, p_out, c_out = build_paths(candidate)
-            if not (m_out.exists() or t_out.exists() or p_out.exists()):
+            p_out, c_out, m_out = build_paths(candidate)
+            if not (c_out.exists() or p_out.exists()):
                 run_slug = candidate
-                tables_out, matches_out, trimmed_out, chunk_out = t_out, m_out, p_out, c_out
+                trimmed_out, chunk_out, meta_out = p_out, c_out, m_out
                 break
             n += 1
 
@@ -330,18 +295,14 @@ def api_run(payload: Dict[str, Any]) -> Dict[str, Any]:
             pages,
             "--strategy",
             strategy or "auto",
-            "--output",
-            str(tables_out),
             "--trimmed-out",
             str(trimmed_out),
-            "--gold",
-            str(DATASET_DIR / "gold.jsonl"),
-            "--emit-matches",
-            str(matches_out),
+            "--chunk-output",
+            str(chunk_out),
         ]
         if not infer_table_structure:
             cmd.append("--no-infer-table-structure")
-        cmd += ["--chunking", chunking, "--chunk-output", str(chunk_out)]
+        cmd += ["--chunking", chunking]
         if chunk_max_characters is not None:
             cmd += ["--chunk-max-characters", str(int(chunk_max_characters))]
         if chunk_new_after_n_chars is not None:
@@ -382,12 +343,10 @@ def api_run(payload: Dict[str, Any]) -> Dict[str, Any]:
             str(input_pdf),
             "--pages",
             pages,
-            "--output",
-            str(tables_out),
             "--trimmed-out",
             str(trimmed_out),
-            "--emit-matches",
-            str(matches_out),
+            "--output",
+            str(chunk_out),
             "--model-id",
             azure_model_id,
             "--api-version",
@@ -431,12 +390,12 @@ def api_run(payload: Dict[str, Any]) -> Dict[str, Any]:
         "raw_tag": raw_tag,
         "primary_language": primary_language,
         "form_snapshot": payload.get("form_snapshot") or {},
-        "tables_path": str(tables_out),
         "trimmed_path": str(trimmed_out),
         "chunk_path": str(chunk_out),
+        "meta_path": str(meta_out),
         "provider": provider,
     }
-    job = RUN_JOB_MANAGER.enqueue(command=cmd, matches_path=matches_out, metadata=job_metadata)
+    job = RUN_JOB_MANAGER.enqueue(command=cmd, metadata=job_metadata)
     job_data = job.to_dict()
     logger.info(
         "Run queued job_id=%s slug=%s provider=%s",
@@ -448,9 +407,8 @@ def api_run(payload: Dict[str, Any]) -> Dict[str, Any]:
         "slug": job_metadata["slug_with_pages"],
         "provider": provider,
         "page_tag": pages_tag,
-        "tables_file": relative_to_root(tables_out) if tables_out.exists() else None,
         "pdf_file": relative_to_root(trimmed_out) if trimmed_out.exists() else None,
-        "matches_file": relative_to_root(matches_out),
         "chunks_file": relative_to_root(chunk_out) if chunk_out.exists() else None,
+        "run_config": job_metadata.get("form_snapshot"),
     }
     return {"status": "queued", "job": job_data, "run": run_stub}

@@ -82,89 +82,6 @@ function chunkBox(chunk) {
   return chunk.bbox || null;
 }
 
-async function highlightForTable(tableMatch, bestOnly = false) {
-  const targets = bestOnly
-    ? [{ element_id: tableMatch.best_element_id, page_trimmed: tableMatch.best_page_trimmed }]
-    : tableMatch.selected_elements;
-
-  LAST_SELECTED_MATCH = tableMatch;
-  LAST_HIGHLIGHT_MODE = bestOnly ? 'best' : 'all';
-  CURRENT_ELEMENT_ID = null;
-  CURRENT_INSPECT_ELEMENT_ID = null;
-
-  const pages = new Set(targets.map(t => t.page_trimmed));
-  const arr = [...pages];
-  let pageToShow = CURRENT_PAGE;
-  if (!pages.has(CURRENT_PAGE) && arr.length) {
-    pageToShow = Math.min(...arr);
-  }
-  if (pageToShow !== CURRENT_PAGE) {
-    await renderPage(pageToShow);
-  }
-  drawTargetsOnPage(pageToShow, tableMatch, bestOnly);
-}
-
-function drawTargetsOnPage(pageNum, tableMatch, bestOnly = false) {
-  clearBoxes();
-  let targets = bestOnly
-    ? [{ element_id: tableMatch.best_element_id, page_trimmed: tableMatch.best_page_trimmed }]
-    : (tableMatch.selected_elements || []);
-
-  const selectedChunkId = CURRENT_ELEMENT_ID;
-  if (selectedChunkId) {
-    const filtered = targets.filter(t => t.element_id === selectedChunkId);
-    if (filtered.length) {
-      targets = filtered;
-    } else if (tableMatch.best_element_id && tableMatch.best_element_id === selectedChunkId) {
-      targets = [{ element_id: selectedChunkId, page_trimmed: tableMatch.best_page_trimmed }];
-    }
-  }
-
-  const ids = Array.from(new Set(targets.map(t => t.element_id).filter(Boolean)));
-  const colorMap = {};
-  ids.forEach((id) => { colorMap[id] = colorForId(id); });
-
-  const chunkTypesPresent = new Set();
-  const elementTypesPresent = new Set();
-
-  for (const t of targets) {
-    if (t.page_trimmed !== pageNum) continue;
-    const ch = CURRENT_CHUNK_LOOKUP[t.element_id];
-    const box = chunkBox(ch);
-    if (!ch || !box) continue;
-    if (box.page_trimmed !== pageNum) continue;
-    const rect = { x: box.x, y: box.y, w: box.w, h: box.h };
-    const isBest = bestOnly || t.element_id === tableMatch.best_element_id;
-    if (SHOW_CHUNK_OVERLAYS) {
-      const meta = {
-        kind: 'chunk',
-        id: t.element_id,
-        type: ch.type,
-        page: box.page_trimmed,
-        chars: ch.char_len,
-      };
-      addBox(rect, box.layout_w, box.layout_h, isBest, ch.type, null, 'chunk', meta);
-      if (ch.type) chunkTypesPresent.add(ch.type);
-    }
-    if (SHOW_ELEMENT_OVERLAYS) {
-      drawOrigBoxesForChunk(t.element_id, pageNum, null);
-      if (ch.orig_boxes) {
-        for (const box of ch.orig_boxes) {
-          if (box.page_trimmed === pageNum && box.type) {
-            const t = String(box.type || '').toLowerCase();
-            if (!t.includes('composite')) {
-              elementTypesPresent.add(box.type);
-            }
-          }
-        }
-      }
-    }
-  }
-
-  const allTypes = new Set([...chunkTypesPresent, ...elementTypesPresent]);
-  updateLegend(Array.from(allTypes));
-}
-
 function drawOrigBoxesForChunk(chunkId, pageNum, color) {
   if (!chunkId || !CURRENT_CHUNK_LOOKUP) return;
   const chunk = CURRENT_CHUNK_LOOKUP[chunkId];
@@ -270,20 +187,11 @@ function drawChunkOverlayForId(chunkId, pageNum) {
 }
 
 function redrawOverlaysForCurrentContext() {
-  if (CURRENT_VIEW === 'inspect') {
-    if (INSPECT_TAB === 'elements') {
-      drawBoxesForCurrentPage();
-      return;
-    }
-    drawChunksModeForPage(CURRENT_PAGE);
+  if (INSPECT_TAB === 'elements') {
+    drawBoxesForCurrentPage();
     return;
   }
-  if (LAST_SELECTED_MATCH) {
-    drawTargetsOnPage(CURRENT_PAGE, LAST_SELECTED_MATCH, LAST_HIGHLIGHT_MODE === 'best');
-  } else {
-    clearBoxes();
-    updateLegend([]);
-  }
+  drawChunksModeForPage(CURRENT_PAGE);
 }
 
 function colorForId(id, idx = 0) {

@@ -1231,59 +1231,6 @@ section.right {
   font-size: 12px;
 }
 
-.metrics {
-  padding: 12px;
-  display: grid;
-  gap: 12px;
-  flex-shrink: 0;
-}
-
-.metric {
-  background: var(--panel);
-  padding: 10px;
-  border-radius: 8px;
-}
-
-.metric .label {
-  color: var(--muted);
-  font-size: 12px;
-  margin-bottom: 6px;
-}
-
-.metric .bar {
-  background: #20242b;
-  border-radius: 6px;
-  height: 8px;
-  overflow: hidden;
-}
-
-.metric .fill {
-  height: 100%;
-  width: 0%;
-  background: linear-gradient(90deg, var(--accent), var(--ok));
-}
-
-.metric .value {
-  text-align: right;
-  color: var(--muted);
-  font-size: 12px;
-  margin-top: 6px;
-}
-
-.chart {
-  padding: 0 12px 12px;
-  flex-shrink: 0;
-}
-
-.matches {
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
-  overflow: hidden;
-}
-
 /* Inspect view controls */
 .inspect-controls {
   display: flex;

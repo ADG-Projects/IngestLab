@@ -410,9 +410,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--provider", choices=["document_intelligence", "content_understanding"], default="document_intelligence", help="Azure provider to use")
     parser.add_argument("--input", required=True, help="Path to input PDF")
     parser.add_argument("--pages", required=True, help="Page ranges, e.g., 1-3 or 2,4")
-    parser.add_argument("--output", required=True, help="Path to write elements JSONL")
+    parser.add_argument("--output", help="Path to write elements JSONL (optional; omit to skip)")
     parser.add_argument("--trimmed-out", required=True, help="Path to write trimmed PDF")
-    parser.add_argument("--emit-matches", required=True, help="Path to write matches JSON")
+    parser.add_argument("--emit-matches", help="(Deprecated) Path to write matches JSON")
     parser.add_argument("--model-id", dest="model_id", required=False, help="Model/Analyzer id")
     parser.add_argument("--api-version", dest="api_version", required=False, help="API version")
     parser.add_argument("--features", help="Comma-separated feature list")
@@ -487,16 +487,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         if primary_detected:
             run_config["detected_primary_language"] = primary_detected
 
-    write_jsonl(args.output, elems)
-    matches_payload = {
-        "matches": [],
-        "overall": {},
-        "run_config": run_config,
-    }
-    Path(args.emit_matches).parent.mkdir(parents=True, exist_ok=True)
-    with open(args.emit_matches, "w", encoding="utf-8") as fh:
-        json.dump(matches_payload, fh, ensure_ascii=False, indent=2)
-        fh.write("\n")
+    if args.output:
+        write_jsonl(args.output, elems)
 
     return 0
 

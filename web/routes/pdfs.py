@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Dict, List
+from typing import Any, Dict, List
 
-from fastapi import APIRouter, HTTPException, UploadFile, File
+from fastapi import APIRouter, HTTPException, UploadFile, File, Query
 from fastapi.responses import FileResponse
 
-from ..config import RES_DIR, relative_to_root, sanitize_pdf_filename
+from ..config import DEFAULT_PROVIDER, RES_DIR, relative_to_root, sanitize_pdf_filename
+from ..file_utils import resolve_slug_file
 
 router = APIRouter()
 
@@ -90,3 +91,9 @@ def pdf_from_res(name: str):
     if not candidate.exists():
         raise HTTPException(status_code=404, detail=f"PDF not found: {name}")
     return FileResponse(str(candidate))
+
+
+@router.get("/pdf/{slug}")
+def pdf_for_slug(slug: str, provider: str = Query(default=None)):
+    path = resolve_slug_file(slug, "{slug}.pages*.pdf", provider=provider or DEFAULT_PROVIDER)
+    return FileResponse(str(path))

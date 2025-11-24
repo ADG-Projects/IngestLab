@@ -30,7 +30,6 @@ def _tail_text(value: Optional[str], limit: int = 8000) -> Optional[str]:
 class RunJob:
     id: str
     command: List[str]
-    matches_path: Path
     metadata: Dict[str, Any] = field(default_factory=dict)
     status: str = "queued"
     created_at: float = field(default_factory=time.time)
@@ -86,14 +85,12 @@ class RunJobManager:
         self,
         *,
         command: List[str],
-        matches_path: Path,
         metadata: Dict[str, Any],
     ) -> RunJob:
         job_id = uuid.uuid4().hex
         job = RunJob(
             id=job_id,
             command=list(command),
-            matches_path=matches_path,
             metadata=dict(metadata),
         )
         job.metadata.setdefault("slug_with_pages", metadata.get("slug_with_pages"))
@@ -138,41 +135,33 @@ class RunJobManager:
         self._finalize_success(job)
 
     def _finalize_success(self, job: RunJob) -> None:
-        matches_path = job.matches_path
-        payload: Optional[Dict[str, Any]]
-        try:
-            with matches_path.open("r", encoding="utf-8") as fh:
-                payload = json.load(fh)
-        except Exception as exc:  # pragma: no cover - corrupted match file
-            payload = None
-            logger.warning("Job %s succeeded but matches file could not be read: %s", job.id, exc)
-
-        if isinstance(payload, dict):
-            run_cfg = payload.get("run_config") or {}
-            form_snapshot = job.metadata.get("form_snapshot") or {}
-            run_cfg["form_snapshot"] = form_snapshot
-            run_cfg["pdf"] = job.metadata.get("pdf_name")
-            run_cfg["pages"] = job.metadata.get("pages")
-            run_cfg["provider"] = job.metadata.get("provider") or DEFAULT_PROVIDER
-            safe_tag = job.metadata.get("safe_tag")
-            raw_tag = job.metadata.get("raw_tag")
-            primary_lang = job.metadata.get("primary_language")
-            if safe_tag:
-                run_cfg["tag"] = safe_tag
-            if raw_tag:
-                run_cfg["variant_tag"] = raw_tag
-            if primary_lang:
-                run_cfg["primary_language"] = primary_lang
-            payload["run_config"] = run_cfg
-            try:
-                with matches_path.open("w", encoding="utf-8") as fh:
-                    json.dump(payload, fh, ensure_ascii=False, indent=2)
-                    fh.write("\n")
-            except Exception as exc:  # pragma: no cover - filesystem edge case
-                logger.warning("Failed to rewrite matches file for job %s: %s", job.id, exc)
-
         slug_with_pages = job.metadata.get("slug_with_pages")
         page_tag = job.metadata.get("pages_tag")
+        run_cfg = {
+            "form_snapshot": job.metadata.get("form_snapshot") or {},
+            "pdf": job.metadata.get("pdf_name"),
+            "pages": job.metadata.get("pages"),
+            "provider": job.metadata.get("provider") or DEFAULT_PROVIDER,
+        }
+        safe_tag = job.metadata.get("safe_tag")
+        raw_tag = job.metadata.get("raw_tag")
+        primary_lang = job.metadata.get("primary_language")
+        meta_path_raw = job.metadata.get("meta_path")
+        if safe_tag:
+            run_cfg["tag"] = safe_tag
+        if raw_tag:
+            run_cfg["variant_tag"] = raw_tag
+        if primary_lang:
+            run_cfg["primary_language"] = primary_lang
+        if meta_path_raw:
+            try:
+                meta_path = Path(meta_path_raw)
+                meta_path.parent.mkdir(parents=True, exist_ok=True)
+                with meta_path.open("w", encoding="utf-8") as fh:
+                    json.dump(run_cfg, fh, ensure_ascii=False, indent=2)
+                    fh.write("\n")
+            except Exception as exc:  # pragma: no cover - best-effort
+                logger.warning("Failed to write run metadata for job %s: %s", job.id, exc)
 
         def _relpath(value: Optional[str]) -> Optional[str]:
             if not value:
@@ -186,10 +175,9 @@ class RunJobManager:
             "slug": slug_with_pages,
             "provider": job.metadata.get("provider", DEFAULT_PROVIDER),
             "page_tag": page_tag,
-            "tables_file": _relpath(job.metadata.get("tables_path")),
             "pdf_file": _relpath(job.metadata.get("trimmed_path")),
-            "matches_file": _relpath(str(matches_path)),
             "chunks_file": _relpath(job.metadata.get("chunk_path")),
+            "run_config": run_cfg,
         }
         job.status = "succeeded"
         logger.info("Chunking job %s succeeded slug=%s", job.id, slug_with_pages)

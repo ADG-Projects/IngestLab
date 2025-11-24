@@ -322,9 +322,8 @@ function renderElementOutline(host, filtered) {
     const cardWrap = document.createElement('div');
     cardWrap.className = 'elements-outline-card';
     const card = buildElementCard(id, entry, review);
-    const canExpand = entry && entry.type === 'Table';
     const children = childMap.get(id) || [];
-    if (canExpand && children.length) {
+    if (children.length) {
       row.classList.add('outline-has-children');
       const state = outlineExpansionState(id);
       const expanded = state.get();

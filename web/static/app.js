@@ -5,9 +5,6 @@ document.addEventListener('DOMContentLoaded', () => {
   if (sel) sel.addEventListener('change', async () => {
     CURRENT_TYPE_FILTER = sel.value || 'All';
     populateTypeSelectors();
-    if (LAST_SELECTED_MATCH && CURRENT_VIEW === 'metrics') {
-      drawTargetsOnPage(CURRENT_PAGE, LAST_SELECTED_MATCH, LAST_HIGHLIGHT_MODE === 'best');
-    }
     await drawBoxesForCurrentPage();
   });
   const reviewSel = $('elementsReviewSelect');

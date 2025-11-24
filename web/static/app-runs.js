@@ -26,25 +26,14 @@ async function loadRun(slug) {
   $('pageCount').textContent = PAGE_COUNT;
   await renderPage(CURRENT_PAGE);
 
-  const matches = await fetchJSON(withProvider(`/api/matches/${encodeURIComponent(slug)}`, CURRENT_PROVIDER));
-  MATCHES = matches;
-  CURRENT_RUN_CONFIG = matches.run_config || CURRENT_RUN?.run_config || null;
-  CURRENT_CHUNK_SUMMARY = matches.chunk_summary || CURRENT_RUN?.chunk_summary || null;
-  if (!CURRENT_RUN_HAS_CHUNKS) {
-    CURRENT_RUN_HAS_CHUNKS = Boolean(CURRENT_CHUNK_SUMMARY);
-  }
-  refreshMatchesView();
+  CURRENT_RUN_CONFIG = CURRENT_RUN?.run_config || null;
+  CURRENT_CHUNK_SUMMARY = CURRENT_RUN?.chunk_summary || null;
   updateRunConfigCard();
   if (CURRENT_RUN_HAS_CHUNKS) {
     await loadChunksForRun(slug, CURRENT_PROVIDER);
   } else {
     CURRENT_CHUNKS = null;
     renderChunksTab();
-  }
-  const showUnmatchedCb = $('showUnmatched');
-  if (showUnmatchedCb && !showUnmatchedCb._wired) {
-    showUnmatchedCb._wired = true;
-    showUnmatchedCb.addEventListener('change', () => { SHOW_UNMATCHED = showUnmatchedCb.checked; refreshMatchesView(); });
   }
   await loadElementTypes(slug, CURRENT_PROVIDER);
   populateTypeSelectors();
@@ -125,7 +114,6 @@ function resetPdfViewer() {
   PAGE_COUNT = 0;
   CURRENT_PAGE = 1;
   CURRENT_PAGE_BOXES = null;
-  LAST_SELECTED_MATCH = null;
   const canvas = $('pdfCanvas');
   if (canvas) {
     const ctx = canvas.getContext('2d');
@@ -152,7 +140,6 @@ function resetPdfViewer() {
 async function init() {
   await loadPdfs();
   wireRunForm();
-  setupViewTabs();
   setupInspectTabs();
   wireModal();
   await (async function waitForPdfjs(maxMs = 5000) {
@@ -170,19 +157,16 @@ async function init() {
     if (!PDF_DOC) return;
     const n = Math.max(1, CURRENT_PAGE - 1);
     await renderPage(n);
-    if (LAST_SELECTED_MATCH) drawTargetsOnPage(n, LAST_SELECTED_MATCH, LAST_HIGHLIGHT_MODE === 'best');
   });
   $('nextPage').addEventListener('click', async () => {
     if (!PDF_DOC) return;
     const n = Math.min(PAGE_COUNT, CURRENT_PAGE + 1);
     await renderPage(n);
-    if (LAST_SELECTED_MATCH) drawTargetsOnPage(n, LAST_SELECTED_MATCH, LAST_HIGHLIGHT_MODE === 'best');
   });
   $('zoom').addEventListener('input', async (e) => {
     SCALE_IS_MANUAL = true;
     SCALE = Number(e.target.value) / 100;
     await renderPage(CURRENT_PAGE);
-    if (LAST_SELECTED_MATCH) drawTargetsOnPage(CURRENT_PAGE, LAST_SELECTED_MATCH, LAST_HIGHLIGHT_MODE === 'best');
   });
   setupReviewChipHandlers();
   $('drawerClose').addEventListener('click', async () => {
@@ -212,7 +196,7 @@ async function init() {
       redrawOverlaysForCurrentContext();
     }
   });
-  switchView(CURRENT_VIEW);
+  switchView('inspect', true);
 }
 
 async function refreshRuns() {
@@ -244,10 +228,6 @@ async function refreshRuns() {
     CURRENT_CHUNK_SUMMARY = null;
     CURRENT_CHUNK_LOOKUP = {};
     resetPdfViewer();
-    const ctx = document.getElementById('chart')?.getContext?.('2d');
-    if (CHART_INSTANCE) { try { CHART_INSTANCE.destroy(); } catch(e){} CHART_INSTANCE=null; }
-    document.getElementById('matchList').innerHTML = '';
-    renderMetrics({ avg_coverage:0, avg_cohesion:0, avg_chunker_f1:0, micro_coverage:0 });
     clearBoxes();
     updateRunConfigCard();
     renderChunksTab();
@@ -307,23 +287,25 @@ function setRunInProgress(isRunning, context = {}) {
   const logs = $('runProgressLogs');
   if (!modal || !runBtn || !status) return;
 
+  const providerName = (context.provider || $('providerSelect')?.value || CURRENT_PROVIDER || '').trim() || 'provider';
+
   if (isRunning) {
     modal.classList.add('running');
     if (formGrid) formGrid.style.display = 'none';
     if (previewPane) previewPane.style.display = 'none';
     if (progressPane) progressPane.style.display = 'block';
     runBtn.disabled = true;
-    runBtn.textContent = 'Running…';
+    runBtn.textContent = `Running (${providerName})…`;
     if (cancelBtn) cancelBtn.disabled = true;
     if (openBtn) {
       openBtn.disabled = true;
-      openBtn.textContent = 'Running…';
+      openBtn.textContent = `Running (${providerName})…`;
     }
     const pdfName = context.pdf || $('pdfSelect')?.value || '';
     if (hint) {
       hint.textContent = pdfName
-        ? `Processing ${pdfName}. This window will close when the run finishes.`
-        : 'Processing PDF. This window will close when the run finishes.';
+        ? `Processing ${pdfName} via ${providerName}. This window will close when the run finishes.`
+        : `Processing PDF via ${providerName}. This window will close when the run finishes.`;
     }
     if (progressTitle) progressTitle.textContent = 'Queued…';
     if (progressStatus) progressStatus.textContent = 'Waiting for worker…';
@@ -350,15 +332,15 @@ function setRunInProgress(isRunning, context = {}) {
   }
 }
 
-function describeJobStatus(detail) {
+function describeJobStatus(detail, providerName = 'provider') {
   const status = detail?.status || 'queued';
   const nowSec = Date.now() / 1000;
   if (status === 'running') {
     if (detail?.started_at) {
       const secs = Math.max(1, Math.round(nowSec - detail.started_at));
-      return `Provider is running (${secs}s elapsed)`;
+      return `${providerName} is running (${secs}s elapsed)`;
     }
-    return 'Provider is running…';
+    return `${providerName} is running…`;
   }
   if (status === 'queued') {
     if (detail?.created_at) {
@@ -377,12 +359,13 @@ function updateRunJobProgress(detail) {
   const status = detail?.status || 'queued';
   const pdfName = detail?.pdf || '';
   const pages = detail?.pages || '';
+  const providerName = (detail?.provider || detail?.result?.provider || CURRENT_PROVIDER || 'provider').trim() || 'provider';
   const titleEl = $('runProgressTitle');
   const hint = $('runProgressHint');
   const statusEl = $('runProgressStatus');
   const logsEl = $('runProgressLogs');
   if (titleEl) {
-    if (status === 'running') titleEl.textContent = 'Provider is running…';
+    if (status === 'running') titleEl.textContent = `${providerName} is running…`;
     else if (status === 'queued') titleEl.textContent = 'Queued…';
     else if (status === 'failed') titleEl.textContent = 'Run failed';
     else if (status === 'succeeded') titleEl.textContent = 'Run completed';
@@ -390,10 +373,10 @@ function updateRunJobProgress(detail) {
   }
   if (hint) {
     const suffix = pages ? `pages ${pages}` : 'all pages';
-    hint.textContent = pdfName ? `Processing ${pdfName} (${suffix})` : 'Processing PDF';
+    hint.textContent = pdfName ? `Processing ${pdfName} (${suffix}) via ${providerName}` : `Processing PDF via ${providerName}`;
   }
   if (statusEl) {
-    statusEl.textContent = describeJobStatus(detail);
+    statusEl.textContent = describeJobStatus(detail, providerName);
   }
   if (logsEl) {
     const logText = detail?.stderr_tail || detail?.stdout_tail || '';
@@ -812,13 +795,6 @@ function switchInspectTab(name, skipRedraw = false) {
   updateReviewSummaryChip();
 }
 
-function setupViewTabs() {
-  const m = $('viewTabMetrics');
-  const i = $('viewTabInspect');
-  if (m) m.addEventListener('click', () => switchView('metrics'));
-  if (i) i.addEventListener('click', () => switchView('inspect'));
-}
-
 function setupReviewChipHandlers() {
   const chip = $('reviewSummaryChip');
   if (!chip) return;
@@ -830,7 +806,6 @@ function setupReviewChipHandlers() {
 }
 
 function handleReviewChipClick(kind) {
-  if (CURRENT_VIEW !== 'inspect') return;
   if (kind === 'chunks') {
     CURRENT_CHUNK_REVIEW_FILTER = 'Reviewed';
     renderChunksTab();
@@ -845,13 +820,11 @@ function handleReviewChipClick(kind) {
 }
 
 function switchView(view, skipRedraw = false) {
-  CURRENT_VIEW = (view === 'inspect') ? 'inspect' : 'metrics';
+  CURRENT_VIEW = 'inspect';
   document.querySelectorAll('.view-tabs .tab').forEach(el => {
     el.classList.toggle('active', el.dataset.view === CURRENT_VIEW);
   });
-  const metricsPane = document.getElementById('right-metrics');
   const inspectPane = document.getElementById('right-inspect');
-  if (metricsPane) metricsPane.classList.toggle('hidden', CURRENT_VIEW !== 'metrics');
   if (inspectPane) inspectPane.classList.toggle('hidden', CURRENT_VIEW !== 'inspect');
   if (!skipRedraw) {
     redrawOverlaysForCurrentContext();

@@ -42,24 +42,6 @@
           }
           return window.pdfjsLib;
         })();
-        window.__chartReady = (async function ensureChartJs(){
-          const sources = [
-            '/vendor/chartjs/chart.umd.min.js',
-            'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js',
-            'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js',
-            'https://unpkg.com/chart.js@4.4.1/dist/chart.umd.min.js',
-          ];
-          for (const src of sources) {
-            try {
-              await loadScript(src);
-              if (window.Chart) return window.Chart;
-            } catch (e) {}
-          }
-          throw new Error('Chart.js failed to load');
-        })().catch(function(err){
-          console.warn('Chart.js failed to load', err);
-          return null;
-        });
         window.__mdReady = (async function ensureMarkdown(){
           async function loadAny(sources, globalName) {
             for (const src of sources) {
@@ -100,8 +82,7 @@
           <span class="version-badge">v2.1</span>
         </div>
         <div class="view-tabs" role="tablist" aria-label="Primary view">
-          <button id="viewTabMetrics" class="tab active" data-view="metrics" role="tab" aria-selected="true">Metrics</button>
-          <button id="viewTabInspect" class="tab" data-view="inspect" role="tab" aria-selected="false">Inspect</button>
+          <button id="viewTabInspect" class="tab active" data-view="inspect" role="tab" aria-selected="true">Inspect</button>
         </div>
       </div>
       <div class="controls">
@@ -217,44 +198,8 @@
         </div>
       </section>
 
-      <!-- Right panel: Metrics view -->
-      <section class="right" id="right-metrics" aria-labelledby="viewTabMetrics">
-        <div class="metrics">
-          <div class="metric">
-            <div class="label">Avg Coverage <span class="info" tabindex="0">i</span><div class="tip">Macro average of per-table coverage (recall): share of gold rows covered by the selected chunks.</div></div>
-            <div class="bar"><div id="mcov" class="fill"></div></div>
-            <div id="mcovv" class="value">-</div>
-          </div>
-          <div class="metric">
-            <div class="label">Avg Cohesion <span class="info" tabindex="0">i</span><div class="tip">Macro average of per-table cohesion = 1 / selected_chunk_count. Maximized when a table stays in a single chunk.</div></div>
-            <div class="bar"><div id="mcoh" class="fill"></div></div>
-            <div id="mcohv" class="value">-</div>
-          </div>
-          <div class="metric">
-            <div class="label">Avg F1 <span class="info" tabindex="0">i</span><div class="tip">Macro average of per-table F1 where F1 = harmonic mean of coverage and cohesion.</div></div>
-            <div class="bar"><div id="mf1" class="fill"></div></div>
-            <div id="mf1v" class="value">-</div>
-          </div>
-          <div class="metric">
-            <div class="label">Micro Coverage <span class="info" tabindex="0">i</span><div class="tip">Coverage weighted by gold-row counts across tables (larger tables contribute more).</div></div>
-            <div class="bar"><div id="mmicro" class="fill"></div></div>
-            <div id="mmicrov" class="value">-</div>
-          </div>
-        </div>
-        <div class="chart">
-          <canvas id="chart"></canvas>
-        </div>
-        <div class="matches">
-          <h2>Tables</h2>
-          <div class="row controls-row">
-            <label class="checkbox"><input id="showUnmatched" type="checkbox" /> Show unmatched gold tables</label>
-          </div>
-          <div id="matchList" class="list"></div>
-        </div>
-      </section>
-
       <!-- Right panel: Inspect view -->
-      <section class="right hidden" id="right-inspect" aria-labelledby="viewTabInspect">
+      <section class="right" id="right-inspect" aria-labelledby="viewTabInspect">
         <div class="tabs inspect-tabs">
           <button class="tab active" data-inspect="elements">Elements</button>
           <button class="tab" data-inspect="chunks">Chunks</button>

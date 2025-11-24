@@ -23,7 +23,7 @@ def clear_index_cache(slug: str, provider: str) -> None:
 
 def _ensure_index(slug: str, provider: str) -> Dict[str, Any]:
     key = _cache_key(slug, provider)
-    path = resolve_slug_file(slug, "{slug}.pages*.tables.jsonl", provider=provider)
+    path = resolve_slug_file(slug, "{slug}.pages*.chunks.jsonl", provider=provider)
     mtime = path.stat().st_mtime
     cached = _INDEX_CACHE.get(key)
     if cached and cached.get("mtime") == mtime and cached.get("path") == path:
@@ -134,7 +134,7 @@ def api_boxes(
 
 
 def _scan_element(slug: str, element_id: str, provider: str) -> Optional[Dict[str, Any]]:
-    path = resolve_slug_file(slug, "{slug}.pages*.tables.jsonl", provider=provider)
+    path = resolve_slug_file(slug, "{slug}.pages*.chunks.jsonl", provider=provider)
     with path.open("r", encoding="utf-8") as f:
         for line in f:
             line = line.strip()
@@ -144,7 +144,8 @@ def _scan_element(slug: str, element_id: str, provider: str) -> Optional[Dict[st
                 obj = json.loads(line)
             except json.JSONDecodeError:
                 continue
-            if obj.get("element_id") == element_id or ((obj.get("metadata") or {}).get("original_element_id") == element_id):
+            md = obj.get("metadata") or {}
+            if obj.get("element_id") == element_id or md.get("original_element_id") == element_id:
                 return obj
     return None
 
@@ -154,7 +155,16 @@ def api_element(slug: str, element_id: str, provider: str = Query(default=None))
     provider_key = provider or DEFAULT_PROVIDER
     obj = _scan_element(slug, element_id, provider_key)
     if not obj:
-        raise HTTPException(status_code=404, detail=f"Element {element_id} not found")
+        return {
+            "element_id": element_id,
+            "type": "Unknown",
+            "page_number": None,
+            "text": "",
+            "text_as_html": None,
+            "expected_cols": None,
+            "coordinates": {},
+            "original_element_id": None,
+        }
     md = obj.get("metadata", {})
     page_num = (
         obj.get("page_number")
