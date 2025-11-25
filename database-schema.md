@@ -8,6 +8,7 @@ The project does not persist to a database yet. Instead, artifacts are written t
 
 Source PDFs are read from a configurable directory:
 
+- **v3.0 (2025-11-24)** – Azure outputs now render markdown safely, flip to RTL when detected, and expose paragraph roles plus outline grouping, while the pipeline ships only trimmed PDFs, chunks JSONL, and run metadata (no Metrics/tables artifacts).
 - **v2.1 (2025-11-18)** – Persist chunking defaults in `run_config` so UI recap bars (and downstream checks) see the actual Unstructured parameters while the pipeline emits only chunk JSONL and trimmed PDFs (no table metrics or matches JSON).
 - **v2.0 (2025-11-17)** – Chunk/element review workflows and the modularized frontend keep overlays/cards in sync while leaving stored outputs and API payloads focused on chunks and elements.
 - **v1.1 (2025-11-17)** – Chunk overlay/drawer refinements; historic metrics view references are now deprecated.
