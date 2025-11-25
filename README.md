@@ -65,7 +65,7 @@ Use `--input-jsonl` when you want to re-evaluate matches from a previously saved
 Set the Azure credentials before running either via CLI or the UI. You can drop them into a local `.env` (see `.env.example`) and they will be auto-loaded by the app and the CLI helpers. Foundry deployments use a single endpoint/key for both providers:
 - `AZURE_FT_ENDPOINT` / `AZURE_FT_KEY`
 
-When Azure language detection is enabled (e.g., including `languages` in the features), detected locales are captured in `run_config` and the UI will flip previews to RTL automatically for Arabic-heavy documents.
+When Azure language detection is enabled (e.g., including `languages` in the features), detected locales are captured in `run_config` (persisted from the pipeline output) so reloading a run flips previews to RTL automatically for Arabic-heavy documents.
 When Azure returns markdown (e.g., `output_content_format=markdown`), the Inspect drawers render the formatted markdown directly and fall back to plain text only when no richer content is present; table HTML still prefers `text_as_html` for accurate column order.
 
 Document Intelligence runs target `api-version=2024-11-30` (v4.0); older service versions are not supported.
@@ -109,6 +109,11 @@ If you ever see Azure `.tables.jsonl` files that are empty, rerun the slice: the
 
 ## Release history
 
+- **v3.2 (2025-11-25)** – Bundled markdown/DOMPurify assets locally with a favicon, persisted Azure detected-language metadata for RTL-aware reloads, and fixed Azure tooltip positioning.
+  - Verification steps:
+    1. `uv run uvicorn main:app --host 127.0.0.1 --port 8765`, load an Azure run with markdown drawers and verify markdown still renders via the bundled assets and favicon shows in the tab.
+    2. Reload an Azure run that includes `detected_languages` and confirm the UI flips to RTL when Arabic is present; inspect the run JSON to see the persisted detection fields.
+    3. Hover tooltips on Azure overlays and confirm the tooltip aligns with the box (no off-by-one drift).
 - **v3.1 (2025-11-25)** – Azure Inspect outline now treats paragraphs as containers for lines/words, keeps table/header/section parents consistent, and defaults nested children to collapsed so opening a parent only reveals one level at a time.
   - Verification steps:
     1. `uv run uvicorn main:app --host 127.0.0.1 --port 8765`, load an Azure Document Intelligence run (e.g., `V3-0_Reviewed.pages1-8`), switch Elements to Outline, and confirm paragraphs nest lines while tables and headers preserve their children lists.

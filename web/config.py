@@ -36,7 +36,11 @@ else:
 
 STATIC_DIR = ROOT / "web" / "static"
 VENDOR_DIR = STATIC_DIR / "vendor" / "pdfjs"
+DOMPURIFY_VENDOR_DIR = STATIC_DIR / "vendor" / "dompurify"
+MARKED_VENDOR_DIR = STATIC_DIR / "vendor" / "marked"
 PDFJS_VERSION = "3.11.174"
+DOMPURIFY_VERSION = "3.1.6"
+MARKED_VERSION = "12.0.2"
 CHART_VENDOR_DIR = STATIC_DIR / "vendor" / "chartjs"
 CHARTJS_VERSION = "4.4.1"
 
@@ -60,6 +64,8 @@ def ensure_dirs() -> None:
     RES_DIR.mkdir(parents=True, exist_ok=True)
     REVIEWS_DIR.mkdir(parents=True, exist_ok=True)
     VENDOR_DIR.mkdir(parents=True, exist_ok=True)
+    DOMPURIFY_VENDOR_DIR.mkdir(parents=True, exist_ok=True)
+    MARKED_VENDOR_DIR.mkdir(parents=True, exist_ok=True)
     CHART_VENDOR_DIR.mkdir(parents=True, exist_ok=True)
     AZURE_OUT_DIR.mkdir(parents=True, exist_ok=True)
     for cfg in PROVIDERS.values():
@@ -156,3 +162,35 @@ def ensure_chartjs_assets() -> None:
             break
         except URLError:
             continue
+
+
+def _ensure_single_file(dest: Path, sources: list[str], min_size: int) -> None:
+    if dest.exists() and dest.stat().st_size > min_size:
+        return
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    for url in sources:
+        try:
+            with urlopen(url, timeout=10) as r:  # nosec - controlled URL
+                data = r.read()
+            if not data:
+                continue
+            with dest.open("wb") as f:
+                f.write(data)
+            break
+        except URLError:
+            continue
+
+
+def ensure_markdown_assets() -> None:
+    dompurify_dest = DOMPURIFY_VENDOR_DIR / "purify.min.js"
+    dompurify_sources = [
+        f"https://cdn.jsdelivr.net/npm/dompurify@{DOMPURIFY_VERSION}/dist/purify.min.js",
+        f"https://unpkg.com/dompurify@{DOMPURIFY_VERSION}/dist/purify.min.js",
+    ]
+    marked_dest = MARKED_VENDOR_DIR / "marked.min.js"
+    marked_sources = [
+        f"https://cdn.jsdelivr.net/npm/marked@{MARKED_VERSION}/marked.min.js",
+        f"https://unpkg.com/marked@{MARKED_VERSION}/marked.min.js",
+    ]
+    _ensure_single_file(dompurify_dest, dompurify_sources, min_size=10_000)
+    _ensure_single_file(marked_dest, marked_sources, min_size=20_000)

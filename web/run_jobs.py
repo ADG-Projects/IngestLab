@@ -137,22 +137,50 @@ class RunJobManager:
     def _finalize_success(self, job: RunJob) -> None:
         slug_with_pages = job.metadata.get("slug_with_pages")
         page_tag = job.metadata.get("pages_tag")
-        run_cfg = {
-            "form_snapshot": job.metadata.get("form_snapshot") or {},
-            "pdf": job.metadata.get("pdf_name"),
-            "pages": job.metadata.get("pages"),
-            "provider": job.metadata.get("provider") or DEFAULT_PROVIDER,
-        }
         safe_tag = job.metadata.get("safe_tag")
         raw_tag = job.metadata.get("raw_tag")
         primary_lang = job.metadata.get("primary_language")
         meta_path_raw = job.metadata.get("meta_path")
+
+        pipeline_meta: Dict[str, Any] = {}
+        if meta_path_raw:
+            try:
+                existing_meta_path = Path(meta_path_raw)
+                if existing_meta_path.exists():
+                    with existing_meta_path.open("r", encoding="utf-8") as fh:
+                        loaded = json.load(fh)
+                        if isinstance(loaded, dict):
+                            pipeline_meta = loaded
+            except Exception as exc:  # pragma: no cover - best-effort
+                logger.warning("Failed to read run metadata for job %s: %s", job.id, exc)
+
+        run_cfg: Dict[str, Any] = {}
+        if isinstance(pipeline_meta, dict):
+            run_cfg.update(pipeline_meta)
+
+        form_snapshot = job.metadata.get("form_snapshot") or {}
+        if not isinstance(form_snapshot, dict):
+            form_snapshot = {}
+        existing_snapshot = run_cfg.get("form_snapshot")
+        if not isinstance(existing_snapshot, dict):
+            existing_snapshot = {}
+        run_cfg["form_snapshot"] = {**existing_snapshot, **form_snapshot}
+
+        def set_default(key: str, value: Any) -> None:
+            if value is None:
+                return
+            if key not in run_cfg or run_cfg[key] is None:
+                run_cfg[key] = value
+
+        set_default("pdf", job.metadata.get("pdf_name"))
+        set_default("pages", job.metadata.get("pages"))
+        set_default("provider", job.metadata.get("provider") or DEFAULT_PROVIDER)
+
         if safe_tag:
-            run_cfg["tag"] = safe_tag
+            set_default("tag", safe_tag)
         if raw_tag:
-            run_cfg["variant_tag"] = raw_tag
-        if primary_lang:
-            run_cfg["primary_language"] = primary_lang
+            run_cfg.setdefault("variant_tag", raw_tag)
+        set_default("primary_language", primary_lang)
         if meta_path_raw:
             try:
                 meta_path = Path(meta_path_raw)

@@ -56,6 +56,16 @@ def write_jsonl(path: Optional[str], elements: List[Dict[str, Any]]) -> None:
             fh.write(json.dumps(el, ensure_ascii=False) + "\n")
 
 
+def write_run_metadata(path: Optional[str], run_config: Dict[str, Any]) -> None:
+    if not path:
+        return
+    p = Path(path)
+    p.parent.mkdir(parents=True, exist_ok=True)
+    with p.open("w", encoding="utf-8") as fh:
+        json.dump(run_config, fh, ensure_ascii=False, indent=2)
+        fh.write("\n")
+
+
 def _convert_units(value: Optional[float], unit: Optional[str]) -> Optional[float]:
     if value is None:
         return None
@@ -424,6 +434,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--primary-language", choices=["eng", "ara"], help="Primary language override")
     parser.add_argument("--ocr-languages", default=None, help="OCR languages hint")
     parser.add_argument("--languages", default=None, help="Comma-separated language hints")
+    parser.add_argument("--run-metadata-out", default=None, help="Optional path to write run metadata with detected languages")
     parser.add_argument("--endpoint", help="Override endpoint")
     parser.add_argument("--key", help="Override API key")
     args = parser.parse_args(argv)
@@ -486,6 +497,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         primary_detected = _pick_primary_detected_language(detected_langs)
         if primary_detected:
             run_config["detected_primary_language"] = primary_detected
+
+    write_run_metadata(args.run_metadata_out, run_config)
 
     if args.output:
         write_jsonl(args.output, elems)

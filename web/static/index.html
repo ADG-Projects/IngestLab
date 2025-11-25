@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Chunking Visualizer</title>
     <link rel="stylesheet" href="/styles.css" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%230a223f'/%3E%3Cpath d='M18 42l14-20 14 20-14-7z' fill='%23f5a524'/%3E%3C/svg%3E" />
     <!-- Prefer local vendor copy (server auto-fetches if missing), fallback to CDN -->
     <script>
       (function() {
@@ -79,7 +80,7 @@
       <div class="header-left">
         <div class="title-stack">
           <h1>Chunking Visualizer</h1>
-          <span class="version-badge">v3.1</span>
+          <span class="version-badge">v3.2</span>
         </div>
         <div class="view-tabs" role="tablist" aria-label="Primary view">
           <button id="viewTabInspect" class="tab active" data-view="inspect" role="tab" aria-selected="true">Inspect</button>
@@ -409,22 +410,22 @@
               <div class="lab">Azure Analyze options</div>
               <div class="azure-options">
                 <div class="opt-group">
-                  <div class="lab sm">Output format</div>
+                  <div class="lab sm">Output format <span class="info" tabindex="0">i</span><div class="tip">Markdown preserves layout and headings; Text returns plain strings. Azure defaults to markdown.</div></div>
                   <label class="radio"><input type="radio" name="azureOutputFormat" value="text" /> Text</label>
                   <label class="radio"><input type="radio" name="azureOutputFormat" value="markdown" checked /> Markdown</label>
                 </div>
                 <div class="opt-group">
-                  <div class="lab sm">Optional output</div>
+                  <div class="lab sm">Optional output <span class="info" tabindex="0">i</span><div class="tip">Attach extracted figure images to the markdown/text response.</div></div>
                   <label class="checkbox"><input type="checkbox" id="azureFigureImage" /> Figure image</label>
                 </div>
                 <div class="opt-group">
-                  <div class="lab sm">Optional detection</div>
+                  <div class="lab sm">Optional detection <span class="info" tabindex="0">i</span><div class="tip">Enable extra detectors: barcodes, language hints, and key-value pairs.</div></div>
                   <label class="checkbox"><input type="checkbox" id="azureBarcodes" /> Barcodes</label>
                   <label class="checkbox"><input type="checkbox" id="azureLanguage" checked /> Language</label>
                   <label class="checkbox"><input type="checkbox" id="azureKvp" /> Key-value pairs</label>
                 </div>
                 <div class="opt-group">
-                  <div class="lab sm">Premium detection</div>
+                  <div class="lab sm">Premium detection <span class="info" tabindex="0">i</span><div class="tip">Paid add-ons: high-res OCR, font/style metadata, and formula detection.</div></div>
                   <label class="checkbox"><input type="checkbox" id="azureHighRes" /> High resolution</label>
                   <label class="checkbox"><input type="checkbox" id="azureStyleFont" /> Style font</label>
                   <label class="checkbox"><input type="checkbox" id="azureFormulas" /> Formulas</label>

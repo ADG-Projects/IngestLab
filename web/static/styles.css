@@ -1751,6 +1751,8 @@ body.drawer-open #right-metrics {
 
 .run-grid .lab .tip {
   pointer-events: none !important;
+  left: 0;
+  right: auto;
 }
 
 /* Modal */
@@ -1803,7 +1805,7 @@ body.drawer-open #right-metrics {
   gap: 0;
   flex: 1;
   min-height: 0;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .run-preview {
@@ -2110,8 +2112,8 @@ body.drawer-open #right-metrics {
 .opt-group .lab.sm {
   font-size: 11px;
   color: var(--muted);
-  text-transform: uppercase;
-  letter-spacing: 0.05em;
+  text-transform: none;
+  letter-spacing: 0.01em;
   margin-bottom: 4px;
 }
 

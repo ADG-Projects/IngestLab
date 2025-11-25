@@ -367,6 +367,7 @@ def api_run(payload: Dict[str, Any]) -> Dict[str, Any]:
             cmd += ["--query-fields", str(azure_query_fields)]
         if analyzer_id and is_azure_cu:
             cmd += ["--analyzer-id", str(analyzer_id)]
+        cmd += ["--run-metadata-out", str(meta_out)]
         if primary_language:
             cmd += ["--primary-language", primary_language]
         if ocr_languages:

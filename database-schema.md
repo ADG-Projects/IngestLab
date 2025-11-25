@@ -17,6 +17,12 @@ Source PDFs are read from a configurable directory:
   - New UI runs now also record a compact “Running” state in the frontend only: while `/api/run` is processing, the New Run modal hides its fields and the header button reflects the in-flight status, but the persisted `run_config.form_snapshot` continues to store the full parameter set as before.
 - `/api/run` enqueues work instead of blocking: the response contains a job descriptor (`id`, `status`, `slug`, `pdf`, `pages`, command preview, stdout/stderr tails). The UI polls `/api/run-jobs/{id}` until the chunker reports `succeeded` or `failed`, and job logs stay cached in memory until the server restarts.
 
+- **v3.2 (2025-11-25)** – Bundled markdown/DOMPurify locally, stored Azure detected-language metadata for RTL-aware reloads, and tightened Azure tooltip alignment.
+- **v3.0 (2025-11-24)** – Azure outputs now render markdown safely, flip to RTL when detected, and expose paragraph roles plus outline grouping, while the pipeline ships only trimmed PDFs, chunks JSONL, and run metadata (no Metrics/tables artifacts).
+- **v2.1 (2025-11-18)** – Persist chunking defaults in `run_config` so UI recap bars (and downstream checks) see the actual Unstructured parameters while the pipeline emits only chunk JSONL and trimmed PDFs (no table metrics or matches JSON).
+- **v2.0 (2025-11-17)** – Chunk/element review workflows and the modularized frontend keep overlays/cards in sync while leaving stored outputs and API payloads focused on chunks and elements.
+- **v1.1 (2025-11-17)** – Chunk overlay/drawer refinements; historic metrics view references are now deprecated.
+
 ## Document JSON layout
 - `source_file`: Absolute path to the processed PDF.
 - `generated_at`: ISO-8601 timestamp (UTC) for the run that created the JSON.
@@ -36,7 +42,7 @@ Source PDFs are read from a configurable directory:
 2. **Run config metadata** (`outputs/<provider>/<doc>.pages<range>.run.json`)
    - `strategy`, `chunking`, `infer_table_structure`
    - `provider`: `unstructured`, `azure-di`, or `azure-cu`. Azure runs also record `model_id`, `api_version`, `features`, `locale`, `string_index_type`, `output_content_format`, `query_fields`, and `analyzer_id` when supplied.
-   - Language hints mirrored from the UI: `primary_language` (`eng` or `ara`), `ocr_languages`, `languages`, and `detect_language_per_element`. Azure runs may also capture `detected_languages` and `detected_primary_language` in their own payloads.
+- Language hints mirrored from the UI: `primary_language` (`eng` or `ara`), `ocr_languages`, `languages`, and `detect_language_per_element`. Azure runs also persist `detected_languages` and `detected_primary_language` from the pipeline when detection is enabled, so reloads can auto-toggle RTL.
    - `chunk_params`: the effective parameters supplied to the chunker. Keys may include `max_characters`, `new_after_n_chars`, `combine_text_under_n_chars`, `overlap`, `include_orig_elements`, `overlap_all`, `multipage_sections`. This object is always populated (even when users rely on defaults), so the UI header can display the actual values used instead of `-`.
    - `form_snapshot` (UI-only): raw values entered in the New Run modal, including convenience fields like `max_tokens` and the original `pdf`, `pages`, and optional `tag`.
 
