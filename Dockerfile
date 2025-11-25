@@ -52,7 +52,13 @@ RUN uv sync --frozen --no-dev && \
 COPY . .
 
 # Ensure a dotenv file is present inside the image (use example if none provided)
-RUN test -f .env || cp .env.example .env
+RUN if [ -f .env ]; then \
+        echo "using existing .env"; \
+    elif [ -f .env.example ]; then \
+        cp .env.example .env; \
+    else \
+        touch .env; \
+    fi
 
 EXPOSE 8000
 
