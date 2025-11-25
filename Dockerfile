@@ -51,6 +51,9 @@ RUN uv sync --frozen --no-dev && \
 # Copy the rest of the application after deps to preserve cached layers
 COPY . .
 
+# Ensure a dotenv file is present inside the image (use example if none provided)
+RUN test -f .env || cp .env.example .env
+
 EXPOSE 8000
 
 CMD ["uv", "run", "python", "main.py"]
