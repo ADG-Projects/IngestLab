@@ -1,6 +1,6 @@
 # ChunkingTests
 
-Local playground for document ingestion experiments. It now supports both the open-source Unstructured chunker and Azure providers (Document Intelligence Layout and Content Understanding Document Search) so you can compare layout/ocr quality side by side.
+Local playground for document ingestion experiments. It now supports both the open-source Unstructured chunker and Azure providers (Document Intelligence Layout; Content Understanding remains CLI-only and is disabled in the UI) so you can compare layout/ocr quality side by side.
 
 Two helper scripts exist today:
 - `process_unstructured.py`: interactive full-document runs against Unstructured.
@@ -147,7 +147,7 @@ uv run uvicorn main:app --host 127.0.0.1 --port 8765
 
 What you get:
 - Inspect view that keeps the PDF visible with overlay toggles and tabs for Chunks and Elements; the Metrics/table visuals are retired in favor of chunk-first inspection.
-- Provider-aware runs: pick Unstructured, Azure Document Intelligence (Layout), or Azure Content Understanding (Document Search) in the New Run modal. Azure runs hide chunking controls and expose model id, API version, features, locale, string index type, content format, query fields, and (for CU) analyzer id. Outputs live under `outputs/azure/...`.
+- Provider-aware runs: pick Unstructured or Azure Document Intelligence (Layout) in the New Run modal. (Azure Content Understanding is disabled in the UI; use the CLI helper if needed.) Azure runs hide chunking controls and expose model id, API version, features, locale, string index type, content format, and query fields. Outputs live under `outputs/azure/...`.
 - A compact single-line settings recap with rich tooltips for each parameter; the New Run modal mirrors the same tooltips so behavior is clear where you edit values.
 - Overlay UX: hover for ID/type/page/tooltips; colors are fixed per element type; chunk overlays honor Type/Review filters and redraw immediately; Azure polygons stay scaled to PDF points; the Elements outline groups Azure pageHeader/pageNumber/Tables/Paragraphs/Lines by page order with breadcrumbs in drawers.
 - Reviews: leave Good/Bad ratings with optional notes for any chunk or element, filter by rating, and use the header chip to jump into scored items.

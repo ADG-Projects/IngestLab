@@ -99,7 +99,7 @@
     <!-- Settings Recap Bar -->
     <div id="settingsRecap" class="settings-recap">
       <div class="setting-item">
-        <span class="setting-label">PROV <span class="info" tabindex="0">i</span><div class="tip">Run provider: Unstructured chunker, Azure Document Intelligence Layout, or Azure Content Understanding Document Search.</div></span>
+        <span class="setting-label">PROV <span class="info" tabindex="0">i</span><div class="tip">Run provider: Unstructured chunker or Azure Document Intelligence Layout (Content Understanding is disabled in the UI).</div></span>
         <span class="setting-value" id="settingProvider">-</span>
       </div>
       <div class="setting-item">
@@ -306,11 +306,11 @@
                 </select>
               </label>
               <label class="provider-picker">
-                <div class="lab">Provider <span class="info" tabindex="0">i</span><div class="tip">Unstructured keeps chunking; Azure options run Document Intelligence or Content Understanding and return layout-only elements.</div></div>
+                <div class="lab">Provider <span class="info" tabindex="0">i</span><div class="tip">Unstructured keeps chunking; Azure runs use Document Intelligence (Document Understanding is currently disabled in the UI).</div></div>
                 <select id="providerSelect">
                   <option value="unstructured">Unstructured</option>
                   <option value="azure-di">Azure Document Intelligence (Layout)</option>
-                  <option value="azure-cu">Azure Content Understanding (Document Search)</option>
+                  <option value="azure-cu" disabled>Azure Content Understanding (disabled)</option>
                 </select>
               </label>
             </div>
@@ -433,12 +433,12 @@
               <details class="azure-advanced">
                 <summary>Advanced (model, API version, locale…)</summary>
                 <label>
-                  <div class="lab">Model id / Analyzer <span class="info" tabindex="0">i</span><div class="tip">Document Intelligence defaults to <code>prebuilt-layout</code>. Content Understanding defaults to <code>prebuilt-documentSearch</code>.</div></div>
-                  <input id="azureModelId" placeholder="prebuilt-layout or prebuilt-documentSearch" />
+                  <div class="lab">Model id <span class="info" tabindex="0">i</span><div class="tip">Document Intelligence defaults to <code>prebuilt-layout</code>.</div></div>
+                  <input id="azureModelId" placeholder="prebuilt-layout" />
                 </label>
                 <label>
-                  <div class="lab">API version <span class="info" tabindex="0">i</span><div class="tip">Document Intelligence default: 2024-11-30. Content Understanding default: 2025-11-01.</div></div>
-                  <input id="azureApiVersion" placeholder="e.g. 2025-11-01" />
+                  <div class="lab">API version <span class="info" tabindex="0">i</span><div class="tip">Document Intelligence default: 2024-11-30.</div></div>
+                  <input id="azureApiVersion" placeholder="e.g. 2024-11-30" />
                 </label>
                 <label>
                   <div class="lab">Locale <span class="info" tabindex="0">i</span><div class="tip">Locale hint for OCR/analysis (e.g., <code>en-US</code>, <code>ar-AE</code>).</div></div>
@@ -451,10 +451,6 @@
                 <label>
                   <div class="lab">Query fields <span class="info" tabindex="0">i</span><div class="tip">Comma-separated fields when using query-based extraction.</div></div>
                   <input id="azureQueryFields" placeholder="e.g. invoiceDate,total" />
-                </label>
-                <label id="azureAnalyzerRow" class="hidden">
-                  <div class="lab">Analyzer id (Content Understanding) <span class="info" tabindex="0">i</span><div class="tip">Override analyzer for Content Understanding (defaults to <code>prebuilt-documentSearch</code>).</div></div>
-                  <input id="azureAnalyzerId" placeholder="prebuilt-documentSearch" />
                 </label>
               </details>
             </div>

@@ -460,12 +460,11 @@ function wireRunForm() {
   const unstructuredBlocks = document.querySelectorAll('.unstructured-only');
   const azureHideables = document.querySelectorAll('.azure-hidden');
   const azureSettings = $('azureSettings');
-  const azureAnalyzerRow = $('azureAnalyzerRow');
   const toggleAdv = () => {
     const chunkVal = chunkSel ? chunkSel.value : 'by_title';
     const isByTitle = chunkVal === 'by_title';
     const isNone = chunkVal === 'none';
-    
+
     if (combineRow) combineRow.classList.toggle('hidden', !isByTitle);
     if (multipageRow) multipageRow.classList.toggle('hidden', !isByTitle);
     
@@ -478,13 +477,17 @@ function wireRunForm() {
     toggleAdv();
   }
   const handleProviderChange = () => {
-    const val = providerSel ? providerSel.value : 'unstructured';
+    const rawVal = providerSel ? providerSel.value : 'unstructured';
+    const val = rawVal === 'azure-cu' ? 'azure-di' : rawVal;
+    if (providerSel && providerSel.value !== val) {
+      // Keep legacy runs viewable but block new runs for the disabled provider
+      providerSel.value = val;
+    }
     CURRENT_PROVIDER = val || 'unstructured';
     const isUnstructured = val === 'unstructured';
     const isAzure = !isUnstructured;
     unstructuredBlocks.forEach((el) => { if (el) el.classList.toggle('hidden', !isUnstructured); });
     if (azureSettings) azureSettings.classList.toggle('hidden', isUnstructured);
-    if (azureAnalyzerRow) azureAnalyzerRow.classList.toggle('hidden', val !== 'azure-cu');
     azureHideables.forEach((el) => { if (el) el.classList.toggle('hidden', isAzure); });
   };
   if (providerSel) providerSel.addEventListener('change', handleProviderChange);
@@ -548,9 +551,15 @@ function wireRunForm() {
   $('runBtn').addEventListener('click', async () => {
     const status = $('runStatus');
     status.textContent = '';
-    const isAzure = (providerSel ? providerSel.value : 'unstructured') !== 'unstructured';
+    const providerVal = providerSel ? providerSel.value : 'unstructured';
+    if (providerVal === 'azure-cu') {
+      status.textContent = 'Document Understanding is disabled in the UI';
+      return;
+    }
+    const provider = providerVal || 'unstructured';
+    const isAzure = provider !== 'unstructured';
     const payload = {
-      provider: providerSel ? providerSel.value : 'unstructured',
+      provider,
       pdf: $('pdfSelect').value,
       pages: $('pagesInput').value.trim(),
     };
@@ -634,9 +643,6 @@ function wireRunForm() {
       payload.locale = ($('azureLocale')?.value || '').trim();
       payload.string_index_type = ($('azureStringIndexType')?.value || '').trim();
       payload.query_fields = ($('azureQueryFields')?.value || '').trim();
-      if (payload.provider === 'azure-cu') {
-        payload.analyzer_id = ($('azureAnalyzerId')?.value || '').trim();
-      }
     }
     payload.form_snapshot = {
       pdf: payload.pdf,
@@ -668,7 +674,6 @@ function wireRunForm() {
       payload.form_snapshot.locale = payload.locale;
       payload.form_snapshot.string_index_type = payload.string_index_type;
       payload.form_snapshot.query_fields = payload.query_fields;
-      payload.form_snapshot.analyzer_id = payload.analyzer_id;
     }
     setRunInProgress(true, { pdf: payload.pdf });
     let jobId = null;
