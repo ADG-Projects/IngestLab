@@ -46,6 +46,11 @@ CHARTJS_VERSION = "4.4.1"
 
 PROVIDERS = {
     "unstructured": {"id": "unstructured", "label": "Unstructured", "out_dir": OUT_DIR},
+    "unstructured-partition": {
+        "id": "unstructured-partition",
+        "label": "Unstructured Partition (API)",
+        "out_dir": OUT_DIR / "partition_api",
+    },
     "azure-di": {
         "id": "azure-di",
         "label": "Azure Document Intelligence",

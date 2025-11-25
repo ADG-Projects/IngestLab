@@ -1,10 +1,13 @@
 # TODO
 
 ## Upcoming
+- [ ] Render extracted image previews in element details for Unstructured runs when image payloads are present.
 - [ ] Verify Azure Content Understanding overlays align with trimmed PDFs and log any analyzer-specific quirks.
 - [ ] Remove leftover references to metrics/tables in UI modules (app-metrics.js import vestigial; ensure CSS/tooling stay lean).
 
 ## Completed
+- [x] 2025-11-25 Release v4.0 (Unstructured Partition API provider + Docker base swap to ECR Public).
+- [x] 2025-11-25 Add Unstructured Partition (API) provider (elements-only runs via UI/API).
 - [x] 2025-11-25 Release v3.2 (bundled markdown/DOMPurify assets + favicon, persisted Azure detected-language metadata with RTL flips, and aligned Azure tooltips).
 - [x] 2025-11-25 Persist Azure detected languages into run metadata so reloading runs auto-flips between English and Arabic previews.
 - [x] 2025-11-25 Collapse Azure element outline by default and allow paragraph/line nesting so parents only expand one level at a time.

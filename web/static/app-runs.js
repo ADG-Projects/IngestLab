@@ -5,6 +5,7 @@ async function loadRun(slug) {
   CURRENT_SLUG = slug;
   CURRENT_RUN = (RUNS_CACHE || []).find(r => r.slug === slug) || null;
   CURRENT_PROVIDER = (CURRENT_RUN && CURRENT_RUN.provider) || CURRENT_PROVIDER || 'unstructured';
+  setChunksTabVisible(CURRENT_PROVIDER !== 'unstructured-partition');
   const providerSel = $('providerSelect');
   if (providerSel) {
     providerSel.value = CURRENT_PROVIDER;
@@ -332,6 +333,16 @@ function setRunInProgress(isRunning, context = {}) {
   }
 }
 
+function setChunksTabVisible(show) {
+  const tab = document.querySelector('.inspect-tabs .tab[data-inspect=\"chunks\"]');
+  const pane = document.getElementById('pane-inspect-chunks');
+  if (tab) tab.classList.toggle('hidden', !show);
+  if (pane) pane.classList.toggle('hidden', !show);
+  if (!show && INSPECT_TAB === 'chunks') {
+    switchInspectTab('elements', true);
+  }
+}
+
 function describeJobStatus(detail, providerName = 'provider') {
   const status = detail?.status || 'queued';
   const nowSec = Date.now() / 1000;
@@ -460,6 +471,26 @@ function wireRunForm() {
   const unstructuredBlocks = document.querySelectorAll('.unstructured-only');
   const azureHideables = document.querySelectorAll('.azure-hidden');
   const azureSettings = $('azureSettings');
+  const updateStrategyOptions = (provider) => {
+    const sel = $('strategySelect');
+    if (!sel) return;
+    const allowedUnstructured = new Set(['auto', 'fast', 'hi_res']);
+    const allowedPartition = new Set(['auto', 'fast', 'hi_res', 'ocr_only', 'vlm']);
+    const allowed = provider === 'unstructured'
+      ? allowedUnstructured
+      : (provider === 'unstructured-partition' ? allowedPartition : allowedUnstructured);
+    let current = sel.value;
+    for (const opt of sel.options) {
+      const ok = allowed.has(opt.value);
+      opt.disabled = !ok;
+    }
+    if (!allowed.has(current)) {
+      const first = sel.querySelector('option:not([disabled])');
+      if (first) {
+        sel.value = first.value;
+      }
+    }
+  };
   const toggleAdv = () => {
     const chunkVal = chunkSel ? chunkSel.value : 'by_title';
     const isByTitle = chunkVal === 'by_title';
@@ -485,10 +516,23 @@ function wireRunForm() {
     }
     CURRENT_PROVIDER = val || 'unstructured';
     const isUnstructured = val === 'unstructured';
-    const isAzure = !isUnstructured;
-    unstructuredBlocks.forEach((el) => { if (el) el.classList.toggle('hidden', !isUnstructured); });
-    if (azureSettings) azureSettings.classList.toggle('hidden', isUnstructured);
+    const isPartition = val === 'unstructured-partition';
+    const isUnstructuredFamily = isUnstructured || isPartition;
+    const isAzure = val.startsWith('azure');
+    unstructuredBlocks.forEach((el) => { if (el) el.classList.toggle('hidden', !isUnstructuredFamily); });
+    if (azureSettings) azureSettings.classList.toggle('hidden', isUnstructuredFamily);
     azureHideables.forEach((el) => { if (el) el.classList.toggle('hidden', isAzure); });
+    if (chunkSel) {
+      if (isPartition) {
+        chunkSel.value = 'none';
+        chunkSel.disabled = true;
+      } else {
+        chunkSel.disabled = false;
+      }
+      toggleAdv();
+    }
+    setChunksTabVisible(!isPartition);
+    updateStrategyOptions(CURRENT_PROVIDER);
   };
   if (providerSel) providerSel.addEventListener('change', handleProviderChange);
   handleProviderChange();
@@ -557,7 +601,10 @@ function wireRunForm() {
       return;
     }
     const provider = providerVal || 'unstructured';
-    const isAzure = provider !== 'unstructured';
+    const isAzure = provider.startsWith('azure');
+    const isPartition = provider === 'unstructured-partition';
+    const isUnstructured = provider === 'unstructured';
+    const isUnstructuredFamily = isUnstructured || isPartition;
     const payload = {
       provider,
       pdf: $('pdfSelect').value,
@@ -599,7 +646,7 @@ function wireRunForm() {
       if (val === '') return null;
       return val === 'true';
     };
-    if (payload.provider === 'unstructured') {
+    if (isUnstructured) {
       payload.strategy = $('strategySelect').value;
       payload.infer_table_structure = $('inferTables').checked;
       payload.chunking = $('chunkingSelect').value;
@@ -666,6 +713,10 @@ function wireRunForm() {
       payload.form_snapshot.include_orig_elements = parseBoolSelect('chunkIncludeOrig');
       payload.form_snapshot.overlap_all = parseBoolSelect('chunkOverlapAll');
       payload.form_snapshot.multipage_sections = parseBoolSelect('chunkMultipage');
+    } else if (isPartition) {
+      payload.strategy = $('strategySelect')?.value || 'auto';
+      payload.form_snapshot.strategy = payload.strategy;
+      payload.form_snapshot.provider = payload.provider;
     } else {
       payload.form_snapshot.features = payload.features;
       payload.form_snapshot.output_content_format = payload.output_content_format;

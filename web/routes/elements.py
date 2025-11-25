@@ -47,14 +47,16 @@ def _ensure_index(slug: str, provider: str) -> Dict[str, Any]:
             md = obj.get("metadata", {})
             coords = (md.get("coordinates") or {})
             pts = coords.get("points") or []
-            if not element_id or not pts:
+            if not element_id:
                 continue
-            xs = [p[0] for p in pts]
-            ys = [p[1] for p in pts]
-            x = min(xs)
-            y = min(ys)
-            w = max(xs) - x
-            h = max(ys) - y
+            x = y = w = h = None
+            if pts:
+                xs = [p[0] for p in pts]
+                ys = [p[1] for p in pts]
+                x = min(xs)
+                y = min(ys)
+                w = max(xs) - x
+                h = max(ys) - y
             page_trimmed = (
                 obj.get("page_number")
                 or md.get("page_number")
@@ -64,10 +66,10 @@ def _ensure_index(slug: str, provider: str) -> Dict[str, Any]:
                 "page_trimmed": page_trimmed,
                 "layout_w": coords.get("layout_width"),
                 "layout_h": coords.get("layout_height"),
-                "x": x,
-                "y": y,
-                "w": w,
-                "h": h,
+                "x": x if x is not None else 0,
+                "y": y if y is not None else 0,
+                "w": w if w is not None else 0,
+                "h": h if h is not None else 0,
                 "type": el_type,
                 "orig_id": md.get("original_element_id"),
             }

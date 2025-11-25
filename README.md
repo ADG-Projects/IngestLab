@@ -1,6 +1,6 @@
 # ChunkingTests
 
-Local playground for document ingestion experiments. It now supports both the open-source Unstructured chunker and Azure providers (Document Intelligence Layout; Content Understanding remains CLI-only and is disabled in the UI) so you can compare layout/ocr quality side by side.
+Local playground for document ingestion experiments. It now supports the open-source Unstructured chunker, the hosted Unstructured Partition API (elements-only), and Azure providers (Document Intelligence Layout; Content Understanding remains CLI-only and is disabled in the UI) so you can compare layout/ocr quality side by side.
 
 Two helper scripts exist today:
 - `process_unstructured.py`: interactive full-document runs against Unstructured.
@@ -20,6 +20,18 @@ uv sync
 ```
 
 `uv sync` creates a `.venv` in the project root and installs all required packages, including `unstructured[pdf]` and `azure-ai-documentintelligence`.
+
+### Unstructured Partition (API) credentials
+
+Set the hosted Partition API base URL and key (elements-only provider) in your environment or `.env`:
+
+```
+UNSTRUCTURED_PARTITION_API_URL=https://api.unstructured.io/general/v0/general
+UNSTRUCTURED_PARTITION_API_KEY=<your-key>
+```
+
+If you omit these, the Partition provider will fail fast in the worker.
+The Partition provider uses the official SDK client, fetches coordinates, and emits elements-only artifacts (the UI hides the Chunks tab for this provider but still renders overlays from the returned elements). Strategies available: `auto`, `fast`, `hi_res`, `ocr_only`, and `vlm`.
 
 ## Process a PDF
 
@@ -109,6 +121,11 @@ If you ever see Azure `.tables.jsonl` files that are empty, rerun the slice: the
 
 ## Release history
 
+- **v4.0 (2025-11-25)** – Added the Unstructured Partition (hosted) provider for elements-only runs in the UI/API and switched the Docker base image to ECR Public to avoid Docker Hub rate limits.
+  - Verification steps:
+    1. `uv run uvicorn main:app --host 127.0.0.1 --port 8765`, start a New Run with provider `Unstructured Partition (API)`, and confirm the UI processes elements-only (chunks tab hidden) while overlays render from returned elements.
+    2. Inspect the generated artifacts under `outputs/unstructured/partition_api/` to confirm the run JSON and elements JSONL are stored without chunk outputs.
+    3. `docker build -t chunking-tests:4.0 .` and verify the base image pulls from ECR Public without Docker Hub rate limit warnings.
 - **v3.2 (2025-11-25)** – Bundled markdown/DOMPurify assets locally with a favicon, persisted Azure detected-language metadata for RTL-aware reloads, and fixed Azure tooltip positioning.
   - Verification steps:
     1. `uv run uvicorn main:app --host 127.0.0.1 --port 8765`, load an Azure run with markdown drawers and verify markdown still renders via the bundled assets and favicon shows in the tab.
@@ -157,7 +174,7 @@ uv run uvicorn main:app --host 127.0.0.1 --port 8765
 
 What you get:
 - Inspect view that keeps the PDF visible with overlay toggles and tabs for Chunks and Elements; the Metrics/table visuals are retired in favor of chunk-first inspection.
-- Provider-aware runs: pick Unstructured or Azure Document Intelligence (Layout) in the New Run modal. (Azure Content Understanding is disabled in the UI; use the CLI helper if needed.) Azure runs hide chunking controls and expose model id, API version, features, locale, string index type, content format, and query fields. Outputs live under `outputs/azure/...`.
+- Provider-aware runs: pick Unstructured (local), Unstructured Partition (API, elements-only), or Azure Document Intelligence (Layout) in the New Run modal. (Azure Content Understanding is disabled in the UI; use the CLI helper if needed.) Azure runs hide chunking controls and expose model id, API version, features, locale, string index type, content format, and query fields. Outputs live under `outputs/azure/...`.
 - A compact single-line settings recap with rich tooltips for each parameter; the New Run modal mirrors the same tooltips so behavior is clear where you edit values.
 - Overlay UX: hover for ID/type/page/tooltips; colors are fixed per element type; chunk overlays honor Type/Review filters and redraw immediately; Azure polygons stay scaled to PDF points; the Elements outline groups Azure pageHeader/pageNumber/Tables/Paragraphs/Lines by page order with breadcrumbs in drawers.
 - Reviews: leave Good/Bad ratings with optional notes for any chunk or element, filter by rating, and use the header chip to jump into scored items.
@@ -189,8 +206,9 @@ Endpoints (served by FastAPI):
 - `POST /api/run` — execute a new run. Body:
   - `pdf` (string, required): filename under `res/`.
   - `pages` (string, optional): page list/range (e.g., `4-6`, `4,5,6`). If omitted or blank, the server processes the entire document (equivalent to `1-<num_pages>`). The server trims the PDF first and only processes those pages.
-  - `provider` (`unstructured|azure-di|azure-cu`, default `unstructured`).
+  - `provider` (`unstructured|unstructured-partition|azure-di|azure-cu`, default `unstructured`).
   - Unstructured: `strategy` (`auto|fast|hi_res`, default `auto`); `infer_table_structure` (bool, default `true`); `chunking` (`basic|by_title`, default `by_title`) plus the chunking knobs (`chunk_max_characters`, `chunk_new_after_n_chars`, `chunk_overlap`, `chunk_include_orig_elements`, `chunk_overlap_all`, `chunk_combine_under_n_chars`, `chunk_multipage_sections`).
+  - Unstructured Partition (API): elements-only; honors `strategy` (`auto|fast|hi_res`) and optional `languages` while emitting raw element lines in `*.chunks.jsonl` (no local chunking is applied).
   - Azure: `model_id`, `api_version`, `features`, `locale`, `string_index_type`, `output_content_format`, `query_fields`, and (for Content Understanding) `analyzer_id`. Chunking flags are ignored for Azure providers.
   - Response: immediately returns a `job` payload (`id`, `status`, `command`, log tails) instead of blocking until the chunker finishes. Use `/api/run-jobs/{id}` to poll; the UI already handles this automatically.
 

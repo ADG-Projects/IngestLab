@@ -126,21 +126,30 @@ def api_run(payload: Dict[str, Any]) -> Dict[str, Any]:
         raise HTTPException(status_code=400, detail="Field 'pdf' is required")
 
     is_unstructured = provider == "unstructured"
+    is_unstructured_partition = provider == "unstructured-partition"
     is_azure_di = provider == "azure-di"
     is_azure_cu = provider == "azure-cu"
 
     strategy = str(payload.get("strategy") or "auto")
+    allowed_partition_strategies = {"auto", "fast", "hi_res", "ocr_only", "vlm"}
+    allowed_unstructured_strategies = {"auto", "fast", "hi_res"}
     if is_unstructured:
-        if strategy not in {"auto", "fast", "hi_res"}:
-            raise HTTPException(status_code=400, detail="strategy must be one of: auto, fast, hi_res")
-        if env_true("DISABLE_HI_RES"):
-            if strategy in {"auto", "hi_res"}:
-                strategy = "fast"
+        if strategy not in allowed_unstructured_strategies:
+            raise HTTPException(status_code=400, detail=f"strategy must be one of: {', '.join(sorted(allowed_unstructured_strategies))}")
+        if env_true("DISABLE_HI_RES") and strategy in {"auto", "hi_res"}:
+            strategy = "fast"
+    elif is_unstructured_partition:
+        if strategy not in allowed_partition_strategies:
+            raise HTTPException(status_code=400, detail=f"strategy must be one of: {', '.join(sorted(allowed_partition_strategies))}")
+        if env_true("DISABLE_HI_RES") and strategy in {"auto", "hi_res"}:
+            strategy = "fast"
     else:
         strategy = None
 
     infer_table_structure = bool(payload.get("infer_table_structure", True)) if is_unstructured else True
     chunking = str(payload.get("chunking") or "none") if is_unstructured else "none"
+    if is_unstructured_partition:
+        chunking = "none"
     if is_unstructured and chunking not in {"basic", "by_title", "none"}:
         raise HTTPException(status_code=400, detail="chunking must be one of: basic, by_title, none")
 
@@ -331,6 +340,26 @@ def api_run(payload: Dict[str, Any]) -> Dict[str, Any]:
             cmd.append("--detect-language-per-element")
         if primary_language:
             cmd += ["--primary-language", primary_language]
+    elif is_unstructured_partition:
+        cmd = [
+            sys.executable,
+            "-m",
+            "chunking_pipeline.unstructured_partition_pipeline",
+            "--input",
+            str(input_pdf),
+            "--pages",
+            pages,
+            "--strategy",
+            strategy or "auto",
+            "--trimmed-out",
+            str(trimmed_out),
+            "--chunk-output",
+            str(chunk_out),
+            "--run-metadata-out",
+            str(meta_out),
+        ]
+        if languages:
+            cmd += ["--languages", ",".join(languages)]
     else:
         azure_provider = "document_intelligence" if is_azure_di else "content_understanding"
         cmd = [

@@ -2,12 +2,14 @@
 
 The project does not persist to a database yet. Instead, artifacts are written to `outputs/`:
 - `outputs/unstructured/` — Unstructured runs (existing behavior).
+- `outputs/unstructured/partition_api/` — Unstructured Partition (hosted API) runs (elements-only; no local chunking).
 - `outputs/azure/document_intelligence/` and `outputs/azure/content_understanding/` — Azure runs (Document Intelligence Layout and Content Understanding prebuilt analyzers). API endpoints accept an optional `provider` query parameter to resolve the correct directory.
 - Reviews are stored per provider under `<provider_out_dir>/reviews/<slug>.reviews.json`.
 - Azure AnalyzeResult payloads are now coerced via the SDK `as_dict` helper and polygon coordinates are scaled to PDF points (72/in) so overlays line up; rerun any older Azure slices that produced empty `.tables.jsonl` files.
 
 Source PDFs are read from a configurable directory:
 
+- **v4.0 (2025-11-25)** – Added Unstructured Partition (hosted API) support as elements-only runs alongside existing outputs, keeping chunk artifacts limited to local Unstructured/Azure providers.
 - **v3.0 (2025-11-24)** – Azure outputs now render markdown safely, flip to RTL when detected, and expose paragraph roles plus outline grouping, while the pipeline ships only trimmed PDFs, chunks JSONL, and run metadata (no Metrics/tables artifacts).
 - **v2.1 (2025-11-18)** – Persist chunking defaults in `run_config` so UI recap bars (and downstream checks) see the actual Unstructured parameters while the pipeline emits only chunk JSONL and trimmed PDFs (no table metrics or matches JSON).
 - **v2.0 (2025-11-17)** – Chunk/element review workflows and the modularized frontend keep overlays/cards in sync while leaving stored outputs and API payloads focused on chunks and elements.
@@ -17,6 +19,7 @@ Source PDFs are read from a configurable directory:
   - New UI runs now also record a compact “Running” state in the frontend only: while `/api/run` is processing, the New Run modal hides its fields and the header button reflects the in-flight status, but the persisted `run_config.form_snapshot` continues to store the full parameter set as before.
 - `/api/run` enqueues work instead of blocking: the response contains a job descriptor (`id`, `status`, `slug`, `pdf`, `pages`, command preview, stdout/stderr tails). The UI polls `/api/run-jobs/{id}` until the chunker reports `succeeded` or `failed`, and job logs stay cached in memory until the server restarts.
 
+- **v4.0 (2025-11-25)** – Added the Unstructured Partition (hosted) provider for elements-only runs (no local chunking) and moved the Docker base image to ECR Public to avoid Docker Hub rate limits.
 - **v3.2 (2025-11-25)** – Bundled markdown/DOMPurify locally, stored Azure detected-language metadata for RTL-aware reloads, and tightened Azure tooltip alignment.
 - **v3.0 (2025-11-24)** – Azure outputs now render markdown safely, flip to RTL when detected, and expose paragraph roles plus outline grouping, while the pipeline ships only trimmed PDFs, chunks JSONL, and run metadata (no Metrics/tables artifacts).
 - **v2.1 (2025-11-18)** – Persist chunking defaults in `run_config` so UI recap bars (and downstream checks) see the actual Unstructured parameters while the pipeline emits only chunk JSONL and trimmed PDFs (no table metrics or matches JSON).
