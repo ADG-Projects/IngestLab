@@ -26,7 +26,7 @@ function outlineCollapseState(page) {
 function outlineExpansionState(id) {
   const map = ELEMENT_OUTLINE_STATE?.expanded || {};
   return {
-    get: () => !!map[id],
+    get: () => (Object.prototype.hasOwnProperty.call(map, id) ? !!map[id] : null),
     set: (v) => {
       ELEMENT_OUTLINE_STATE.expanded = { ...map, [id]: !!v };
     },
@@ -306,57 +306,57 @@ function renderElementOutline(host, filtered) {
   body.className = 'elements-outline-body';
   if (collapsed) body.classList.add('collapsed');
   const counters = {};
-  for (const [id, entry, review] of sorted) {
-    if (childIds.has(id)) continue;
-    const t = entry?.type || 'Unknown';
-    const orderMeta = order.find((o) => o.type === t);
-    const label = orderMeta ? orderMeta.label : t;
-    counters[t] = (counters[t] || 0) + 1;
-    const row = document.createElement('div');
-    row.className = 'elements-outline-row';
-    const left = document.createElement('div');
-    left.className = 'elements-outline-left';
-    const badge = document.createElement('span');
-    badge.className = 'outline-badge';
-    badge.textContent = `${label} ${counters[t]}`;
-    left.appendChild(badge);
-    row.appendChild(left);
-    const cardWrap = document.createElement('div');
-    cardWrap.className = 'elements-outline-card';
-    const card = buildElementCard(id, entry, review);
-    const children = childMap.get(id) || [];
-    if (children.length) {
-      row.classList.add('outline-has-children');
-      const state = outlineExpansionState(id);
-      const expanded = state.get();
-      const summary = summarizeChildren(children);
-      const toggle = document.createElement('button');
-      toggle.type = 'button';
-      toggle.className = 'outline-child-toggle';
-      toggle.textContent = expanded
-        ? summary ? `Hide contents (${summary})` : 'Hide contents'
-        : summary ? `Show contents (${summary})` : 'Show contents';
-      toggle.addEventListener('click', (ev) => {
-        ev.stopPropagation();
-        state.set(!expanded);
-        renderElementsListForCurrentPage(CURRENT_PAGE_BOXES);
-      });
-      cardWrap.appendChild(toggle);
-      if (expanded) {
-        const childWrap = document.createElement('div');
-        childWrap.className = 'elements-outline-children';
-        for (const child of children) {
-          const [cid, centry, creview] = child;
-          const childCard = buildElementCard(cid, centry, creview, { compact: true });
-          childWrap.appendChild(childCard);
+  const renderRows = (parentEl, nodes, depth = 0) => {
+    for (const [id, entry, review] of nodes) {
+      const t = entry?.type || 'Unknown';
+      const orderMeta = order.find((o) => o.type === t);
+      const label = orderMeta ? orderMeta.label : t;
+      counters[t] = (counters[t] || 0) + 1;
+      const row = document.createElement('div');
+      row.className = 'elements-outline-row';
+      const left = document.createElement('div');
+      left.className = 'elements-outline-left';
+      const badge = document.createElement('span');
+      badge.className = 'outline-badge';
+      badge.textContent = `${label} ${counters[t]}`;
+      left.appendChild(badge);
+      row.appendChild(left);
+      const cardWrap = document.createElement('div');
+      cardWrap.className = 'elements-outline-card';
+      const card = buildElementCard(id, entry, review);
+      const children = childMap.get(id) || [];
+      if (children.length) {
+        row.classList.add('outline-has-children');
+        const state = outlineExpansionState(id);
+        const stored = state.get();
+        const expanded = stored === null ? depth > 0 : stored;
+        const summary = summarizeChildren(children);
+        const toggle = document.createElement('button');
+        toggle.type = 'button';
+        toggle.className = 'outline-child-toggle';
+        toggle.textContent = expanded
+          ? summary ? `Hide contents (${summary})` : 'Hide contents'
+          : summary ? `Show contents (${summary})` : 'Show contents';
+        toggle.addEventListener('click', (ev) => {
+          ev.stopPropagation();
+          state.set(!expanded);
+          renderElementsListForCurrentPage(CURRENT_PAGE_BOXES);
+        });
+        cardWrap.appendChild(toggle);
+        if (expanded) {
+          const childWrap = document.createElement('div');
+          childWrap.className = 'elements-outline-children';
+          renderRows(childWrap, children, depth + 1);
+          cardWrap.appendChild(childWrap);
         }
-        cardWrap.appendChild(childWrap);
       }
+      cardWrap.appendChild(card);
+      row.appendChild(cardWrap);
+      parentEl.appendChild(row);
     }
-    cardWrap.appendChild(card);
-    row.appendChild(cardWrap);
-    body.appendChild(row);
-  }
+  };
+  const roots = sorted.filter(([id]) => !childIds.has(id));
+  renderRows(body, roots, 0);
   if (!counts.textContent) counts.textContent = `${sorted.length} elements`;
   wrap.appendChild(body);
   host.appendChild(wrap);
