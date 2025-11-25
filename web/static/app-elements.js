@@ -329,7 +329,7 @@ function renderElementOutline(host, filtered) {
         row.classList.add('outline-has-children');
         const state = outlineExpansionState(id);
         const stored = state.get();
-        const expanded = stored === null ? depth === 0 : stored;
+        const expanded = stored === null ? false : stored;
         const summary = summarizeChildren(children);
         const toggle = document.createElement('button');
         toggle.type = 'button';
