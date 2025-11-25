@@ -13,6 +13,7 @@ from .config import (
     STATIC_DIR,
     ensure_chartjs_assets,
     ensure_dirs,
+    ensure_markdown_assets,
     ensure_pdfjs_assets,
 )
 from .routes import (
@@ -71,3 +72,4 @@ app.mount("/", StaticFiles(directory=str(STATIC_DIR), html=True), name="ui")
 
 ensure_pdfjs_assets()
 ensure_chartjs_assets()
+ensure_markdown_assets()
