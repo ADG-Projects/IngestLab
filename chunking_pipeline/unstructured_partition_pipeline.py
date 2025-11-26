@@ -80,6 +80,8 @@ def partition_via_api(
     languages: Optional[List[str]],
     api_url: str,
     api_key: str,
+    extract_image_block_types: Optional[List[str]],
+    extract_image_block_to_payload: Optional[bool],
 ) -> List[Dict[str, Any]]:
     if not api_key:
         raise SystemExit("UNSTRUCTURED_PARTITION_API_KEY (or UNSTRUCTURED_API_KEY) is required")
@@ -95,6 +97,8 @@ def partition_via_api(
         coordinates=True,
         languages=languages,
         chunking_strategy=None,
+        extract_image_block_types=extract_image_block_types,
+        extract_image_block_to_payload=extract_image_block_to_payload,
     )
     request = PartitionRequest(partition_parameters=params, unstructured_api_key=api_key)
     resp = client.general.partition(request=request)
@@ -138,6 +142,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--partition-url", default=None, help="Override Partition API URL (defaults to UNSTRUCTURED_PARTITION_API_URL or UNSTRUCTURED_API_URL)")
     parser.add_argument("--api-key", default=None, help="Override Partition API key (defaults to UNSTRUCTURED_PARTITION_API_KEY or UNSTRUCTURED_API_KEY)")
     parser.add_argument("--run-metadata-out", help="Optional path to write run metadata JSON")
+    parser.add_argument("--extract-image-block-types", help="Comma-separated list (e.g., Image,Table) to request extracted image blocks")
+    parser.add_argument("--extract-image-block-to-payload", action="store_true", help="Embed extracted image blocks as base64 in the response payload")
     args = parser.parse_args(argv)
 
     pages = parse_pages(args.pages)
@@ -147,6 +153,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     lang_list: Optional[List[str]] = None
     if args.languages:
         lang_list = [part.strip() for part in args.languages.split(",") if part.strip()]
+    img_block_types: Optional[List[str]] = None
+    if args.extract_image_block_types:
+        img_block_types = [part.strip() for part in args.extract_image_block_types.split(",") if part.strip()]
 
     elements = partition_via_api(
         trimmed_pdf=trimmed_pdf,
@@ -154,6 +163,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         languages=lang_list,
         api_url=api_url,
         api_key=api_key,
+        extract_image_block_types=img_block_types,
+        extract_image_block_to_payload=True if args.extract_image_block_to_payload else None,
     )
     if not elements:
         raise SystemExit("Partition API returned no elements")
@@ -168,6 +179,8 @@ def main(argv: Optional[List[str]] = None) -> int:
         "strategy": args.strategy,
         "languages": lang_list,
         "partition_url": api_url,
+        "extract_image_block_types": img_block_types,
+        "extract_image_block_to_payload": bool(args.extract_image_block_to_payload),
     }
     write_run_metadata(args.run_metadata_out, run_config)
     return 0

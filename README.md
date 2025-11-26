@@ -80,7 +80,8 @@ Set the Azure credentials before running either via CLI or the UI. You can drop 
 When Azure language detection is enabled (e.g., including `languages` in the features), detected locales are captured in `run_config` (persisted from the pipeline output) so reloading a run flips previews to RTL automatically for Arabic-heavy documents.
 When Azure returns markdown (e.g., `output_content_format=markdown`), the Inspect drawers render the formatted markdown directly and fall back to plain text only when no richer content is present; table HTML still prefers `text_as_html` for accurate column order.
 
-Document Intelligence runs target `api-version=2024-11-30` (v4.0); older service versions are not supported.
+Document Intelligence runs target `api-version=2024-11-30` (v4.1); older service versions are not supported.
+Supported DI `features`: `languages`, `barcodes`, `keyValuePairs`, `ocrHighResolution`, `styleFont`, `formulas`, and `queryFields`. Figure images belong to the `outputs` parameter (use `--outputs figures`); passing `figures` via `features` will be rejected by the service. When `figures` is requested, cropped figure PNGs are saved next to the run as `<run>.figures/<figure-id>.png` and surface in the UI the same way Unstructured image payloads do.
 
 CLI example (Document Intelligence layout):
 ```bash
@@ -94,6 +95,7 @@ uv run python -m chunking_pipeline.azure_pipeline \
   --emit-matches outputs/azure/document_intelligence/V3_0_EN_4.pages4-6.matches.json \
   --model-id prebuilt-layout \
   --features ocrHighResolution,keyValuePairs,barcodes,formulas \
+  --outputs figures \
   --api-version 2024-11-30
 ```
 
@@ -121,6 +123,11 @@ If you ever see Azure `.tables.jsonl` files that are empty, rerun the slice: the
 
 ## Release history
 
+- **v4.1 (2025-11-26)** – Azure Document Intelligence can now return cropped figure PNGs (`--outputs figures`) with drawer previews, and the UI simplifies Azure settings by only showing model id (API version is fixed to 2024-11-30).
+  - Verification steps:
+    1. Run an Azure DI slice with figures enabled: `uv run python -m chunking_pipeline.azure_pipeline --provider document_intelligence --input res/sample.pdf --pages 1-1 --outputs figures --output outputs/azure/document_intelligence/sample.pages1.figures.jsonl --trimmed-out outputs/azure/document_intelligence/sample.pages1.pdf --model-id prebuilt-layout --api-version 2024-11-30`.
+    2. Start the UI (`uv run uvicorn main:app --host 127.0.0.1 --port 8765`), load the run, open Elements → Figure entries, and confirm PNG previews render with overlays on the right page.
+    3. Open the New Run modal for Azure providers and confirm the Advanced accordion only asks for model id/locale (no API version field); the settings recap hides API version for non-Azure runs.
 - **v4.0 (2025-11-25)** – Added the Unstructured Partition (hosted) provider for elements-only runs in the UI/API and switched the Docker base image to ECR Public to avoid Docker Hub rate limits.
   - Verification steps:
     1. `uv run uvicorn main:app --host 127.0.0.1 --port 8765`, start a New Run with provider `Unstructured Partition (API)`, and confirm the UI processes elements-only (chunks tab hidden) while overlays render from returned elements.
@@ -174,12 +181,13 @@ uv run uvicorn main:app --host 127.0.0.1 --port 8765
 
 What you get:
 - Inspect view that keeps the PDF visible with overlay toggles and tabs for Chunks and Elements; the Metrics/table visuals are retired in favor of chunk-first inspection.
-- Provider-aware runs: pick Unstructured (local), Unstructured Partition (API, elements-only), or Azure Document Intelligence (Layout) in the New Run modal. (Azure Content Understanding is disabled in the UI; use the CLI helper if needed.) Azure runs hide chunking controls and expose model id, API version, features, locale, string index type, content format, and query fields. Outputs live under `outputs/azure/...`.
+- Provider-aware runs: pick Unstructured (local), Unstructured Partition (API, elements-only), or Azure Document Intelligence (Layout) in the New Run modal. (Azure Content Understanding is disabled in the UI; use the CLI helper if needed.) Azure runs hide chunking controls and expose model id, features, locale, string index type, content format, and query fields. Outputs live under `outputs/azure/...`. Azure Document Intelligence runs are elements-only in the UI (the Chunks tab is hidden).
 - A compact single-line settings recap with rich tooltips for each parameter; the New Run modal mirrors the same tooltips so behavior is clear where you edit values.
 - Overlay UX: hover for ID/type/page/tooltips; colors are fixed per element type; chunk overlays honor Type/Review filters and redraw immediately; Azure polygons stay scaled to PDF points; the Elements outline groups Azure pageHeader/pageNumber/Tables/Paragraphs/Lines by page order with breadcrumbs in drawers.
 - Reviews: leave Good/Bad ratings with optional notes for any chunk or element, filter by rating, and use the header chip to jump into scored items.
 - Inspect → Chunks: browse chunk summary + list; selecting a chunk jumps to its page, shows its overlays, and expands its source elements; cards size to the amount of text.
-- Inspect → Elements: filter by type, toggle outline mode (Azure), see original element IDs and inline previews, and switch overlays between chunk and element modes based on the active tab.
+- Inspect → Elements: filter by type, toggle outline mode (Azure), see original element IDs and inline previews, switch overlays between chunk and element modes based on the active tab, and view extracted images for Unstructured elements (image payloads) or Azure figures (`--outputs figures`).
+- Unstructured Partition runs support image extraction: set `extract_image_block_types` (e.g., `Image` or `Image,Table`) and enable “Embed extracted images in payload” to return `image_base64` for drawer previews.
 
 Data sources used by the UI:
 - `outputs/<provider>/<slug>.run.json` — run metadata for the settings recap and language direction hints.
@@ -209,7 +217,7 @@ Endpoints (served by FastAPI):
   - `provider` (`unstructured|unstructured-partition|azure-di|azure-cu`, default `unstructured`).
   - Unstructured: `strategy` (`auto|fast|hi_res`, default `auto`); `infer_table_structure` (bool, default `true`); `chunking` (`basic|by_title`, default `by_title`) plus the chunking knobs (`chunk_max_characters`, `chunk_new_after_n_chars`, `chunk_overlap`, `chunk_include_orig_elements`, `chunk_overlap_all`, `chunk_combine_under_n_chars`, `chunk_multipage_sections`).
   - Unstructured Partition (API): elements-only; honors `strategy` (`auto|fast|hi_res`) and optional `languages` while emitting raw element lines in `*.chunks.jsonl` (no local chunking is applied).
-  - Azure: `model_id`, `api_version`, `features`, `locale`, `string_index_type`, `output_content_format`, `query_fields`, and (for Content Understanding) `analyzer_id`. Chunking flags are ignored for Azure providers.
+- Azure: `model_id`, `features`, `locale`, `string_index_type`, `output_content_format`, `query_fields`, and (for Content Understanding) `analyzer_id`. Chunking flags are ignored for Azure providers.
   - Response: immediately returns a `job` payload (`id`, `status`, `command`, log tails) instead of blocking until the chunker finishes. Use `/api/run-jobs/{id}` to poll; the UI already handles this automatically.
 
 Run on demand via the UI:

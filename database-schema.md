@@ -4,11 +4,14 @@ The project does not persist to a database yet. Instead, artifacts are written t
 - `outputs/unstructured/` — Unstructured runs (existing behavior).
 - `outputs/unstructured/partition_api/` — Unstructured Partition (hosted API) runs (elements-only; no local chunking).
 - `outputs/azure/document_intelligence/` and `outputs/azure/content_understanding/` — Azure runs (Document Intelligence Layout and Content Understanding prebuilt analyzers). API endpoints accept an optional `provider` query parameter to resolve the correct directory.
+- When Document Intelligence is invoked with `outputs=figures`, cropped figure PNGs are saved alongside the chunk JSONL as `<chunk_stem>.figures/<figure-id>.png`; element metadata references those files so the UI can preview them just like Unstructured image payloads.
+- Azure Document Intelligence runs are elements-only in the UI; the Chunks tab stays hidden even if chunk-style JSONL artifacts are present.
 - Reviews are stored per provider under `<provider_out_dir>/reviews/<slug>.reviews.json`.
 - Azure AnalyzeResult payloads are now coerced via the SDK `as_dict` helper and polygon coordinates are scaled to PDF points (72/in) so overlays line up; rerun any older Azure slices that produced empty `.tables.jsonl` files.
 
 Source PDFs are read from a configurable directory:
 
+- **v4.1 (2025-11-26)** – Azure Document Intelligence figure crops are stored alongside run artifacts (`<stem>.figures/<id>.png`) and referenced in element metadata for UI previews; Azure settings recap now hides API version for non-Azure runs.
 - **v4.0 (2025-11-25)** – Added Unstructured Partition (hosted API) support as elements-only runs alongside existing outputs, keeping chunk artifacts limited to local Unstructured/Azure providers.
 - **v3.0 (2025-11-24)** – Azure outputs now render markdown safely, flip to RTL when detected, and expose paragraph roles plus outline grouping, while the pipeline ships only trimmed PDFs, chunks JSONL, and run metadata (no Metrics/tables artifacts).
 - **v2.1 (2025-11-18)** – Persist chunking defaults in `run_config` so UI recap bars (and downstream checks) see the actual Unstructured parameters while the pipeline emits only chunk JSONL and trimmed PDFs (no table metrics or matches JSON).
@@ -19,6 +22,7 @@ Source PDFs are read from a configurable directory:
   - New UI runs now also record a compact “Running” state in the frontend only: while `/api/run` is processing, the New Run modal hides its fields and the header button reflects the in-flight status, but the persisted `run_config.form_snapshot` continues to store the full parameter set as before.
 - `/api/run` enqueues work instead of blocking: the response contains a job descriptor (`id`, `status`, `slug`, `pdf`, `pages`, command preview, stdout/stderr tails). The UI polls `/api/run-jobs/{id}` until the chunker reports `succeeded` or `failed`, and job logs stay cached in memory until the server restarts.
 
+- **v4.1 (2025-11-26)** – Azure Document Intelligence figure crops are stored alongside run artifacts (`<stem>.figures/<id>.png`) and referenced in element metadata for UI previews; Azure settings recap now hides API version for non-Azure runs.
 - **v4.0 (2025-11-25)** – Added the Unstructured Partition (hosted) provider for elements-only runs (no local chunking) and moved the Docker base image to ECR Public to avoid Docker Hub rate limits.
 - **v3.2 (2025-11-25)** – Bundled markdown/DOMPurify locally, stored Azure detected-language metadata for RTL-aware reloads, and tightened Azure tooltip alignment.
 - **v3.0 (2025-11-24)** – Azure outputs now render markdown safely, flip to RTL when detected, and expose paragraph roles plus outline grouping, while the pipeline ships only trimmed PDFs, chunks JSONL, and run metadata (no Metrics/tables artifacts).
@@ -44,7 +48,7 @@ Source PDFs are read from a configurable directory:
 
 2. **Run config metadata** (`outputs/<provider>/<doc>.pages<range>.run.json`)
    - `strategy`, `chunking`, `infer_table_structure`
-   - `provider`: `unstructured`, `azure-di`, or `azure-cu`. Azure runs also record `model_id`, `api_version`, `features`, `locale`, `string_index_type`, `output_content_format`, `query_fields`, and `analyzer_id` when supplied.
+  - `provider`: `unstructured`, `azure-di`, or `azure-cu`. Azure runs also record `model_id`, `features`, `locale`, `string_index_type`, `output_content_format`, `query_fields`, and `analyzer_id` when supplied.
 - Language hints mirrored from the UI: `primary_language` (`eng` or `ara`), `ocr_languages`, `languages`, and `detect_language_per_element`. Azure runs also persist `detected_languages` and `detected_primary_language` from the pipeline when detection is enabled, so reloads can auto-toggle RTL.
    - `chunk_params`: the effective parameters supplied to the chunker. Keys may include `max_characters`, `new_after_n_chars`, `combine_text_under_n_chars`, `overlap`, `include_orig_elements`, `overlap_all`, `multipage_sections`. This object is always populated (even when users rely on defaults), so the UI header can display the actual values used instead of `-`.
    - `form_snapshot` (UI-only): raw values entered in the New Run modal, including convenience fields like `max_tokens` and the original `pdf`, `pages`, and optional `tag`.

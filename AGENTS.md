@@ -56,6 +56,10 @@ Write imperative, scope-focused commits (e.g., “Add Unstructured preview helpe
 - Avoid committing large artifacts in `outputs/` — reference repro commands in PRs instead.
 
 ## Deployment Guide
-1. Before tagging, bump the visible GUI version text (header badge) and update every other version reference in code and metadata (pyproject/uv.lock, README release history, database-schema notes, TODO, etc.).
-2. Draft the GitHub release description so it clearly summarizes what’s new in the version you are tagging.
-3. Merge the PR into `main` to kick off deployment once the version text and metadata are updated.
+Follow this deployment pipeline end to end:
+1. Bump version indicators in the UI (header badge/version text) and code/metadata (pyproject, uv.lock, README release history, database-schema notes, TODO, etc.).
+2. Commit the version bumps and any related changes.
+3. Tag the release from that commit and push the tag and branch.
+4. Open a PR with a clear, reviewer-friendly description of what changed and how to verify it.
+5. Merge the PR into `main`.
+6. Publish a GitHub release with a concise, accurate description of the changes.

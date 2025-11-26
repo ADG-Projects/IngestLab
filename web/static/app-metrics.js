@@ -27,8 +27,12 @@ function updateRunConfigCard() {
     const el = $(id);
     if (el) el.textContent = ensureDisplay(value);
   };
+  const toggle = (id, show) => {
+    const el = $(id);
+    if (el) el.classList.toggle('hidden', !show);
+  };
   if (!cfg) {
-    ['Provider','Model','ApiVersion','Features','Strategy','InferTables','Chunking','MaxTokens','MaxChars','NewAfter','CombineUnder','Overlap','IncludeOrig','OverlapAll','Multipage','Pdf','Pages','Tag']
+    ['Provider','Model','Features','Strategy','InferTables','Chunking','MaxTokens','MaxChars','NewAfter','CombineUnder','Overlap','IncludeOrig','OverlapAll','Multipage','Pdf','Pages','Tag']
       .forEach(name => set(`setting${name}`, '-'));
     setLanguageControl('eng');
     CURRENT_DOC_LANGUAGE = 'eng';
@@ -41,8 +45,13 @@ function updateRunConfigCard() {
   set('settingProvider', provider);
   const featuresRaw = preferValues(cfg.features, snap.features);
   const featuresDisplay = Array.isArray(featuresRaw) ? featuresRaw.join(', ') : featuresRaw;
-  set('settingModel', preferValues(cfg.model_id, snap.model_id, provider === 'azure-cu' ? 'prebuilt-documentSearch' : 'prebuilt-layout'));
-  set('settingApiVersion', preferValues(cfg.api_version, snap.api_version, provider === 'azure-cu' ? '2025-11-01' : '2024-07-31-preview'));
+  const isAzure = provider && provider.startsWith('azure');
+  toggle('settingModelItem', !!isAzure);
+  if (isAzure) {
+    set('settingModel', preferValues(cfg.model_id, snap.model_id, provider === 'azure-cu' ? 'prebuilt-documentSearch' : 'prebuilt-layout'));
+  } else {
+    set('settingModel', null);
+  }
   set('settingFeatures', featuresDisplay);
   if (provider === 'unstructured') {
     set('settingStrategy', cfg.strategy || 'auto');

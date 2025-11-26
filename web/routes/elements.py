@@ -1,8 +1,10 @@
 from __future__ import annotations
 
 import json
+import base64
+import mimetypes
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from fastapi import APIRouter, HTTPException, Query
 
@@ -135,9 +137,11 @@ def api_boxes(
     return result
 
 
-def _scan_element(slug: str, element_id: str, provider: str) -> Optional[Dict[str, Any]]:
-    path = resolve_slug_file(slug, "{slug}.pages*.chunks.jsonl", provider=provider)
-    with path.open("r", encoding="utf-8") as f:
+def _scan_element(
+    slug: str, element_id: str, provider: str, path: Optional[Path] = None
+) -> Tuple[Optional[Dict[str, Any]], Optional[Path]]:
+    target = path or resolve_slug_file(slug, "{slug}.pages*.chunks.jsonl", provider=provider)
+    with target.open("r", encoding="utf-8") as f:
         for line in f:
             line = line.strip()
             if not line:
@@ -148,14 +152,53 @@ def _scan_element(slug: str, element_id: str, provider: str) -> Optional[Dict[st
                 continue
             md = obj.get("metadata") or {}
             if obj.get("element_id") == element_id or md.get("original_element_id") == element_id:
-                return obj
-    return None
+                return obj, target
+    return None, target
+
+
+def _build_image_payload(md: Dict[str, Any], base_dir: Path) -> Dict[str, Any]:
+    image_base64 = md.get("image_base64")
+    image_mime_type = md.get("image_mime_type")
+    image_url = md.get("image_url")
+    image_path = md.get("image_path")
+    image_data_uri: Optional[str] = None
+    source: Optional[str] = None
+
+    if image_base64:
+        image_data_uri = f"data:{image_mime_type or 'image/png'};base64,{image_base64}"
+        source = "payload"
+    elif image_path:
+        resolved = Path(image_path)
+        if not resolved.is_absolute():
+            resolved = base_dir / image_path
+        if resolved.exists():
+            try:
+                blob = resolved.read_bytes()
+                mime = image_mime_type or mimetypes.guess_type(resolved.name)[0] or "application/octet-stream"
+                b64 = base64.b64encode(blob).decode("ascii")
+                image_data_uri = f"data:{mime};base64,{b64}"
+                source = "file"
+                image_mime_type = mime
+                image_base64 = b64
+                image_path = str(resolved)
+            except Exception:
+                pass
+
+    return {
+        "image_base64": image_base64,
+        "image_mime_type": image_mime_type,
+        "image_url": image_url,
+        "image_path": image_path,
+        "image_data_uri": image_data_uri,
+        "image_source": source,
+    }
 
 
 @router.get("/api/element/{slug}/{element_id}")
 def api_element(slug: str, element_id: str, provider: str = Query(default=None)) -> Dict[str, Any]:
     provider_key = provider or DEFAULT_PROVIDER
-    obj = _scan_element(slug, element_id, provider_key)
+    path = resolve_slug_file(slug, "{slug}.pages*.chunks.jsonl", provider=provider_key)
+    obj, resolved_path = _scan_element(slug, element_id, provider_key, path)
     if not obj:
         return {
             "element_id": element_id,
@@ -166,6 +209,11 @@ def api_element(slug: str, element_id: str, provider: str = Query(default=None))
             "expected_cols": None,
             "coordinates": {},
             "original_element_id": None,
+            "image_base64": None,
+            "image_mime_type": None,
+            "image_url": None,
+            "image_path": None,
+            "image_data_uri": None,
         }
     md = obj.get("metadata", {})
     page_num = (
@@ -173,6 +221,7 @@ def api_element(slug: str, element_id: str, provider: str = Query(default=None))
         or md.get("page_number")
         or (md.get("page_numbers") or [None])[0]
     )
+    image_payload = _build_image_payload(md, (resolved_path or path).parent if (resolved_path or path) else Path("."))
     return {
         "element_id": obj.get("element_id"),
         "type": obj.get("type"),
@@ -182,4 +231,5 @@ def api_element(slug: str, element_id: str, provider: str = Query(default=None))
         "expected_cols": md.get("expected_cols"),
         "coordinates": (md.get("coordinates") or {}),
         "original_element_id": md.get("original_element_id"),
+        **image_payload,
     }

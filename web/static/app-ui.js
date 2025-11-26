@@ -106,6 +106,28 @@ function resetDrawerScrollState() {
   if (drawer) drawer.classList.remove('drawer-condensed');
 }
 
+function clearDrawer() {
+  resetDrawerScrollState();
+  CURRENT_CHUNK_DRAWER_ID = null;
+  CURRENT_ELEMENT_DRAWER_ID = null;
+  CURRENT_INSPECT_ELEMENT_ID = null;
+  CURRENT_ELEMENT_ID = null;
+  RETURN_TO = null;
+  const drawer = $('drawer');
+  if (drawer) drawer.classList.add('hidden');
+  document.body.classList.remove('drawer-open');
+  const preview = $('preview');
+  if (preview) preview.innerHTML = '';
+  const title = $('drawerTitle');
+  if (title) title.textContent = '';
+  const meta = $('drawerMeta');
+  if (meta) meta.innerHTML = '';
+  const summary = $('drawerSummary');
+  if (summary) summary.innerHTML = '';
+  const picker = $('elementPicker');
+  if (picker) picker.innerHTML = '';
+}
+
 function initDrawerAutoCondense() {
   const preview = $('preview');
   if (!preview) return;

@@ -1412,7 +1412,9 @@ body.drawer-open #right-metrics {
   gap: 10px;
   padding: 10px;
   min-height: 0;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
+  max-height: calc(100vh - 170px);
   flex: 1;
 }
 
@@ -1610,6 +1612,23 @@ body.drawer-open #right-metrics {
   padding: 8px;
   border-radius: 6px;
   overflow: auto;
+}
+
+.drawer-image {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border: 1px solid #2a2f38;
+  border-radius: 8px;
+  padding: 10px;
+  background: #0f131a;
+}
+
+.drawer-image img {
+  max-width: 100%;
+  border-radius: 6px;
+  border: 1px solid #22262d;
+  background: #0c0f14;
 }
 
 /* Mini metrics in drawer */

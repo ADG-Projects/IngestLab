@@ -80,7 +80,7 @@
       <div class="header-left">
         <div class="title-stack">
           <h1>Chunking Visualizer</h1>
-          <span class="version-badge">v4.0</span>
+          <span class="version-badge">v4.1</span>
         </div>
         <div class="view-tabs" role="tablist" aria-label="Primary view">
           <button id="viewTabInspect" class="tab active" data-view="inspect" role="tab" aria-selected="true">Inspect</button>
@@ -103,13 +103,9 @@
         <span class="setting-label">PROV <span class="info" tabindex="0">i</span><div class="tip">Run provider: Unstructured (local), Unstructured Partition (API), or Azure Document Intelligence Layout (Content Understanding is disabled in the UI).</div></span>
         <span class="setting-value" id="settingProvider">-</span>
       </div>
-      <div class="setting-item">
+      <div class="setting-item" id="settingModelItem">
         <span class="setting-label">MODEL <span class="info" tabindex="0">i</span><div class="tip">Model/analyzer id used for this run (e.g., prebuilt-layout, prebuilt-documentSearch).</div></span>
         <span class="setting-value" id="settingModel">-</span>
-      </div>
-      <div class="setting-item">
-        <span class="setting-label">API <span class="info" tabindex="0">i</span><div class="tip">API version sent to the provider (DI defaults to 2024-07-31-preview; CU defaults to 2025-11-01).</div></span>
-        <span class="setting-value" id="settingApiVersion">-</span>
       </div>
       <div class="setting-item">
         <span class="setting-label">FEAT <span class="info" tabindex="0">i</span><div class="tip">Feature flags passed to the provider (comma-separated).</div></span>
@@ -346,6 +342,14 @@
                   <span class="lab">Infer table structure <span class="info" tabindex="0">i</span><div class="tip">Rebuild table rows and cells from lines/glyphs for more accurate tables.</div></span>
                 </label>
                 <label>
+                  <div class="lab">Extract image block types <span class="info" tabindex="0">i</span><div class="tip">Optional CSV list sent to Unstructured Partition API (e.g., <code>Image</code> or <code>Image,Table</code>) to return image blocks and crops.</div></div>
+                  <input id="extractImageBlockTypes" placeholder="e.g. Image,Table" />
+                </label>
+                <label class="checkbox">
+                  <input id="extractImageToPayload" type="checkbox" />
+                  <span class="lab">Embed extracted images in payload <span class="info" tabindex="0">i</span><div class="tip">Set <code>extract_image_block_to_payload=true</code> so image bytes are returned as base64 alongside metadata.</div></span>
+                </label>
+                <label>
                   <div class="lab">Chunking <span class="info" tabindex="0">i</span><div class="tip">Group output into chunks: <b>by_title</b> uses section titles; <b>basic</b> uses size‑only chunking.</div></div>
                   <select id="chunkingSelect">
                     <option value="none" selected>none (elements only)</option>
@@ -435,14 +439,10 @@
                 </div>
               </div>
               <details class="azure-advanced">
-                <summary>Advanced (model, API version, locale…)</summary>
+                <summary>Advanced (model, locale…)</summary>
                 <label>
                   <div class="lab">Model id <span class="info" tabindex="0">i</span><div class="tip">Document Intelligence defaults to <code>prebuilt-layout</code>.</div></div>
                   <input id="azureModelId" placeholder="prebuilt-layout" />
-                </label>
-                <label>
-                  <div class="lab">API version <span class="info" tabindex="0">i</span><div class="tip">Document Intelligence default: 2024-11-30.</div></div>
-                  <input id="azureApiVersion" placeholder="e.g. 2024-11-30" />
                 </label>
                 <label>
                   <div class="lab">Locale <span class="info" tabindex="0">i</span><div class="tip">Locale hint for OCR/analysis (e.g., <code>en-US</code>, <code>ar-AE</code>).</div></div>
