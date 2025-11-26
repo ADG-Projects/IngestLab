@@ -176,6 +176,66 @@ def _run_chat(messages: List[Dict[str, str]], max_tokens: int = 800) -> str:
     client, model = _llm_client()
     use_responses_api = model.startswith(("gpt-5", "gpt-4.1"))
 
+    def _extract_response_text(resp: Any) -> str:
+        try:
+            txt = getattr(resp, "output_text", None)
+            if isinstance(txt, str) and txt.strip():
+                return txt
+        except Exception:
+            pass
+
+        outputs = None
+        if hasattr(resp, "output"):
+            outputs = getattr(resp, "output")
+        elif isinstance(resp, dict):
+            outputs = resp.get("output")
+
+        texts: List[str] = []
+
+        def _maybe_add(val: Optional[str]) -> None:
+            if val:
+                texts.append(val)
+
+        def _extract_text_from_item(item: Any) -> None:
+            item_type = getattr(item, "type", None) if not isinstance(item, dict) else item.get("type")
+            if item_type == "message":
+                content = getattr(item, "content", None) if not isinstance(item, dict) else item.get("content")
+                if not content:
+                    return
+                for block in content:
+                    block_type = getattr(block, "type", None) if not isinstance(block, dict) else block.get("type")
+                    if block_type in {"output_text", "text"}:
+                        _maybe_add(getattr(block, "text", None) if not isinstance(block, dict) else block.get("text"))
+                    elif block_type == "refusal":
+                        reason = getattr(block, "refusal", None) if not isinstance(block, dict) else block.get("refusal") or block.get("text")
+                        if reason:
+                            _maybe_add(f"Refusal: {reason}")
+            elif item_type == "reasoning":
+                summary = getattr(item, "summary", None) if not isinstance(item, dict) else item.get("summary")
+                if summary:
+                    for s in summary:
+                        _maybe_add(getattr(s, "text", None) if not isinstance(s, dict) else s.get("text"))
+                content = getattr(item, "content", None) if not isinstance(item, dict) else item.get("content")
+                if content:
+                    for c in content:
+                        _maybe_add(getattr(c, "text", None) if not isinstance(c, dict) else c.get("text"))
+
+        if outputs:
+            try:
+                for item in outputs:
+                    _extract_text_from_item(item)
+            except Exception:
+                pass
+
+        if texts:
+            return "".join(texts)
+
+        if isinstance(resp, dict):
+            fallback = resp.get("output_text") or resp.get("text")
+            if isinstance(fallback, str) and fallback.strip():
+                return fallback
+        return ""
+
     def _to_response_input(msgs: List[Dict[str, str]]) -> List[Dict[str, Any]]:
         formatted: List[Dict[str, Any]] = []
         for m in msgs:
@@ -207,21 +267,20 @@ def _run_chat(messages: List[Dict[str, str]], max_tokens: int = 800) -> str:
                 model=model,
                 input=_to_response_input(messages),
                 max_output_tokens=max_tokens,
+                reasoning={"effort": "low"},
             )
-            text = getattr(resp, "output_text", None)
-            if not text and getattr(resp, "output", None):
-                try:
-                    parts = resp.output[0].get("content") or []
-                    text = "".join(
-                        p.get("text", "")
-                        for p in parts
-                        if isinstance(p, dict) and p.get("type") in {"output_text", "text", "summary_text"}
-                    )
-                except Exception:
-                    text = None
+            text = _extract_response_text(resp)
             if not text:
-                snippet = getattr(resp, "output", None)
-                logger.error("LLM returned empty response", extra={"model": model, "response": snippet})
+                output_types = []
+                try:
+                    output_types = [getattr(o, "type", None) for o in getattr(resp, "output", [])]
+                except Exception:
+                    pass
+                status = getattr(resp, "status", None)
+                logger.error(
+                    "LLM returned empty response",
+                    extra={"model": model, "status": status, "output_types": output_types},
+                )
                 raise RuntimeError("LLM returned empty response")
             return text
         logger.info("LLM request (chat completions)", extra={"model": model, "messages": len(messages)})
