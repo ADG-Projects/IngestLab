@@ -4,6 +4,7 @@ import json
 import os
 import re
 from datetime import datetime
+import logging
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
@@ -11,6 +12,8 @@ from openai import OpenAI, OpenAIError
 
 from .config import PROVIDERS, get_out_dir, relative_to_root
 from .routes.reviews import _summarize_reviews
+
+logger = logging.getLogger("chunking.feedback")
 
 
 def _safe_slug_from_path(path: Path) -> str:
@@ -193,10 +196,10 @@ def _run_chat(messages: List[Dict[str, str]], max_tokens: int = 800) -> str:
 
     try:
         if use_responses_api:
+            logger.info("LLM request (responses API)", extra={"model": model, "messages": len(messages)})
             resp = client.responses.create(
                 model=model,
                 input=_to_response_input(messages),
-                temperature=0.2,
                 max_output_tokens=max_tokens,
             )
             text = getattr(resp, "output_text", None)
@@ -213,6 +216,7 @@ def _run_chat(messages: List[Dict[str, str]], max_tokens: int = 800) -> str:
             if not text:
                 raise RuntimeError("LLM returned empty response")
             return text
+        logger.info("LLM request (chat completions)", extra={"model": model, "messages": len(messages)})
         resp = client.chat.completions.create(
             model=model,
             messages=messages,
@@ -220,6 +224,7 @@ def _run_chat(messages: List[Dict[str, str]], max_tokens: int = 800) -> str:
             max_tokens=max_tokens,
         )
     except OpenAIError as e:
+        logger.error("LLM call failed", exc_info=e)
         raise RuntimeError(f"LLM call failed: {e}") from e
     return resp.choices[0].message.content or ""
 
