@@ -173,11 +173,21 @@ def _run_chat(messages: List[Dict[str, str]], max_tokens: int = 800) -> str:
             role = m.get("role", "user")
             content = m.get("content", "")
             if isinstance(content, str):
-                content_blocks = [{"type": "text", "text": content}]
+                content_blocks = [{"type": "input_text", "text": content}]
             elif isinstance(content, list):
-                content_blocks = content
+                # Pass through with type adjustments if needed
+                content_blocks = []
+                for part in content:
+                    if isinstance(part, dict):
+                        ctype = part.get("type") or "input_text"
+                        text_val = part.get("text") or ""
+                        if ctype == "text":
+                            ctype = "input_text"
+                        content_blocks.append({"type": ctype, "text": text_val})
+                    else:
+                        content_blocks.append({"type": "input_text", "text": str(part)})
             else:
-                content_blocks = [{"type": "text", "text": str(content)}]
+                content_blocks = [{"type": "input_text", "text": str(content)}]
             formatted.append({"role": role, "content": content_blocks})
         return formatted
 
@@ -193,7 +203,11 @@ def _run_chat(messages: List[Dict[str, str]], max_tokens: int = 800) -> str:
             if not text and getattr(resp, "output", None):
                 try:
                     parts = resp.output[0].get("content") or []
-                    text = "".join(p.get("text", "") for p in parts if isinstance(p, dict))
+                    text = "".join(
+                        p.get("text", "")
+                        for p in parts
+                        if isinstance(p, dict) and p.get("type") in {"output_text", "text"}
+                    )
                 except Exception:
                     text = None
             if not text:
