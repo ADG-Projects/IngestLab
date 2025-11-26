@@ -7,7 +7,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Tuple
 
-from openai import OpenAI
+from openai import OpenAI, OpenAIError
 
 from .config import PROVIDERS, get_out_dir, relative_to_root
 from .routes.reviews import _summarize_reviews
@@ -157,18 +157,23 @@ def _llm_client() -> Tuple[OpenAI, str]:
     base_url = os.environ.get("FEEDBACK_LLM_BASE") or os.environ.get("OPENAI_BASE_URL")
     if not api_key:
         raise RuntimeError("FEEDBACK_LLM_API_KEY is not configured")
+    if str(api_key).lower().startswith("gpt-"):
+        raise RuntimeError("FEEDBACK_LLM_API_KEY looks like a model name; set the actual API key and put the model in FEEDBACK_LLM_MODEL")
     client = OpenAI(api_key=api_key, base_url=base_url)
     return client, model
 
 
 def _run_chat(messages: List[Dict[str, str]], max_tokens: int = 800) -> str:
     client, model = _llm_client()
-    resp = client.chat.completions.create(
-        model=model,
-        messages=messages,
-        temperature=0.2,
-        max_tokens=max_tokens,
-    )
+    try:
+        resp = client.chat.completions.create(
+            model=model,
+            messages=messages,
+            temperature=0.2,
+            max_tokens=max_tokens,
+        )
+    except OpenAIError as e:
+        raise RuntimeError(f"LLM call failed: {e}") from e
     return resp.choices[0].message.content or ""
 
 
