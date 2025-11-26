@@ -370,7 +370,7 @@ function revealElementInList(elementId, retries = 12) {
   if (card) {
     list.querySelectorAll('.element-card.focused').forEach(el => el.classList.remove('focused'));
     card.classList.add('focused');
-    try { card.scrollIntoView({ block: 'nearest' }); } catch (e) {}
+    try { card.scrollIntoView({ block: 'nearest' }); } catch (e) { }
     return;
   }
   if (retries > 0) setTimeout(() => revealElementInList(elementId, retries - 1), 80);
@@ -412,7 +412,7 @@ async function openElementDetails(elementId) {
     const html = data.text_as_html;
     if (html) {
       const scroll = document.createElement('div');
-      scroll.className = 'scrollbox drawer-markdown';
+      scroll.className = 'drawer-markdown';
       const wrapper = document.createElement('div');
       wrapper.innerHTML = html;
       scroll.appendChild(wrapper);
@@ -420,19 +420,17 @@ async function openElementDetails(elementId) {
         applyTablePreviewDirection(wrapper);
       }
       applyDirectionalText(scroll);
-      registerDrawerScrollTarget(scroll);
       container.appendChild(scroll);
     } else {
       const md = await renderMarkdownSafe(data.text);
       if (md) {
         const scroll = document.createElement('div');
-        scroll.className = 'scrollbox drawer-markdown';
+        scroll.className = 'drawer-markdown';
         const body = document.createElement('div');
         body.className = 'markdown-body';
         body.innerHTML = md;
         scroll.appendChild(body);
         applyDirectionalText(body);
-        registerDrawerScrollTarget(scroll);
         container.appendChild(scroll);
       } else {
         const pre = document.createElement('pre');
@@ -452,7 +450,7 @@ async function findStableIdByOrig(origId, page) {
     for (const [eid, entry] of Object.entries(boxes)) {
       if (entry.orig_id && entry.orig_id === origId) return eid;
     }
-  } catch (e) {}
+  } catch (e) { }
   return null;
 }
 
@@ -473,7 +471,7 @@ function buildElementCard(id, entry, review, opts = {}) {
   const metaWrap = document.createElement('div');
   metaWrap.className = 'element-card-meta';
   const dId = entry.orig_id || id;
-  const short = dId.length > 16 ? `${dId.slice(0,12)}…` : dId;
+  const short = dId.length > 16 ? `${dId.slice(0, 12)}…` : dId;
   metaWrap.innerHTML = `<span>${entry.type || 'Unknown'}</span><span class="meta">${short}</span>`;
   header.appendChild(metaWrap);
   header.appendChild(buildReviewButtons('element', id, 'card'));
@@ -511,7 +509,7 @@ function buildElementCard(id, entry, review, opts = {}) {
       if (!txt) txt = '(no text)';
       pre.textContent = txt;
       const displayId = data.original_element_id || id;
-      const shortId = displayId.length > 16 ? `${displayId.slice(0,12)}…` : displayId;
+      const shortId = displayId.length > 16 ? `${displayId.slice(0, 12)}…` : displayId;
       metaWrap.innerHTML = `<span>${data.type || entry.type || 'Element'}</span><span class="meta">${shortId}</span>`;
     } catch (e) {
       pre.textContent = `(failed to load preview: ${e.message})`;
