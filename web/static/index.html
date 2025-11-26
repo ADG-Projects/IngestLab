@@ -101,11 +101,11 @@
     <!-- Settings Recap Bar -->
     <div id="settingsRecap" class="settings-recap">
       <div class="setting-item">
-        <span class="setting-label">PROV <span class="info" tabindex="0">i</span><div class="tip">Run provider: Unstructured (local), Unstructured Partition (API), or Azure Document Intelligence Layout (Content Understanding is disabled in the UI).</div></span>
+        <span class="setting-label">PROV <span class="info" tabindex="0">i</span><div class="tip">Run provider: Unstructured (local), Unstructured Partition (API), or Azure Document Intelligence (Layout).</div></span>
         <span class="setting-value" id="settingProvider">-</span>
       </div>
       <div class="setting-item" id="settingModelItem">
-        <span class="setting-label">MODEL <span class="info" tabindex="0">i</span><div class="tip">Model/analyzer id used for this run (e.g., prebuilt-layout, prebuilt-documentSearch).</div></span>
+        <span class="setting-label">MODEL <span class="info" tabindex="0">i</span><div class="tip">Model id used for this run (e.g., prebuilt-layout).</div></span>
         <span class="setting-value" id="settingModel">-</span>
       </div>
       <div class="setting-item">
@@ -272,7 +272,6 @@
               <option value="unstructured">Unstructured</option>
               <option value="unstructured-partition">Unstructured Partition</option>
               <option value="azure-di">Azure Document Intelligence</option>
-              <option value="azure-cu">Azure Content Understanding</option>
               <option value="compare">Compare all providers</option>
             </select>
           </label>
@@ -377,12 +376,11 @@
                 </select>
               </label>
               <label class="provider-picker">
-                <div class="lab">Provider <span class="info" tabindex="0">i</span><div class="tip">Unstructured (local library), Unstructured Partition (hosted API, elements only), or Azure Document Intelligence (Document Understanding is currently disabled in the UI).</div></div>
+                <div class="lab">Provider <span class="info" tabindex="0">i</span><div class="tip">Unstructured (local library), Unstructured Partition (hosted API, elements only), or Azure Document Intelligence (Layout).</div></div>
                 <select id="providerSelect">
                   <option value="unstructured">Unstructured</option>
                   <option value="unstructured-partition">Unstructured Partition (API)</option>
                   <option value="azure-di">Azure Document Intelligence (Layout)</option>
-                  <option value="azure-cu" disabled>Azure Content Understanding (disabled)</option>
                 </select>
               </label>
             </div>

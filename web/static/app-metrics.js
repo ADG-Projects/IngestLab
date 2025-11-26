@@ -48,7 +48,7 @@ function updateRunConfigCard() {
   const isAzure = provider && provider.startsWith('azure');
   toggle('settingModelItem', !!isAzure);
   if (isAzure) {
-    set('settingModel', preferValues(cfg.model_id, snap.model_id, provider === 'azure-cu' ? 'prebuilt-documentSearch' : 'prebuilt-layout'));
+    set('settingModel', preferValues(cfg.model_id, snap.model_id, 'prebuilt-layout'));
   } else {
     set('settingModel', null);
   }

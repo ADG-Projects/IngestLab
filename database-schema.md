@@ -3,7 +3,7 @@
 The project does not persist to a database yet. Instead, artifacts are written to `outputs/`:
 - `outputs/unstructured/` — Unstructured runs (existing behavior).
 - `outputs/unstructured/partition_api/` — Unstructured Partition (hosted API) runs (elements-only; no local chunking).
-- `outputs/azure/document_intelligence/` and `outputs/azure/content_understanding/` — Azure runs (Document Intelligence Layout and Content Understanding prebuilt analyzers). API endpoints accept an optional `provider` query parameter to resolve the correct directory.
+- `outputs/azure/document_intelligence/` — Azure runs (Document Intelligence Layout). API endpoints accept an optional `provider` query parameter to resolve the correct directory.
 - When Document Intelligence is invoked with `outputs=figures`, cropped figure PNGs are saved alongside the chunk JSONL as `<chunk_stem>.figures/<figure-id>.png`; element metadata references those files so the UI can preview them just like Unstructured image payloads.
 - Azure Document Intelligence runs are elements-only in the UI; the Chunks tab stays hidden even if chunk-style JSONL artifacts are present.
 - Reviews are stored per provider under `<provider_out_dir>/reviews/<slug>.reviews.json`.
@@ -48,7 +48,7 @@ Source PDFs are read from a configurable directory:
 
 2. **Run config metadata** (`outputs/<provider>/<doc>.pages<range>.run.json`)
    - `strategy`, `chunking`, `infer_table_structure`
-  - `provider`: `unstructured`, `azure-di`, or `azure-cu`. Azure runs also record `model_id`, `features`, `locale`, `string_index_type`, `output_content_format`, `query_fields`, and `analyzer_id` when supplied.
+- `provider`: `unstructured` or `azure-di`. Azure runs also record `model_id`, `features`, `locale`, `string_index_type`, `output_content_format`, and `query_fields` when supplied.
 - Language hints mirrored from the UI: `primary_language` (`eng` or `ara`), `ocr_languages`, `languages`, and `detect_language_per_element`. Azure runs also persist `detected_languages` and `detected_primary_language` from the pipeline when detection is enabled, so reloads can auto-toggle RTL.
    - `chunk_params`: the effective parameters supplied to the chunker. Keys may include `max_characters`, `new_after_n_chars`, `combine_text_under_n_chars`, `overlap`, `include_orig_elements`, `overlap_all`, `multipage_sections`. This object is always populated (even when users rely on defaults), so the UI header can display the actual values used instead of `-`.
    - `form_snapshot` (UI-only): raw values entered in the New Run modal, including convenience fields like `max_tokens` and the original `pdf`, `pages`, and optional `tag`.

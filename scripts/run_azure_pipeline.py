@@ -9,7 +9,6 @@ from html import escape
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-import requests
 from azure.ai.documentintelligence import DocumentIntelligenceClient
 from azure.core.credentials import AzureKeyCredential
 
@@ -246,48 +245,6 @@ def run_di_analysis(
     return result.to_dict()
 
 
-def _poll_operation(url: str, headers: Dict[str, str]) -> Dict[str, Any]:
-    start = time.time()
-    while True:
-        resp = requests.get(url, headers=headers, timeout=15)
-        resp.raise_for_status()
-        data = resp.json()
-        status = str(data.get("status") or "").lower()
-        if status == "succeeded":
-            return data
-        if status == "failed":
-            raise RuntimeError(f"Content Understanding operation failed: {data}")
-        if time.time() - start > 300:
-            raise TimeoutError("Operation did not complete within 5 minutes")
-        time.sleep(2)
-
-
-def run_cu_analysis(
-    trimmed_pdf: str,
-    api_version: str,
-    analyzer_id: str,
-    endpoint: str,
-    key: str,
-) -> Dict[str, Any]:
-    headers = {
-        "Ocp-Apim-Subscription-Key": key,
-        "Content-Type": "application/octet-stream",
-    }
-    url = f"{endpoint.rstrip('/')}/contentunderstanding/analyzers/{analyzer_id}:analyzeBinary"
-    if api_version:
-        url = f"{url}?api-version={api_version}"
-    with open(trimmed_pdf, "rb") as fh:
-        resp = requests.post(url, headers=headers, data=fh.read(), timeout=30)
-    resp.raise_for_status()
-    op_location = resp.headers.get("operation-location") or resp.headers.get("Operation-Location")
-    if not op_location:
-        try:
-            return resp.json()
-        except Exception:
-            raise RuntimeError("Content Understanding response missing operation-location")
-    return _poll_operation(op_location, headers)
-
-
 def _parse_features(raw: Optional[str]) -> Optional[List[str]]:
     if raw is None:
         return None
@@ -339,21 +296,20 @@ def build_run_config(
 
 
 def main(argv: Optional[List[str]] = None) -> int:
-    parser = argparse.ArgumentParser(description="Run Azure analysis (Document Intelligence or Content Understanding)")
-    parser.add_argument("--provider", choices=["document_intelligence", "content_understanding"], required=True)
+    parser = argparse.ArgumentParser(description="Run Azure Document Intelligence analysis")
+    parser.add_argument("--provider", choices=["document_intelligence"], default="document_intelligence")
     parser.add_argument("--input", required=True, help="Path to input PDF")
     parser.add_argument("--pages", required=True, help="Page ranges, e.g., 1-3 or 2,4")
     parser.add_argument("--output", required=True, help="Path to write elements JSONL")
     parser.add_argument("--trimmed-out", required=True, help="Path to write trimmed PDF")
     parser.add_argument("--emit-matches", required=True, help="Path to write matches JSON")
-    parser.add_argument("--model-id", dest="model_id", required=False, help="Model/Analyzer id")
+    parser.add_argument("--model-id", dest="model_id", required=False, help="Model id")
     parser.add_argument("--api-version", dest="api_version", required=False, help="API version")
     parser.add_argument("--features", help="Comma-separated feature list")
     parser.add_argument("--locale", help="Locale hint")
     parser.add_argument("--string-index-type", help="String index type")
     parser.add_argument("--output-content-format", help="Content format")
     parser.add_argument("--query-fields", help="Comma-separated query fields")
-    parser.add_argument("--analyzer-id", help="Content Understanding analyzer id (defaults to prebuilt-documentSearch)")
     parser.add_argument("--primary-language", choices=["eng", "ara"], help="Primary language override")
     parser.add_argument("--ocr-languages", default=None, help="OCR languages hint")
     parser.add_argument("--languages", default=None, help="Comma-separated language hints")
@@ -372,46 +328,32 @@ def main(argv: Optional[List[str]] = None) -> int:
     di_pages = list(range(1, len(valid_pages) + 1))
     elems: List[Dict[str, Any]] = []
 
-    provider = args.provider
-    if provider == "document_intelligence":
-        endpoint = args.endpoint or _get_env_any([DEFAULT_ENDPOINT_ENV, *ALT_ENDPOINT_ENVS])
-        key = args.key or _get_env_any([DEFAULT_KEY_ENV, *ALT_KEY_ENVS])
-        if not endpoint or not key:
-            raise SystemExit("Document Intelligence requires endpoint/key env (AZURE_FT_ENDPOINT/AZURE_FT_KEY or DOCUMENTINTELLIGENCE_ENDPOINT/DOCUMENTINTELLIGENCE_API_KEY)")
-        model_id = args.model_id or "prebuilt-layout"
-        api_version = args.api_version or DEFAULT_DI_API_VERSION
-        features = _parse_features(args.features)
-        result = run_di_analysis(
-            input_pdf=args.input,
-            trimmed_pdf=trimmed,
-            model_id=model_id,
-            api_version=api_version,
-            pages=di_pages,
-            features=features,
-            locale=args.locale,
-            string_index_type=args.string_index_type,
-            output_content_format=args.output_content_format,
-            query_fields=_parse_fields(args.query_fields),
-            endpoint=endpoint,
-            key=key,
-        )
-        an_result = _extract_analyze_result(result)
-        elems = normalize_elements(an_result)
-        run_provider = "azure-di"
-        args.api_version = api_version
-        run_config = build_run_config(run_provider, args, features=features, endpoint=endpoint)
-    else:
-        endpoint = args.endpoint or os.environ.get(DEFAULT_ENDPOINT_ENV, "")
-        key = args.key or os.environ.get(DEFAULT_KEY_ENV, "")
-        if not endpoint or not key:
-            raise SystemExit("Content Understanding requires endpoint/key env (AZURE_FT_ENDPOINT/AZURE_FT_KEY)")
-        analyzer_id = args.analyzer_id or args.model_id or "prebuilt-documentSearch"
-        api_version = args.api_version or "2025-11-01"
-        raw = run_cu_analysis(trimmed_pdf=trimmed, api_version=api_version, analyzer_id=analyzer_id, endpoint=endpoint, key=key)
-        an_result = _extract_analyze_result(raw)
-        elems = normalize_elements(an_result)
-        run_provider = "azure-cu"
-        run_config = build_run_config(run_provider, args, features=_parse_features(args.features), endpoint=endpoint)
+    endpoint = args.endpoint or _get_env_any([DEFAULT_ENDPOINT_ENV, *ALT_ENDPOINT_ENVS])
+    key = args.key or _get_env_any([DEFAULT_KEY_ENV, *ALT_KEY_ENVS])
+    if not endpoint or not key:
+        raise SystemExit("Document Intelligence requires endpoint/key env (AZURE_FT_ENDPOINT/AZURE_FT_KEY or DOCUMENTINTELLIGENCE_ENDPOINT/DOCUMENTINTELLIGENCE_API_KEY)")
+    model_id = args.model_id or "prebuilt-layout"
+    api_version = args.api_version or DEFAULT_DI_API_VERSION
+    features = _parse_features(args.features)
+    result = run_di_analysis(
+        input_pdf=args.input,
+        trimmed_pdf=trimmed,
+        model_id=model_id,
+        api_version=api_version,
+        pages=di_pages,
+        features=features,
+        locale=args.locale,
+        string_index_type=args.string_index_type,
+        output_content_format=args.output_content_format,
+        query_fields=_parse_fields(args.query_fields),
+        endpoint=endpoint,
+        key=key,
+    )
+    an_result = _extract_analyze_result(result)
+    elems = normalize_elements(an_result)
+    run_provider = "azure-di"
+    args.api_version = api_version
+    run_config = build_run_config(run_provider, args, features=features, endpoint=endpoint)
 
     write_jsonl(args.output, elems)
     matches_payload = {

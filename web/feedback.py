@@ -14,6 +14,12 @@ from .config import PROVIDERS, get_out_dir, relative_to_root
 from .routes.reviews import _summarize_reviews
 
 logger = logging.getLogger("chunking.feedback")
+if not logger.handlers:
+    handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter("[feedback] %(asctime)s %(levelname)s: %(message)s"))
+    logger.addHandler(handler)
+logger.setLevel(logging.INFO)
+logger.propagate = False
 
 
 def _safe_slug_from_path(path: Path) -> str:
@@ -209,11 +215,13 @@ def _run_chat(messages: List[Dict[str, str]], max_tokens: int = 800) -> str:
                     text = "".join(
                         p.get("text", "")
                         for p in parts
-                        if isinstance(p, dict) and p.get("type") in {"output_text", "text"}
+                        if isinstance(p, dict) and p.get("type") in {"output_text", "text", "summary_text"}
                     )
                 except Exception:
                     text = None
             if not text:
+                snippet = getattr(resp, "output", None)
+                logger.error("LLM returned empty response", extra={"model": model, "response": snippet})
                 raise RuntimeError("LLM returned empty response")
             return text
         logger.info("LLM request (chat completions)", extra={"model": model, "messages": len(messages)})

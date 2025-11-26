@@ -529,12 +529,7 @@ function wireRunForm() {
     toggleAdv();
   }
   const handleProviderChange = () => {
-    const rawVal = providerSel ? providerSel.value : 'unstructured';
-    const val = rawVal === 'azure-cu' ? 'azure-di' : rawVal;
-    if (providerSel && providerSel.value !== val) {
-      // Keep legacy runs viewable but block new runs for the disabled provider
-      providerSel.value = val;
-    }
+    const val = providerSel ? providerSel.value : 'unstructured';
     CURRENT_PROVIDER = val || 'unstructured';
     const isUnstructured = val === 'unstructured';
     const isPartition = val === 'unstructured-partition';
@@ -616,12 +611,7 @@ function wireRunForm() {
   $('runBtn').addEventListener('click', async () => {
     const status = $('runStatus');
     status.textContent = '';
-    const providerVal = providerSel ? providerSel.value : 'unstructured';
-    if (providerVal === 'azure-cu') {
-      status.textContent = 'Document Understanding is disabled in the UI';
-      return;
-    }
-    const provider = providerVal || 'unstructured';
+    const provider = (providerSel ? providerSel.value : 'unstructured') || 'unstructured';
     const isAzure = provider.startsWith('azure');
     const isPartition = provider === 'unstructured-partition';
     const isUnstructured = provider === 'unstructured';

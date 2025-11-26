@@ -1,11 +1,11 @@
 # ChunkingTests
 
-Local playground for document ingestion experiments. It now supports the open-source Unstructured chunker, the hosted Unstructured Partition API (elements-only), and Azure providers (Document Intelligence Layout; Content Understanding remains CLI-only and is disabled in the UI) so you can compare layout/ocr quality side by side.
+Local playground for document ingestion experiments. It now supports the open-source Unstructured chunker, the hosted Unstructured Partition API (elements-only), and Azure Document Intelligence (Layout) so you can compare layout/ocr quality side by side.
 
 Two helper scripts exist today:
 - `process_unstructured.py`: interactive full-document runs against Unstructured.
 - `scripts/preview_unstructured_pages.py`: fast page slicing + gold-table matching for targeted QA (Unstructured).
-- `python -m chunking_pipeline.azure_pipeline`: run Azure Document Intelligence (`--provider document_intelligence`) or Content Understanding (`--provider content_understanding`) straight from the CLI.
+- `python -m chunking_pipeline.azure_pipeline`: run Azure Document Intelligence (`--provider document_intelligence`) straight from the CLI.
 - Azure Document Intelligence exports paragraph roles as element types (e.g., `pageHeader`, `pageNumber`, `title`) so the UI type filters mirror the service categorization.
 
 ## Prerequisites
@@ -72,9 +72,9 @@ What it does:
 
 Use `--input-jsonl` when you want to re-evaluate matches from a previously saved JSONL without reprocessing the PDF, and `--trimmed-out` if you want to keep the sliced PDF for debugging.
 
-## Azure runs (Document Intelligence + Content Understanding)
+## Azure runs (Document Intelligence)
 
-Set the Azure credentials before running either via CLI or the UI. You can drop them into a local `.env` (see `.env.example`) and they will be auto-loaded by the app and the CLI helpers. Foundry deployments use a single endpoint/key for both providers:
+Set the Azure credentials before running either via CLI or the UI. You can drop them into a local `.env` (see `.env.example`) and they will be auto-loaded by the app and the CLI helpers. Foundry deployments use a single endpoint/key:
 - `AZURE_FT_ENDPOINT` / `AZURE_FT_KEY`
 
 When Azure language detection is enabled (e.g., including `languages` in the features), detected locales are captured in `run_config` (persisted from the pipeline output) so reloading a run flips previews to RTL automatically for Arabic-heavy documents.
@@ -99,23 +99,7 @@ uv run python -m chunking_pipeline.azure_pipeline \
   --api-version 2024-11-30
 ```
 
-CLI example (Content Understanding Document Search):
-```bash
-AZURE_FT_ENDPOINT=<endpoint> AZURE_FT_KEY=<key> \
-uv run python -m chunking_pipeline.azure_pipeline \
-  --provider content_understanding \
-  --input res/V3.0_Reviewed_translation_EN_full\ 4.pdf \
-  --pages 1-2 \
-  --output outputs/azure/content_understanding/V3_0_EN_4.pages1-2.tables.jsonl \
-  --trimmed-out outputs/azure/content_understanding/V3_0_EN_4.pages1-2.pdf \
-  --emit-matches outputs/azure/content_understanding/V3_0_EN_4.pages1-2.matches.json \
-  --model-id prebuilt-documentSearch \
-  --api-version 2025-11-01
-```
-
-Outputs for Azure runs live under `outputs/azure/document_intelligence/` or `outputs/azure/content_understanding/` with the same filename suffix pattern used by Unstructured.
-Reviews are stored per-provider (e.g., `outputs/azure/document_intelligence/reviews/<slug>.reviews.json`).
-If you ever see Azure `.tables.jsonl` files that are empty, rerun the slice: the helper now uses the SDK's `as_dict` output and scales polygons to PDF points so overlays render correctly.
+Outputs for Azure runs live under `outputs/azure/document_intelligence/` with the same filename suffix pattern used by Unstructured. Reviews are stored per-provider (e.g., `outputs/azure/document_intelligence/reviews/<slug>.reviews.json`). If you ever see Azure `.tables.jsonl` files that are empty, rerun the slice: the helper now uses the SDK's `as_dict` output and scales polygons to PDF points so overlays render correctly.
 
 ## Next ideas
 
@@ -181,7 +165,7 @@ uv run uvicorn main:app --host 127.0.0.1 --port 8765
 
 What you get:
 - Inspect view that keeps the PDF visible with overlay toggles and tabs for Chunks and Elements; the Metrics/table visuals are retired in favor of chunk-first inspection.
-- Provider-aware runs: pick Unstructured (local), Unstructured Partition (API, elements-only), or Azure Document Intelligence (Layout) in the New Run modal. (Azure Content Understanding is disabled in the UI; use the CLI helper if needed.) Azure runs hide chunking controls and expose model id, features, locale, string index type, content format, and query fields. Outputs live under `outputs/azure/...`. Azure Document Intelligence runs are elements-only in the UI (the Chunks tab is hidden).
+- Provider-aware runs: pick Unstructured (local), Unstructured Partition (API, elements-only), or Azure Document Intelligence (Layout) in the New Run modal. Azure runs hide chunking controls and expose model id, features, locale, string index type, content format, and query fields. Outputs live under `outputs/azure/...`. Azure Document Intelligence runs are elements-only in the UI (the Chunks tab is hidden).
 - Feedback view: a new top-level tab that aggregates all reviews across providers, shows good/bad counts, per-provider charts, lets you jump back into Inspect, and can ship every review to an OpenAI model for provider-level summaries or cross-provider comparisons. Export everything as JSON or a lightweight HTML report.
 - A compact single-line settings recap with rich tooltips for each parameter; the New Run modal mirrors the same tooltips so behavior is clear where you edit values.
 - Overlay UX: hover for ID/type/page/tooltips; colors are fixed per element type; chunk overlays honor Type/Review filters and redraw immediately; Azure polygons stay scaled to PDF points; the Elements outline groups Azure pageHeader/pageNumber/Tables/Paragraphs/Lines by page order with breadcrumbs in drawers.
@@ -220,10 +204,10 @@ Endpoints (served by FastAPI):
 - `POST /api/run` — execute a new run. Body:
   - `pdf` (string, required): filename under `res/`.
   - `pages` (string, optional): page list/range (e.g., `4-6`, `4,5,6`). If omitted or blank, the server processes the entire document (equivalent to `1-<num_pages>`). The server trims the PDF first and only processes those pages.
-  - `provider` (`unstructured|unstructured-partition|azure-di|azure-cu`, default `unstructured`).
+  - `provider` (`unstructured|unstructured-partition|azure-di`, default `unstructured`).
   - Unstructured: `strategy` (`auto|fast|hi_res`, default `auto`); `infer_table_structure` (bool, default `true`); `chunking` (`basic|by_title`, default `by_title`) plus the chunking knobs (`chunk_max_characters`, `chunk_new_after_n_chars`, `chunk_overlap`, `chunk_include_orig_elements`, `chunk_overlap_all`, `chunk_combine_under_n_chars`, `chunk_multipage_sections`).
   - Unstructured Partition (API): elements-only; honors `strategy` (`auto|fast|hi_res`) and optional `languages` while emitting raw element lines in `*.chunks.jsonl` (no local chunking is applied).
-- Azure: `model_id`, `features`, `locale`, `string_index_type`, `output_content_format`, `query_fields`, and (for Content Understanding) `analyzer_id`. Chunking flags are ignored for Azure providers.
+- Azure: `model_id`, `features`, `locale`, `string_index_type`, `output_content_format`, and `query_fields`. Chunking flags are ignored for Azure providers.
   - Response: immediately returns a `job` payload (`id`, `status`, `command`, log tails) instead of blocking until the chunker finishes. Use `/api/run-jobs/{id}` to poll; the UI already handles this automatically.
 
 Run on demand via the UI:

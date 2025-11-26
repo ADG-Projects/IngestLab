@@ -128,7 +128,6 @@ def api_run(payload: Dict[str, Any]) -> Dict[str, Any]:
     is_unstructured = provider == "unstructured"
     is_unstructured_partition = provider == "unstructured-partition"
     is_azure_di = provider == "azure-di"
-    is_azure_cu = provider == "azure-cu"
 
     strategy = str(payload.get("strategy") or "auto")
     allowed_partition_strategies = {"auto", "fast", "hi_res", "ocr_only", "vlm"}
@@ -171,16 +170,14 @@ def api_run(payload: Dict[str, Any]) -> Dict[str, Any]:
     azure_string_index_type = None
     azure_output_content_format = None
     azure_query_fields = None
-    analyzer_id = None
-    if is_azure_di or is_azure_cu:
-        azure_model_id = str(payload.get("model_id") or ("prebuilt-layout" if is_azure_di else "prebuilt-documentSearch")).strip()
+    if is_azure_di:
+        azure_model_id = str(payload.get("model_id") or "prebuilt-layout").strip()
         azure_features_raw = payload.get("features")
         azure_outputs_raw = payload.get("outputs")
         azure_locale = payload.get("locale")
         azure_string_index_type = payload.get("string_index_type")
         azure_output_content_format = payload.get("output_content_format")
         azure_query_fields = payload.get("query_fields")
-        analyzer_id = payload.get("analyzer_id")
 
     def _normalize_languages(value: Any) -> Optional[List[str]]:
         if value is None:
@@ -311,14 +308,14 @@ def api_run(payload: Dict[str, Any]) -> Dict[str, Any]:
         "detect_language_per_element": detect_language_per_element,
         "primary_language": primary_language,
         "provider": provider,
-        "model_id": azure_model_id if is_azure_di or is_azure_cu else None,
-        "features": (normalized_features or azure_features_raw) if (is_azure_di or is_azure_cu) else None,
-        "outputs": (normalized_outputs or azure_outputs_raw) if (is_azure_di or is_azure_cu) else None,
-        "locale": azure_locale if is_azure_di or is_azure_cu else None,
-        "string_index_type": azure_string_index_type if is_azure_di or is_azure_cu else None,
-        "output_content_format": azure_output_content_format if is_azure_di or is_azure_cu else None,
-        "query_fields": azure_query_fields if is_azure_di or is_azure_cu else None,
-        "analyzer_id": analyzer_id if is_azure_cu else None,
+        "model_id": azure_model_id if is_azure_di else None,
+        "features": (normalized_features or azure_features_raw) if is_azure_di else None,
+        "outputs": (normalized_outputs or azure_outputs_raw) if is_azure_di else None,
+        "locale": azure_locale if is_azure_di else None,
+        "string_index_type": azure_string_index_type if is_azure_di else None,
+        "output_content_format": azure_output_content_format if is_azure_di else None,
+        "query_fields": azure_query_fields if is_azure_di else None,
+        "analyzer_id": None,
         "extract_image_block_types": extract_image_block_types if is_unstructured_partition else None,
         "extract_image_block_to_payload": extract_image_block_to_payload if is_unstructured_partition else None,
     }
@@ -417,7 +414,7 @@ def api_run(payload: Dict[str, Any]) -> Dict[str, Any]:
         if extract_image_block_to_payload is True:
             cmd.append("--extract-image-block-to-payload")
     else:
-        azure_provider = "document_intelligence" if is_azure_di else "content_understanding"
+        azure_provider = "document_intelligence"
         cmd = [
             sys.executable,
             "-m",
@@ -450,8 +447,6 @@ def api_run(payload: Dict[str, Any]) -> Dict[str, Any]:
                 cmd += ["--query-fields", ",".join(str(x) for x in azure_query_fields)]
             else:
                 cmd += ["--query-fields", str(azure_query_fields)]
-        if analyzer_id and is_azure_cu:
-            cmd += ["--analyzer-id", str(analyzer_id)]
         cmd += ["--run-metadata-out", str(meta_out)]
         if primary_language:
             cmd += ["--primary-language", primary_language]

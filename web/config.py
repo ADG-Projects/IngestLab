@@ -56,11 +56,6 @@ PROVIDERS = {
         "label": "Azure Document Intelligence",
         "out_dir": AZURE_OUT_DIR / "document_intelligence",
     },
-    "azure-cu": {
-        "id": "azure-cu",
-        "label": "Azure Content Understanding",
-        "out_dir": AZURE_OUT_DIR / "content_understanding",
-    },
 }
 DEFAULT_PROVIDER = "unstructured"
 

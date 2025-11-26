@@ -1,7 +1,6 @@
 # TODO
 
 ## Upcoming
-- [ ] Verify Azure Content Understanding overlays align with trimmed PDFs and log any analyzer-specific quirks.
 - [ ] Remove leftover references to metrics/tables in UI modules (app-metrics.js import vestigial; ensure CSS/tooling stay lean).
 
 ## Completed

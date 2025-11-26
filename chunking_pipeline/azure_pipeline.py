@@ -10,7 +10,6 @@ from html import escape
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-import requests
 from azure.ai.documentintelligence import DocumentIntelligenceClient
 from azure.core.credentials import AzureKeyCredential
 
@@ -395,26 +394,6 @@ def run_di_analysis(
         return result, client, result_id  # type: ignore[no-any-return]
 
 
-def run_cu_analysis(trimmed_pdf: str, api_version: str, analyzer_id: str, endpoint: str, key: str) -> Dict[str, Any]:
-    url = f"{endpoint}/authoring/analyze-document"
-    params = {
-        "api-version": api_version,
-        "stringIndexType": "unicodeCodePoint",
-        "analyzerId": analyzer_id,
-    }
-    response = requests.post(
-        url,
-        params=params,
-        headers={
-            "Ocp-Apim-Subscription-Key": key,
-        },
-        files={"file": ("document.pdf", open(trimmed_pdf, "rb"), "application/pdf")},
-        timeout=900,
-    )
-    response.raise_for_status()
-    return response.json()
-
-
 def _sanitize_figure_filename(name: str) -> str:
     cleaned = re.sub(r"[^A-Za-z0-9_.-]+", "_", name or "")
     return cleaned or "figure"
@@ -479,21 +458,17 @@ def build_run_config(
         "model_id": args.model_id,
         "api_version": args.api_version,
     }
-    if provider == "azure-di":
-        cfg["features"] = features or []
-        if outputs:
-            cfg["outputs"] = outputs
-        if args.locale:
-            cfg["locale"] = args.locale
-        if args.string_index_type:
-            cfg["string_index_type"] = args.string_index_type
-        if args.output_content_format:
-            cfg["output_content_format"] = args.output_content_format
-        if args.query_fields:
-            cfg["query_fields"] = args.query_fields
-    if provider == "azure-cu":
-        if args.analyzer_id:
-            cfg["analyzer_id"] = args.analyzer_id
+    cfg["features"] = features or []
+    if outputs:
+        cfg["outputs"] = outputs
+    if args.locale:
+        cfg["locale"] = args.locale
+    if args.string_index_type:
+        cfg["string_index_type"] = args.string_index_type
+    if args.output_content_format:
+        cfg["output_content_format"] = args.output_content_format
+    if args.query_fields:
+        cfg["query_fields"] = args.query_fields
     if args.primary_language:
         cfg["primary_language"] = args.primary_language
     if args.ocr_languages:
@@ -504,14 +479,14 @@ def build_run_config(
 
 
 def main(argv: Optional[List[str]] = None) -> int:
-    parser = argparse.ArgumentParser(description="Run Azure Document Intelligence or Content Understanding")
-    parser.add_argument("--provider", choices=["document_intelligence", "content_understanding"], default="document_intelligence", help="Azure provider to use")
+    parser = argparse.ArgumentParser(description="Run Azure Document Intelligence")
+    parser.add_argument("--provider", choices=["document_intelligence"], default="document_intelligence", help="Azure provider to use")
     parser.add_argument("--input", required=True, help="Path to input PDF")
     parser.add_argument("--pages", required=True, help="Page ranges, e.g., 1-3 or 2,4")
     parser.add_argument("--output", help="Path to write elements JSONL (optional; omit to skip)")
     parser.add_argument("--trimmed-out", required=True, help="Path to write trimmed PDF")
     parser.add_argument("--emit-matches", help="(Deprecated) Path to write matches JSON")
-    parser.add_argument("--model-id", dest="model_id", required=False, help="Model/Analyzer id")
+    parser.add_argument("--model-id", dest="model_id", required=False, help="Model id")
     parser.add_argument("--api-version", dest="api_version", required=False, help="API version")
     parser.add_argument("--features", help="Comma-separated feature list")
     parser.add_argument("--outputs", help="Comma-separated outputs list (e.g., figures)")
@@ -519,7 +494,6 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--string-index-type", help="String index type")
     parser.add_argument("--output-content-format", help="Content format")
     parser.add_argument("--query-fields", help="Comma-separated query fields")
-    parser.add_argument("--analyzer-id", help="Content Understanding analyzer id (defaults to prebuilt-documentSearch)")
     parser.add_argument("--primary-language", choices=["eng", "ara"], help="Primary language override")
     parser.add_argument("--ocr-languages", default=None, help="OCR languages hint")
     parser.add_argument("--languages", default=None, help="Comma-separated language hints")
@@ -539,67 +513,47 @@ def main(argv: Optional[List[str]] = None) -> int:
     di_pages = list(range(1, len(valid_pages) + 1))
     elems: List[Dict[str, Any]] = []
 
-    provider = args.provider
-    if provider == "document_intelligence":
-        endpoint = args.endpoint or _get_env_any([DEFAULT_ENDPOINT_ENV, *ALT_ENDPOINT_ENVS])
-        key = args.key or _get_env_any([DEFAULT_KEY_ENV, *ALT_KEY_ENVS])
-        if not endpoint or not key:
-            raise SystemExit("Document Intelligence requires endpoint/key env (AZURE_FT_ENDPOINT/AZURE_FT_KEY or DOCUMENTINTELLIGENCE_ENDPOINT/DOCUMENTINTELLIGENCE_API_KEY)")
-        model_id = args.model_id or "prebuilt-layout"
-        api_version = args.api_version or DEFAULT_DI_API_VERSION
-        features = _parse_csv_list(args.features)
-        outputs = _parse_csv_list(args.outputs)
-        want_figures = any((o or "").lower() == "figures" for o in (outputs or []))
-        result_payload, di_client, di_result_id = run_di_analysis(
-            input_pdf=args.input,
-            trimmed_pdf=trimmed,
-            model_id=model_id,
-            api_version=api_version,
-            pages=di_pages,
-            features=features,
-            outputs=outputs,
-            locale=args.locale,
-            string_index_type=args.string_index_type,
-            output_content_format=args.output_content_format,
-            query_fields=_parse_csv_list(args.query_fields),
-            endpoint=endpoint,
-            key=key,
-        )
-        an_result = _extract_analyze_result(result_payload)
-        figure_images, figures_dir = _download_di_figures(
-            client=di_client,
-            model_id=model_id,
-            result_id=di_result_id,
-            figures=an_result.get("figures") if isinstance(an_result, dict) else None,
-            chunk_output=args.output,
-            trimmed_pdf=trimmed,
-        ) if want_figures else ({}, None)
-        elems = normalize_elements(an_result, figure_images)
-        run_provider = "azure-di"
-        args.api_version = api_version
-        run_config = build_run_config(run_provider, args, features=features, outputs=outputs, endpoint=endpoint)
-        if want_figures:
-            run_config["figure_count"] = len(an_result.get("figures") or []) if isinstance(an_result, dict) else 0
-            if figures_dir:
-                run_config["figures_dir"] = str(figures_dir)
-    else:
-        endpoint = args.endpoint or os.environ.get(DEFAULT_ENDPOINT_ENV, "")
-        key = args.key or os.environ.get(DEFAULT_KEY_ENV, "")
-        if not endpoint or not key:
-            raise SystemExit("Content Understanding requires endpoint/key env (AZURE_FT_ENDPOINT/AZURE_FT_KEY)")
-        analyzer_id = args.analyzer_id or args.model_id or "prebuilt-documentSearch"
-        api_version = args.api_version or "2025-11-01"
-        raw = run_cu_analysis(trimmed_pdf=trimmed, api_version=api_version, analyzer_id=analyzer_id, endpoint=endpoint, key=key)
-        an_result = _extract_analyze_result(raw)
-        elems = normalize_elements(an_result)
-        run_provider = "azure-cu"
-        run_config = build_run_config(
-            run_provider,
-            args,
-            features=_parse_csv_list(args.features),
-            outputs=_parse_csv_list(args.outputs),
-            endpoint=endpoint,
-        )
+    endpoint = args.endpoint or _get_env_any([DEFAULT_ENDPOINT_ENV, *ALT_ENDPOINT_ENVS])
+    key = args.key or _get_env_any([DEFAULT_KEY_ENV, *ALT_KEY_ENVS])
+    if not endpoint or not key:
+        raise SystemExit("Document Intelligence requires endpoint/key env (AZURE_FT_ENDPOINT/AZURE_FT_KEY or DOCUMENTINTELLIGENCE_ENDPOINT/DOCUMENTINTELLIGENCE_API_KEY)")
+    model_id = args.model_id or "prebuilt-layout"
+    api_version = args.api_version or DEFAULT_DI_API_VERSION
+    features = _parse_csv_list(args.features)
+    outputs = _parse_csv_list(args.outputs)
+    want_figures = any((o or "").lower() == "figures" for o in (outputs or []))
+    result_payload, di_client, di_result_id = run_di_analysis(
+        input_pdf=args.input,
+        trimmed_pdf=trimmed,
+        model_id=model_id,
+        api_version=api_version,
+        pages=di_pages,
+        features=features,
+        outputs=outputs,
+        locale=args.locale,
+        string_index_type=args.string_index_type,
+        output_content_format=args.output_content_format,
+        query_fields=_parse_csv_list(args.query_fields),
+        endpoint=endpoint,
+        key=key,
+    )
+    an_result = _extract_analyze_result(result_payload)
+    figure_images, figures_dir = _download_di_figures(
+        client=di_client,
+        model_id=model_id,
+        result_id=di_result_id,
+        figures=an_result.get("figures") if isinstance(an_result, dict) else None,
+        chunk_output=args.output,
+        trimmed_pdf=trimmed,
+    ) if want_figures else ({}, None)
+    elems = normalize_elements(an_result, figure_images)
+    run_provider = "azure-di"
+    args.api_version = api_version
+    run_config = build_run_config(run_provider, args, features=features, outputs=outputs, endpoint=endpoint)
+    if want_figures:
+        run_config["figure_count"] = len(an_result.get("figures") or []) if isinstance(an_result, dict) else 0
+        if figures_dir:
+            run_config["figures_dir"] = str(figures_dir)
 
     detected_langs = _extract_detected_languages(an_result)
     if detected_langs:

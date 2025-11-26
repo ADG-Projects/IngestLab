@@ -164,7 +164,7 @@ async function analyzeFeedbackSelection() {
       res = await fetch('/api/feedback/analyze/compare', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ providers: ['unstructured', 'unstructured-partition', 'azure-di', 'azure-cu'] }),
+        body: JSON.stringify({ providers: ['unstructured', 'unstructured-partition', 'azure-di'] }),
       });
     } else {
       res = await fetch('/api/feedback/analyze/provider', {
