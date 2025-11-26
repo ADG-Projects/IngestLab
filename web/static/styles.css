@@ -1412,7 +1412,9 @@ body.drawer-open #right-metrics {
   gap: 10px;
   padding: 10px;
   min-height: 0;
-  overflow: auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  max-height: calc(100vh - 170px);
   flex: 1;
 }
 
