@@ -1620,6 +1620,8 @@ body.drawer-open #right-metrics {
   border-radius: 8px;
   padding: 10px;
   background: #0f131a;
+  overflow: auto;
+  max-height: 320px;
 }
 
 .drawer-image img {
