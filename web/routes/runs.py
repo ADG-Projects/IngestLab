@@ -165,7 +165,6 @@ def api_run(payload: Dict[str, Any]) -> Dict[str, Any]:
         primary_language = "eng"
 
     azure_model_id: Optional[str] = None
-    azure_api_version: Optional[str] = None
     azure_features_raw = None
     azure_outputs_raw = None
     azure_locale = None
@@ -175,7 +174,6 @@ def api_run(payload: Dict[str, Any]) -> Dict[str, Any]:
     analyzer_id = None
     if is_azure_di or is_azure_cu:
         azure_model_id = str(payload.get("model_id") or ("prebuilt-layout" if is_azure_di else "prebuilt-documentSearch")).strip()
-        azure_api_version = str(payload.get("api_version") or ("2024-11-30" if is_azure_di else "2025-11-01")).strip()
         azure_features_raw = payload.get("features")
         azure_outputs_raw = payload.get("outputs")
         azure_locale = payload.get("locale")
@@ -263,6 +261,8 @@ def api_run(payload: Dict[str, Any]) -> Dict[str, Any]:
         detect_language_per_element = False
     extract_image_block_types = _normalize_feature_list(payload.get("extract_image_block_types")) if is_unstructured_partition else None
     extract_image_block_to_payload = _coerce_bool("extract_image_block_to_payload") if is_unstructured_partition else None
+    if is_unstructured_partition and extract_image_block_to_payload and not extract_image_block_types:
+        extract_image_block_types = ["Image"]
 
     input_pdf = RES_DIR / pdf_name
     if not input_pdf.exists():
@@ -312,7 +312,6 @@ def api_run(payload: Dict[str, Any]) -> Dict[str, Any]:
         "primary_language": primary_language,
         "provider": provider,
         "model_id": azure_model_id if is_azure_di or is_azure_cu else None,
-        "api_version": azure_api_version if is_azure_di or is_azure_cu else None,
         "features": (normalized_features or azure_features_raw) if (is_azure_di or is_azure_cu) else None,
         "outputs": (normalized_outputs or azure_outputs_raw) if (is_azure_di or is_azure_cu) else None,
         "locale": azure_locale if is_azure_di or is_azure_cu else None,
@@ -435,8 +434,6 @@ def api_run(payload: Dict[str, Any]) -> Dict[str, Any]:
             str(chunk_out),
             "--model-id",
             azure_model_id,
-            "--api-version",
-            azure_api_version,
         ]
         if normalized_features:
             cmd += ["--features", ",".join(normalized_features)]

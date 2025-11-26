@@ -655,8 +655,10 @@ function wireRunForm() {
     };
     if (isUnstructuredFamily) {
       payload.strategy = $('strategySelect').value;
-      const imgTypesRaw = $('extractImageBlockTypes')?.value?.trim();
-      if (imgTypesRaw) payload.extract_image_block_types = imgTypesRaw;
+      const rawImgTypes = $('extractImageBlockTypes')?.value?.trim() || '';
+      const embedImages = $('extractImageToPayload')?.checked;
+      const imgTypesVal = rawImgTypes || (embedImages ? 'Image' : '');
+      if (imgTypesVal) payload.extract_image_block_types = imgTypesVal;
       const embedImages = $('extractImageToPayload')?.checked;
       if (embedImages) payload.extract_image_block_to_payload = true;
       if (isUnstructured) {
@@ -731,13 +733,23 @@ function wireRunForm() {
       payload.form_snapshot.include_orig_elements = parseBoolSelect('chunkIncludeOrig');
       payload.form_snapshot.overlap_all = parseBoolSelect('chunkOverlapAll');
       payload.form_snapshot.multipage_sections = parseBoolSelect('chunkMultipage');
-      payload.form_snapshot.extract_image_block_types = $('extractImageBlockTypes')?.value?.trim() || null;
-      payload.form_snapshot.extract_image_block_to_payload = $('extractImageToPayload')?.checked || null;
+      {
+        const rawImgTypes = $('extractImageBlockTypes')?.value?.trim() || '';
+        const embedImages = $('extractImageToPayload')?.checked;
+        const imgTypesVal = rawImgTypes || (embedImages ? 'Image' : '');
+        payload.form_snapshot.extract_image_block_types = imgTypesVal || null;
+        payload.form_snapshot.extract_image_block_to_payload = embedImages || null;
+      }
     } else if (isPartition) {
       payload.form_snapshot.strategy = payload.strategy;
       payload.form_snapshot.provider = payload.provider;
-      payload.form_snapshot.extract_image_block_types = $('extractImageBlockTypes')?.value?.trim() || null;
-      payload.form_snapshot.extract_image_block_to_payload = $('extractImageToPayload')?.checked || null;
+      {
+        const rawImgTypes = $('extractImageBlockTypes')?.value?.trim() || '';
+        const embedImages = $('extractImageToPayload')?.checked;
+        const imgTypesVal = rawImgTypes || (embedImages ? 'Image' : '');
+        payload.form_snapshot.extract_image_block_types = imgTypesVal || null;
+        payload.form_snapshot.extract_image_block_to_payload = embedImages || null;
+      }
     } else {
       payload.form_snapshot.features = payload.features;
       payload.form_snapshot.outputs = payload.outputs;
