@@ -674,8 +674,10 @@ function wireRunForm() {
       }
     } else {
       const azureFeatures = [];
+      const azureOutputs = [];
       const pushIf = (el, val) => { if (el && el.checked) azureFeatures.push(val); };
-      pushIf($('azureFigureImage'), 'figures');
+      const pushOutputIf = (el, val) => { if (el && el.checked) azureOutputs.push(val); };
+      pushOutputIf($('azureFigureImage'), 'figures');
       pushIf($('azureBarcodes'), 'barcodes');
       pushIf($('azureLanguage'), 'languages');
       pushIf($('azureKvp'), 'keyValuePairs');
@@ -683,7 +685,8 @@ function wireRunForm() {
       pushIf($('azureStyleFont'), 'styleFont');
       pushIf($('azureFormulas'), 'formulas');
       payload.features = azureFeatures.join(','); // Azure detection on by default via "languages"
-      const fmt = document.querySelector('input[name=\"azureOutputFormat\"]:checked');
+      payload.outputs = azureOutputs.join(',');
+      const fmt = document.querySelector('input[name="azureOutputFormat"]:checked');
       payload.output_content_format = fmt ? fmt.value : 'markdown';
       payload.model_id = ($('azureModelId')?.value || '').trim();
       payload.api_version = ($('azureApiVersion')?.value || '').trim();
@@ -719,6 +722,7 @@ function wireRunForm() {
       payload.form_snapshot.provider = payload.provider;
     } else {
       payload.form_snapshot.features = payload.features;
+      payload.form_snapshot.outputs = payload.outputs;
       payload.form_snapshot.output_content_format = payload.output_content_format;
       payload.form_snapshot.model_id = payload.model_id;
       payload.form_snapshot.api_version = payload.api_version;

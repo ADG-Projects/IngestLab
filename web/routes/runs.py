@@ -167,6 +167,7 @@ def api_run(payload: Dict[str, Any]) -> Dict[str, Any]:
     azure_model_id = str(payload.get("model_id") or ("prebuilt-layout" if is_azure_di else "prebuilt-documentSearch")).strip()
     azure_api_version = str(payload.get("api_version") or ("2024-11-30" if is_azure_di else "2025-11-01")).strip()
     azure_features_raw = payload.get("features")
+    azure_outputs_raw = payload.get("outputs")
     azure_locale = payload.get("locale")
     azure_string_index_type = payload.get("string_index_type")
     azure_output_content_format = payload.get("output_content_format")
@@ -189,7 +190,44 @@ def api_run(payload: Dict[str, Any]) -> Dict[str, Any]:
                 items.append(txt)
         return items or None
 
+    def _normalize_feature_list(value: Any) -> Optional[List[str]]:
+        if value is None:
+            return None
+        items: List[str] = []
+        if isinstance(value, str):
+            parts = value.split(",")
+        elif isinstance(value, (list, tuple, set)):
+            parts = value
+        else:
+            raise HTTPException(status_code=400, detail="features/outputs must be a list or comma-separated string")
+        for part in parts:
+            txt = str(part).strip()
+            if txt:
+                items.append(txt)
+        return items or None
+
     languages = _normalize_languages(languages_raw)
+    features_list = _normalize_feature_list(azure_features_raw) or []
+    outputs_list = _normalize_feature_list(azure_outputs_raw) or []
+    for feat in features_list:
+        if feat.lower() == "figures":
+            outputs_list.append("figures")
+    seen_feats: set = set()
+    normalized_features: List[str] = []
+    for feat in features_list:
+        key = feat.lower()
+        if key == "figures" or key in seen_feats:
+            continue
+        seen_feats.add(key)
+        normalized_features.append(feat)
+    seen_outputs: set = set()
+    normalized_outputs: List[str] = []
+    for out in outputs_list:
+        key = out.lower()
+        if key in seen_outputs:
+            continue
+        seen_outputs.add(key)
+        normalized_outputs.append(out)
 
     def _coerce_bool(name: str) -> Optional[bool]:
         val = payload.get(name)
@@ -263,7 +301,8 @@ def api_run(payload: Dict[str, Any]) -> Dict[str, Any]:
         "provider": provider,
         "model_id": azure_model_id if not is_unstructured else None,
         "api_version": azure_api_version if not is_unstructured else None,
-        "features": azure_features_raw,
+        "features": normalized_features or azure_features_raw,
+        "outputs": normalized_outputs or azure_outputs_raw,
         "locale": azure_locale,
         "string_index_type": azure_string_index_type,
         "output_content_format": azure_output_content_format,
@@ -381,11 +420,10 @@ def api_run(payload: Dict[str, Any]) -> Dict[str, Any]:
             "--api-version",
             azure_api_version,
         ]
-        if azure_features_raw:
-            if isinstance(azure_features_raw, str):
-                cmd += ["--features", azure_features_raw]
-            elif isinstance(azure_features_raw, list):
-                cmd += ["--features", ",".join(str(x) for x in azure_features_raw)]
+        if normalized_features:
+            cmd += ["--features", ",".join(normalized_features)]
+        if normalized_outputs:
+            cmd += ["--outputs", ",".join(normalized_outputs)]
         if azure_locale:
             cmd += ["--locale", str(azure_locale)]
         if azure_string_index_type:
@@ -393,7 +431,10 @@ def api_run(payload: Dict[str, Any]) -> Dict[str, Any]:
         if azure_output_content_format:
             cmd += ["--output-content-format", str(azure_output_content_format)]
         if azure_query_fields:
-            cmd += ["--query-fields", str(azure_query_fields)]
+            if isinstance(azure_query_fields, (list, tuple)):
+                cmd += ["--query-fields", ",".join(str(x) for x in azure_query_fields)]
+            else:
+                cmd += ["--query-fields", str(azure_query_fields)]
         if analyzer_id and is_azure_cu:
             cmd += ["--analyzer-id", str(analyzer_id)]
         cmd += ["--run-metadata-out", str(meta_out)]

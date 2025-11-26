@@ -81,6 +81,7 @@ When Azure language detection is enabled (e.g., including `languages` in the fea
 When Azure returns markdown (e.g., `output_content_format=markdown`), the Inspect drawers render the formatted markdown directly and fall back to plain text only when no richer content is present; table HTML still prefers `text_as_html` for accurate column order.
 
 Document Intelligence runs target `api-version=2024-11-30` (v4.0); older service versions are not supported.
+Supported DI `features`: `languages`, `barcodes`, `keyValuePairs`, `ocrHighResolution`, `styleFont`, `formulas`, and `queryFields`. Figure images belong to the `outputs` parameter (use `--outputs figures`); passing `figures` via `features` will be rejected by the service.
 
 CLI example (Document Intelligence layout):
 ```bash
@@ -94,6 +95,7 @@ uv run python -m chunking_pipeline.azure_pipeline \
   --emit-matches outputs/azure/document_intelligence/V3_0_EN_4.pages4-6.matches.json \
   --model-id prebuilt-layout \
   --features ocrHighResolution,keyValuePairs,barcodes,formulas \
+  --outputs figures \
   --api-version 2024-11-30
 ```
 

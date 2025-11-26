@@ -309,13 +309,7 @@ def normalize_elements(an_result: Dict[str, Any]) -> List[Dict[str, Any]]:
     return elements
 
 
-def _parse_features(raw: Optional[str]) -> Optional[List[str]]:
-    if not raw:
-        return None
-    return [part.strip() for part in raw.split(",") if part.strip()]
-
-
-def _parse_fields(raw: Optional[str]) -> Optional[List[str]]:
+def _parse_csv_list(raw: Optional[str]) -> Optional[List[str]]:
     if not raw:
         return None
     return [part.strip() for part in raw.split(",") if part.strip()]
@@ -328,6 +322,7 @@ def run_di_analysis(
     api_version: str,
     pages: List[int],
     features: Optional[List[str]],
+    outputs: Optional[List[str]],
     locale: Optional[str],
     string_index_type: Optional[str],
     output_content_format: Optional[str],
@@ -346,6 +341,7 @@ def run_di_analysis(
             model_id,
             body=fh,
             features=features or None,
+            output=outputs or None,
             locale=locale or None,
             string_index_type=string_index_type or None,
             output_content_format=output_content_format or None,
@@ -384,7 +380,13 @@ def run_cu_analysis(trimmed_pdf: str, api_version: str, analyzer_id: str, endpoi
     return response.json()
 
 
-def build_run_config(provider: str, args: argparse.Namespace, features: Optional[List[str]], endpoint: str) -> Dict[str, Any]:
+def build_run_config(
+    provider: str,
+    args: argparse.Namespace,
+    features: Optional[List[str]],
+    outputs: Optional[List[str]],
+    endpoint: str,
+) -> Dict[str, Any]:
     cfg: Dict[str, Any] = {
         "provider": provider,
         "input": args.input,
@@ -395,6 +397,8 @@ def build_run_config(provider: str, args: argparse.Namespace, features: Optional
     }
     if provider == "azure-di":
         cfg["features"] = features or []
+        if outputs:
+            cfg["outputs"] = outputs
         if args.locale:
             cfg["locale"] = args.locale
         if args.string_index_type:
@@ -426,6 +430,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--model-id", dest="model_id", required=False, help="Model/Analyzer id")
     parser.add_argument("--api-version", dest="api_version", required=False, help="API version")
     parser.add_argument("--features", help="Comma-separated feature list")
+    parser.add_argument("--outputs", help="Comma-separated outputs list (e.g., figures)")
     parser.add_argument("--locale", help="Locale hint")
     parser.add_argument("--string-index-type", help="String index type")
     parser.add_argument("--output-content-format", help="Content format")
@@ -458,7 +463,8 @@ def main(argv: Optional[List[str]] = None) -> int:
             raise SystemExit("Document Intelligence requires endpoint/key env (AZURE_FT_ENDPOINT/AZURE_FT_KEY or DOCUMENTINTELLIGENCE_ENDPOINT/DOCUMENTINTELLIGENCE_API_KEY)")
         model_id = args.model_id or "prebuilt-layout"
         api_version = args.api_version or DEFAULT_DI_API_VERSION
-        features = _parse_features(args.features)
+        features = _parse_csv_list(args.features)
+        outputs = _parse_csv_list(args.outputs)
         result = run_di_analysis(
             input_pdf=args.input,
             trimmed_pdf=trimmed,
@@ -466,10 +472,11 @@ def main(argv: Optional[List[str]] = None) -> int:
             api_version=api_version,
             pages=di_pages,
             features=features,
+            outputs=outputs,
             locale=args.locale,
             string_index_type=args.string_index_type,
             output_content_format=args.output_content_format,
-            query_fields=_parse_fields(args.query_fields),
+            query_fields=_parse_csv_list(args.query_fields),
             endpoint=endpoint,
             key=key,
         )
@@ -477,7 +484,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         elems = normalize_elements(an_result)
         run_provider = "azure-di"
         args.api_version = api_version
-        run_config = build_run_config(run_provider, args, features=features, endpoint=endpoint)
+        run_config = build_run_config(run_provider, args, features=features, outputs=outputs, endpoint=endpoint)
     else:
         endpoint = args.endpoint or os.environ.get(DEFAULT_ENDPOINT_ENV, "")
         key = args.key or os.environ.get(DEFAULT_KEY_ENV, "")
@@ -489,7 +496,13 @@ def main(argv: Optional[List[str]] = None) -> int:
         an_result = _extract_analyze_result(raw)
         elems = normalize_elements(an_result)
         run_provider = "azure-cu"
-        run_config = build_run_config(run_provider, args, features=_parse_features(args.features), endpoint=endpoint)
+        run_config = build_run_config(
+            run_provider,
+            args,
+            features=_parse_csv_list(args.features),
+            outputs=_parse_csv_list(args.outputs),
+            endpoint=endpoint,
+        )
 
     detected_langs = _extract_detected_languages(an_result)
     if detected_langs:
