@@ -10,6 +10,7 @@ from ..feedback import (
     collect_feedback_index,
     compare_providers,
     flatten_notes,
+    _provider_stats_from_runs,
 )
 from ..feedback import _collect_reviews_for_provider  # noqa: PLC2701 - internal helper reuse
 
@@ -77,7 +78,7 @@ def api_feedback_compare(payload: Dict[str, Any]) -> Dict[str, Any]:
         if prov not in PROVIDERS:
             raise HTTPException(status_code=400, detail=f"Unknown provider: {prov}")
 
-    summaries: List[Dict[str, Any]] = []
+    provider_entries: List[Dict[str, Any]] = []
     total_runs = 0
     total_notes = 0
     try:
@@ -87,9 +88,16 @@ def api_feedback_compare(payload: Dict[str, Any]) -> Dict[str, Any]:
             total_notes += sum(r.get("note_count", 0) for r in runs)
             if not runs:
                 continue
-            summaries.append(analyze_provider_feedback(prov, runs))
-        if summaries:
-            comparison = compare_providers([s["summary"] for s in summaries if s.get("summary")])
+            stats = _provider_stats_from_runs(runs)
+            provider_summary = analyze_provider_feedback(prov, runs)
+            entry = {
+                "provider": prov,
+                "summary": provider_summary.get("summary") if isinstance(provider_summary, dict) else provider_summary,
+                "stats": stats,
+            }
+            provider_entries.append(entry)
+        if provider_entries:
+            comparison = compare_providers(provider_entries)
         else:
             comparison = {"comparison": "No providers with feedback to compare", "rankings": [], "shared_recos": []}
     except RuntimeError as e:
@@ -99,7 +107,7 @@ def api_feedback_compare(payload: Dict[str, Any]) -> Dict[str, Any]:
         "providers": provider_list,
         "run_count": total_runs,
         "note_count": total_notes,
-        "summaries": summaries,
+        "summaries": provider_entries,
         "comparison": comparison,
     }
 
