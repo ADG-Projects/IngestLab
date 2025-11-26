@@ -165,7 +165,40 @@ def _llm_client() -> Tuple[OpenAI, str]:
 
 def _run_chat(messages: List[Dict[str, str]], max_tokens: int = 800) -> str:
     client, model = _llm_client()
+    use_responses_api = model.startswith(("gpt-5", "gpt-4.1"))
+
+    def _to_response_input(msgs: List[Dict[str, str]]) -> List[Dict[str, Any]]:
+        formatted: List[Dict[str, Any]] = []
+        for m in msgs:
+            role = m.get("role", "user")
+            content = m.get("content", "")
+            if isinstance(content, str):
+                content_blocks = [{"type": "text", "text": content}]
+            elif isinstance(content, list):
+                content_blocks = content
+            else:
+                content_blocks = [{"type": "text", "text": str(content)}]
+            formatted.append({"role": role, "content": content_blocks})
+        return formatted
+
     try:
+        if use_responses_api:
+            resp = client.responses.create(
+                model=model,
+                input=_to_response_input(messages),
+                temperature=0.2,
+                max_output_tokens=max_tokens,
+            )
+            text = getattr(resp, "output_text", None)
+            if not text and getattr(resp, "output", None):
+                try:
+                    parts = resp.output[0].get("content") or []
+                    text = "".join(p.get("text", "") for p in parts if isinstance(p, dict))
+                except Exception:
+                    text = None
+            if not text:
+                raise RuntimeError("LLM returned empty response")
+            return text
         resp = client.chat.completions.create(
             model=model,
             messages=messages,
