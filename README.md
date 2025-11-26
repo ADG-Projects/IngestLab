@@ -288,7 +288,7 @@ In the New Run modal, the “Upload PDF” row streams the chosen file straight 
 ### Feedback analysis (LLM)
 
 The Feedback tab can ship all stored reviews to OpenAI for summaries and comparisons.
-- Environment: set `FEEDBACK_LLM_API_KEY` (or reuse `OPENAI_API_KEY`), optional `FEEDBACK_LLM_MODEL` (defaults to `gpt-4o-mini`), and optional `FEEDBACK_LLM_BASE` if you proxy OpenAI-compatible endpoints.
+- Environment: set `FEEDBACK_LLM_API_KEY` (or reuse `OPENAI_API_KEY`), optional `FEEDBACK_LLM_MODEL` (defaults to `gpt-5-nano`), and optional `FEEDBACK_LLM_BASE` if you proxy OpenAI-compatible endpoints.
 - Provider analysis (`POST /api/feedback/analyze/provider`) batches every review for that provider, asks the model to summarize each batch, and reduces those summaries into a concise JSON overview.
 - Cross-provider comparison (`POST /api/feedback/analyze/compare`) reuses the provider summaries and asks the model to rank/contrast providers with shared recommendations.
 - The UI exposes both flows via the Feedback tab (“Send to LLM” for a provider or “Compare all providers”), and you can export the raw aggregated data as JSON or HTML without hitting the model.

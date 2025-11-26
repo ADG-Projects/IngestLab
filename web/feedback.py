@@ -153,7 +153,7 @@ def flatten_notes(runs: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
 
 def _llm_client() -> Tuple[OpenAI, str]:
     api_key = os.environ.get("FEEDBACK_LLM_API_KEY") or os.environ.get("OPENAI_API_KEY")
-    model = os.environ.get("FEEDBACK_LLM_MODEL") or os.environ.get("OPENAI_MODEL") or "gpt-4o-mini"
+    model = os.environ.get("FEEDBACK_LLM_MODEL") or os.environ.get("OPENAI_MODEL") or "gpt-5-nano"
     base_url = os.environ.get("FEEDBACK_LLM_BASE") or os.environ.get("OPENAI_BASE_URL")
     if not api_key:
         raise RuntimeError("FEEDBACK_LLM_API_KEY is not configured")
