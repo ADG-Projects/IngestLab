@@ -269,14 +269,15 @@ async function refreshRuns() {
     CURRENT_CHUNKS = null;
     CURRENT_CHUNK_SUMMARY = null;
     CURRENT_CHUNK_LOOKUP = {};
+    setReviewState(_emptyReviewState());
     resetPdfViewer();
     clearBoxes();
     updateLegend([]);
     clearDrawer();
     updateRunConfigCard();
     renderChunksTab();
+    populateTypeSelectors();
     renderElementsListForCurrentPage(CURRENT_PAGE_BOXES);
-    setReviewState(_emptyReviewState());
     updateReviewSummaryChip();
   }
   sel.onchange = async () => {
