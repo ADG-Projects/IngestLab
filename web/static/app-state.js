@@ -57,7 +57,7 @@ let CURRENT_ELEMENT_DRAWER_ID = null;
 let CURRENT_RUN_JOB_ID = null;
 let CURRENT_RUN_JOB_STATUS = null;
 let CURRENT_PROVIDER = 'unstructured';
-let CURRENT_ELEMENT_VIEW_MODE = 'flat'; // 'flat' | 'outline'
+let CURRENT_ELEMENT_VIEW_MODE = 'outline'; // 'flat' | 'outline'
 let ELEMENT_OUTLINE_STATE = { collapsedByPage: {}, expanded: {} };
 
 const RTL_AWARE_ELEMENTS = new Set();

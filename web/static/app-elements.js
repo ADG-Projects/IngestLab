@@ -236,6 +236,7 @@ function containerChildTypes(parentType) {
     sectionHeading: ['Paragraph', 'Line', 'Word'],
     pageNumber: ['Paragraph', 'Line', 'Word'],
     Line: ['Word'],
+    Figure: ['sectionHeading', 'Paragraph', 'Line', 'Word'],
   };
   const vals = map[parentType || ''];
   return vals ? new Set(vals) : null;
@@ -249,6 +250,7 @@ function renderElementOutline(host, filtered) {
     { type: 'pageHeader', label: 'Page header' },
     { type: 'pageNumber', label: 'Page number' },
     { type: 'Table', label: 'Tables' },
+    { type: 'Figure', label: 'Figures' },
     { type: 'Paragraph', label: 'Paragraphs' },
     { type: 'Line', label: 'Lines' },
   ];
@@ -327,30 +329,34 @@ function renderElementOutline(host, filtered) {
       const children = childMap.get(id) || [];
       if (children.length) {
         row.classList.add('outline-has-children');
+        card.classList.add('has-children');
         const state = outlineExpansionState(id);
         const stored = state.get();
         const expanded = stored === null ? false : stored;
+        if (expanded) card.classList.add('children-expanded');
         const summary = summarizeChildren(children);
         const toggle = document.createElement('button');
         toggle.type = 'button';
         toggle.className = 'outline-child-toggle';
         toggle.textContent = expanded
-          ? summary ? `Hide contents (${summary})` : 'Hide contents'
-          : summary ? `Show contents (${summary})` : 'Show contents';
+          ? summary ? `Hide children (${summary})` : 'Hide children'
+          : summary ? `Show children (${summary})` : 'Show children';
         toggle.addEventListener('click', (ev) => {
           ev.stopPropagation();
           state.set(!expanded);
           renderElementsListForCurrentPage(CURRENT_PAGE_BOXES);
         });
-        cardWrap.appendChild(toggle);
+        card.appendChild(toggle);
+        cardWrap.appendChild(card);
         if (expanded) {
           const childWrap = document.createElement('div');
           childWrap.className = 'elements-outline-children';
           renderRows(childWrap, children, depth + 1);
           cardWrap.appendChild(childWrap);
         }
+      } else {
+        cardWrap.appendChild(card);
       }
-      cardWrap.appendChild(card);
       row.appendChild(cardWrap);
       parentEl.appendChild(row);
     }
