@@ -177,3 +177,16 @@ function initElementsViewAutoCondense() {
   elementsList.removeEventListener('scroll', updateElementsViewCondensedState);
   elementsList.addEventListener('scroll', updateElementsViewCondensedState, { passive: true });
 }
+
+function wireWhatsNewModal() {
+  const badge = $('versionBadge');
+  const modal = $('whatsNewModal');
+  const closeBtn = $('closeWhatsNew');
+  const backdrop = $('whatsNewBackdrop');
+
+  if (!badge || !modal) return;
+
+  badge.addEventListener('click', () => modal.classList.remove('hidden'));
+  if (closeBtn) closeBtn.addEventListener('click', () => modal.classList.add('hidden'));
+  if (backdrop) backdrop.addEventListener('click', () => modal.classList.add('hidden'));
+}

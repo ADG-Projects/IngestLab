@@ -80,7 +80,7 @@
       <div class="header-left">
         <div class="title-stack">
           <h1>Chunking Visualizer</h1>
-          <span class="version-badge">v4.2</span>
+          <span class="version-badge" id="versionBadge" title="What's new">v4.2</span>
         </div>
         <div class="view-tabs" role="tablist" aria-label="Primary view">
           <button id="viewTabInspect" class="tab active" data-view="inspect" role="tab" aria-selected="true">Inspect</button>
@@ -221,8 +221,8 @@
                   </select>
                 </label>
                 <div id="elementViewToggle" class="view-toggle hidden" role="group" aria-label="Element view mode">
-                  <button type="button" class="toggle-btn active" data-mode="flat">Flat</button>
-                  <button type="button" class="toggle-btn" data-mode="outline">Outline</button>
+                  <button type="button" class="toggle-btn" data-mode="flat">Flat</button>
+                  <button type="button" class="toggle-btn active" data-mode="outline">Outline</button>
                   <span class="info" tabindex="0">i</span>
                   <div class="tip">Outline (Azure runs only) orders elements by reading position per page, groups into Page Header/Number, Tables, Paragraphs, and Lines, numbers each type, and lets you collapse long pages.</div>
                 </div>
@@ -403,7 +403,7 @@
                 <select id="providerSelect">
                   <option value="unstructured">Unstructured</option>
                   <option value="unstructured-partition">Unstructured Partition (API)</option>
-                  <option value="azure-di">Azure Document Intelligence (Layout)</option>
+                  <option value="azure-di" selected>Azure Document Intelligence (Layout)</option>
                 </select>
               </label>
             </div>
@@ -572,16 +572,113 @@
       </div>
     </div>
 
+    <!-- What's New Modal -->
+    <div id="whatsNewModal" class="modal hidden">
+      <div class="modal-backdrop" id="whatsNewBackdrop"></div>
+      <div class="modal-content card whats-new-modal">
+        <div class="modal-header">
+          <div class="modal-title">What's New</div>
+          <button id="closeWhatsNew" class="btn">Close</button>
+        </div>
+        <div class="whats-new-body">
+          <div class="version-section">
+            <h3 class="version-header">v4.2 <span class="version-date">2025-11-26</span></h3>
+            <ul>
+              <li>Enhanced feedback analysis with provider-level comparisons</li>
+              <li>Smoothed scoring using Bayesian formula</li>
+              <li>LLM ranks and contrasts providers with shared recommendations</li>
+              <li>Per-provider actionability scores (1–10)</li>
+              <li>Multi-dimensional LLM insights (per-element suggestions, issue taxonomies, severity levels)</li>
+              <li>Enhanced JSON and HTML exports with LLM analysis payloads</li>
+              <li>Migrated to OpenAI Responses API (gpt-5-nano default)</li>
+              <li>New provider score bar chart</li>
+            </ul>
+          </div>
+          <div class="version-section">
+            <h3 class="version-header">v4.1 <span class="version-date">2025-11-26</span></h3>
+            <ul>
+              <li>Azure Document Intelligence figure crops download as PNGs</li>
+              <li>UI previews for cropped figure images</li>
+              <li>Simplified Azure settings (only model id shown)</li>
+            </ul>
+          </div>
+          <div class="version-section">
+            <h3 class="version-header">v4.0 <span class="version-date">2025-11-25</span></h3>
+            <ul>
+              <li>Added Unstructured Partition (hosted) provider</li>
+              <li>Elements-only workflow for Partition provider</li>
+              <li>Switched Docker base image to ECR Public</li>
+            </ul>
+          </div>
+          <div class="version-section">
+            <h3 class="version-header">v3.0.2 <span class="version-date">2025-11-25</span></h3>
+            <ul>
+              <li>Docker build context fix for .env.example</li>
+            </ul>
+          </div>
+          <div class="version-section">
+            <h3 class="version-header">v3.0.1 <span class="version-date">2025-11-25</span></h3>
+            <ul>
+              <li>Docker security fix: exclude .env from build context</li>
+            </ul>
+          </div>
+          <div class="version-section">
+            <h3 class="version-header">v3.0 <span class="version-date">2025-11-25</span></h3>
+            <ul>
+              <li>Azure Document Intelligence markdown rendering</li>
+              <li>RTL support for Arabic-heavy documents</li>
+              <li>Element outline grouping (paragraphs nest lines)</li>
+              <li>Azure paragraph roles as element types</li>
+              <li>Overlays scaled to PDF points</li>
+            </ul>
+          </div>
+          <div class="version-section">
+            <h3 class="version-header">v2.1 <span class="version-date">2025-11-18</span></h3>
+            <ul>
+              <li>Persist chunking defaults in run_config</li>
+              <li>RTL table display improvements</li>
+            </ul>
+          </div>
+          <div class="version-section">
+            <h3 class="version-header">v2.0 <span class="version-date">2025-11-17</span></h3>
+            <ul>
+              <li>Chunk and element review workflows (Good/Bad ratings)</li>
+              <li>Modular frontend architecture</li>
+              <li>Chunk overlays synced with Inspect filters</li>
+              <li>Review state persistence</li>
+            </ul>
+          </div>
+          <div class="version-section">
+            <h3 class="version-header">v1.1 <span class="version-date">2025-11-17</span></h3>
+            <ul>
+              <li>Polished chunk overlays and drawer interactions</li>
+              <li>Metrics highlights sync with drawer choices</li>
+            </ul>
+          </div>
+          <div class="version-section">
+            <h3 class="version-header">v1.0 <span class="version-date">2025-11-17</span></h3>
+            <ul>
+              <li>Initial release: Chunking Visualizer &amp; Unstructured Playground</li>
+              <li>Metrics view with coverage, cohesion, F1 metrics</li>
+              <li>Inspect view with Chunks and Elements tabs</li>
+              <li>PDF trimming, gold-table matching</li>
+              <li>Docker and Railway deployment support</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <script src="/vendor/chartjs/chart.umd.min.js" defer></script>
-    <script src="/app-state.js?v=20251124" defer></script>
-    <script src="/app-ui.js?v=20251124" defer></script>
-    <script src="/app-reviews.js?v=20251124" defer></script>
-    <script src="/app-overlays.js?v=20251124" defer></script>
-    <script src="/app-metrics.js?v=20251124" defer></script>
-    <script src="/app-elements.js?v=20251124" defer></script>
-    <script src="/app-chunks.js?v=20251124" defer></script>
-    <script src="/app-feedback.js?v=20251124" defer></script>
-    <script src="/app-runs.js?v=20251124" defer></script>
-    <script src="/app.js?v=20251124" defer></script>
+    <script src="/app-state.js?v=20251127" defer></script>
+    <script src="/app-ui.js?v=20251127" defer></script>
+    <script src="/app-reviews.js?v=20251127" defer></script>
+    <script src="/app-overlays.js?v=20251127" defer></script>
+    <script src="/app-metrics.js?v=20251127" defer></script>
+    <script src="/app-elements.js?v=20251127" defer></script>
+    <script src="/app-chunks.js?v=20251127" defer></script>
+    <script src="/app-feedback.js?v=20251127" defer></script>
+    <script src="/app-runs.js?v=20251127" defer></script>
+    <script src="/app.js?v=20251127" defer></script>
   </body>
   </html>
