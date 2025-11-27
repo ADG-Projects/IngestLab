@@ -56,7 +56,7 @@ let CURRENT_CHUNK_DRAWER_ID = null;
 let CURRENT_ELEMENT_DRAWER_ID = null;
 let CURRENT_RUN_JOB_ID = null;
 let CURRENT_RUN_JOB_STATUS = null;
-let CURRENT_PROVIDER = 'unstructured';
+let CURRENT_PROVIDER = 'azure-di';
 let CURRENT_ELEMENT_VIEW_MODE = 'outline'; // 'flat' | 'outline'
 let ELEMENT_OUTLINE_STATE = { collapsedByPage: {}, expanded: {} };
 

@@ -57,7 +57,7 @@ PROVIDERS = {
         "out_dir": AZURE_OUT_DIR / "document_intelligence",
     },
 }
-DEFAULT_PROVIDER = "unstructured"
+DEFAULT_PROVIDER = "azure-di"
 
 
 def ensure_dirs() -> None:

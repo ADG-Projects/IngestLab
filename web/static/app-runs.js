@@ -594,7 +594,10 @@ function wireRunForm() {
     setChunksTabVisible(providerSupportsChunks(CURRENT_PROVIDER));
     updateStrategyOptions(CURRENT_PROVIDER);
   };
-  if (providerSel) providerSel.addEventListener('change', handleProviderChange);
+  if (providerSel) {
+    providerSel.value = CURRENT_PROVIDER;
+    providerSel.addEventListener('change', handleProviderChange);
+  }
   handleProviderChange();
 
   const uploadInput = $('pdfUploadInput');
