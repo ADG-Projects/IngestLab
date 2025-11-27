@@ -103,7 +103,7 @@ async function renderPage(num) {
     overlay.style.width = `${viewport.width}px`;
     overlay.style.height = `${viewport.height}px`;
   }
-  $('pageNum').textContent = num;
+  $('pageNum').value = num;
   const inflightTask = window.CURRENT_RENDER_TASK;
   if (inflightTask?.cancel) {
     try {
@@ -158,7 +158,7 @@ function resetPdfViewer() {
     overlay.innerHTML = '';
   }
   const pageNumEl = $('pageNum');
-  if (pageNumEl) pageNumEl.textContent = '-';
+  if (pageNumEl) pageNumEl.value = '';
   const pageCountEl = $('pageCount');
   if (pageCountEl) pageCountEl.textContent = '-';
 }
@@ -202,6 +202,22 @@ async function init() {
     SCALE_IS_MANUAL = true;
     SCALE = Number(e.target.value) / 100;
     await renderPage(CURRENT_PAGE);
+  });
+  const pageNumInput = $('pageNum');
+  const jumpToPage = async () => {
+    if (!PDF_DOC) return;
+    let n = parseInt(pageNumInput.value, 10);
+    if (isNaN(n) || n < 1) n = 1;
+    if (n > PAGE_COUNT) n = PAGE_COUNT;
+    await renderPage(n);
+  };
+  pageNumInput.addEventListener('change', jumpToPage);
+  pageNumInput.addEventListener('keydown', async (e) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      await jumpToPage();
+      pageNumInput.blur();
+    }
   });
   setupReviewChipHandlers();
   $('drawerClose').addEventListener('click', async () => {

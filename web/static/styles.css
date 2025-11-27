@@ -303,6 +303,29 @@ section.left {
   width: 160px;
 }
 
+.page-controls input[type="number"] {
+  width: 48px;
+  background: var(--panel);
+  color: var(--text);
+  border: 1px solid #2a2f38;
+  border-radius: 4px;
+  padding: 4px 6px;
+  font-size: 14px;
+  text-align: center;
+  -moz-appearance: textfield;
+}
+
+.page-controls input[type="number"]::-webkit-outer-spin-button,
+.page-controls input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.page-controls input[type="number"]:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
 #pdfContainer {
   position: relative;
   flex: 1;
