@@ -65,6 +65,7 @@ async function loadRun(slug, provider = CURRENT_PROVIDER) {
   updateRunConfigCard();
   if (CURRENT_RUN_HAS_CHUNKS) {
     await loadChunksForRun(slug, CURRENT_PROVIDER);
+    redrawOverlaysForCurrentContext(); // ensure overlays update once chunks are available
   } else {
     CURRENT_CHUNKS = null;
     renderChunksTab();
@@ -1117,15 +1118,26 @@ function wireChunkerModal() {
         try {
           switchView('inspect', true);
           switchInspectTab('chunks', true);
+          SHOW_ELEMENT_OVERLAYS = false;
+          SHOW_CHUNK_OVERLAYS = true;
+          await refreshRuns();
+          await loadRun(sourceData.slug, sourceData.provider);
+          await renderPage(CURRENT_PAGE); // force PDF+overlay refresh so new chunk boxes appear immediately
+          // Ensure we leave element overlays and immediately draw chunk overlays
+          if (typeof clearBoxes === 'function') clearBoxes();
+          if (typeof drawChunksModeForPage === 'function') {
+            drawChunksModeForPage(CURRENT_PAGE);
+            // Draw again after the tick to catch any late-arriving chunk data
+            setTimeout(() => {
+              try { drawChunksModeForPage(CURRENT_PAGE); } catch (_) {}
+            }, 0);
+          } else {
+            redrawOverlaysForCurrentContext();
+          }
           closeChunkerModal();
         } catch (err) {
           console.warn('Failed to switch to chunks tab after chunking', err);
         }
-
-        // Refresh runs list after a short delay
-        setTimeout(() => {
-          refreshRuns();
-        }, 500);
 
       } catch (e) {
         console.error('Chunker failed:', e);

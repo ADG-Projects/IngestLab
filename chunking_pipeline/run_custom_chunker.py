@@ -3,8 +3,7 @@
 Usage:
     uv run python -m chunking_pipeline.run_custom_chunker \
         --input existing.chunks.jsonl \
-        --output chunked.chunks.jsonl \
-        --max-characters 1000
+        --output chunked.chunks.jsonl
 """
 
 from __future__ import annotations
@@ -66,29 +65,6 @@ def main(argv: Optional[List[str]] = None) -> int:
 
     # Chunking configuration
     parser.add_argument(
-        "--max-characters",
-        type=int,
-        default=1000,
-        help="Maximum characters per chunk",
-    )
-    parser.add_argument(
-        "--soft-max-characters",
-        type=int,
-        default=800,
-        help="Soft maximum characters (try to break before this)",
-    )
-    parser.add_argument(
-        "--overlap",
-        type=int,
-        default=0,
-        help="Number of characters to overlap between chunks",
-    )
-    parser.add_argument(
-        "--no-respect-page-boundaries",
-        action="store_true",
-        help="Allow chunks to span page boundaries",
-    )
-    parser.add_argument(
         "--no-include-orig-elements",
         action="store_true",
         help="Do not include original elements in chunk metadata",
@@ -102,13 +78,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         return 1
 
     # Build configuration
-    config = ChunkingConfig(
-        max_characters=args.max_characters,
-        soft_max_characters=args.soft_max_characters,
-        overlap_characters=args.overlap,
-        respect_page_boundaries=not args.no_respect_page_boundaries,
-        include_orig_elements=not args.no_include_orig_elements,
-    )
+    config = ChunkingConfig(include_orig_elements=not args.no_include_orig_elements)
 
     logger.info(f"Loading elements from {args.input}")
     elements = load_elements(args.input)

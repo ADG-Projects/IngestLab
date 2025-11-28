@@ -17,6 +17,10 @@ async function loadChunksForRun(slug, provider = CURRENT_PROVIDER) {
     CURRENT_CHUNK_LOOKUP[fallbackId] = chunk;
   });
   renderChunksTab();
+  if (CURRENT_VIEW === 'inspect' && INSPECT_TAB === 'chunks') {
+    // Ensure overlays reflect freshly loaded chunks without needing a page change
+    redrawOverlaysForCurrentContext();
+  }
 }
 
 function getChunksForCurrentPage() {

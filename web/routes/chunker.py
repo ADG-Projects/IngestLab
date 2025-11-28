@@ -72,12 +72,8 @@ async def api_chunk(request: Request) -> Dict[str, Any]:
         "source_slug": "...",       # Slug of the source run
         "source_provider": "...",   # Provider of the source run
         "config": {                 # Optional chunking configuration
-            "max_characters": 1000,
-            "soft_max_characters": 800,
-            "overlap_characters": 0,
-            "respect_page_boundaries": true,
             "include_orig_elements": true
-        }
+        }                           # Other sizing knobs are ignored by the custom chunker
     }
 
     Returns:
