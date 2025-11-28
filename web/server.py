@@ -17,6 +17,7 @@ from .config import (
     ensure_pdfjs_assets,
 )
 from .routes import (
+    chunker_router,
     chunks_router,
     elements_router,
     feedback_router,
@@ -36,7 +37,7 @@ def configure_chunking_logging() -> None:
     handler = logging.StreamHandler()
     handler.setLevel(logging.INFO)
     handler.setFormatter(logging.Formatter("[chunking] %(asctime)s %(levelname)s %(name)s: %(message)s"))
-    for name in ("chunking.routes.runs", "chunking.run_jobs"):
+    for name in ("chunking.routes.runs", "chunking.routes.chunker", "chunking.run_jobs"):
         logger = logging.getLogger(name)
         logger.setLevel(logging.INFO)
         logger.addHandler(handler)
@@ -67,6 +68,7 @@ app.include_router(runs_router)
 app.include_router(pdfs_router)
 app.include_router(elements_router)
 app.include_router(chunks_router)
+app.include_router(chunker_router)
 app.include_router(reviews_router)
 app.include_router(feedback_router)
 
