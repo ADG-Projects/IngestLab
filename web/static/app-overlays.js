@@ -3,6 +3,32 @@ function clearBoxes() {
   overlay.innerHTML = '';
 }
 
+function showPortalTooltip(boxEl, text) {
+  const portal = document.getElementById('tooltip-portal');
+  if (!portal) return;
+
+  let tip = portal.querySelector('.box-tip');
+  if (!tip) {
+    tip = document.createElement('div');
+    tip.className = 'box-tip';
+    portal.appendChild(tip);
+  }
+
+  tip.textContent = text;
+  tip.style.opacity = '1';
+
+  const rect = boxEl.getBoundingClientRect();
+  tip.style.left = `${rect.left}px`;
+  tip.style.top = `${rect.top - 8}px`;
+  tip.style.transform = 'translateY(-100%)';
+}
+
+function hidePortalTooltip() {
+  const portal = document.getElementById('tooltip-portal');
+  const tip = portal?.querySelector('.box-tip');
+  if (tip) tip.style.opacity = '0';
+}
+
 function addBox(rect, layoutW, layoutH, isBest = false, type = null, color = null, variant = 'chunk', meta = null) {
   const overlay = $('overlay');
   const canvas = $('pdfCanvas');
@@ -33,10 +59,9 @@ function addBox(rect, layoutW, layoutH, isBest = false, type = null, color = nul
   if (info.extra) titleLines.push(String(info.extra));
   const tipText = titleLines.join(' · ');
   if (tipText) el.title = tipText;
-  const tip = document.createElement('div');
-  tip.className = 'box-tip';
-  tip.textContent = tipText || (kind === 'chunk' ? 'Chunk' : 'Element');
-  el.appendChild(tip);
+  const finalTipText = tipText || (kind === 'chunk' ? 'Chunk' : 'Element');
+  el.addEventListener('mouseenter', () => showPortalTooltip(el, finalTipText));
+  el.addEventListener('mouseleave', hidePortalTooltip);
 
   el.dataset.kind = kind;
   if (info && info.id) el.dataset.id = String(info.id);

@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Chunking Visualizer</title>
-    <link rel="stylesheet" href="/styles.css?v=20251128" />
+    <link rel="stylesheet" href="/styles.css?v=20251128-glass" />
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%230a223f'/%3E%3Cpath d='M18 42l14-20 14 20-14-7z' fill='%23f5a524'/%3E%3C/svg%3E" />
     <!-- Prefer local vendor copy (server auto-fetches if missing), fallback to CDN -->
     <script>
@@ -76,11 +76,12 @@
     </script>
   </head>
   <body>
+    <div id="tooltip-portal"></div>
     <header>
       <div class="header-left">
         <div class="title-stack">
           <h1>Chunking Visualizer</h1>
-          <span class="version-badge" id="versionBadge" title="What's new">v4.3</span>
+          <span class="version-badge" id="versionBadge" title="What's new">v4.4</span>
         </div>
         <div class="view-tabs" role="tablist" aria-label="Primary view">
           <button id="viewTabInspect" class="tab active" data-view="inspect" role="tab" aria-selected="true">Inspect</button>
@@ -96,6 +97,22 @@
         <button id="openRunModal" class="btn">New Run Provider</button>
         <button id="openChunkerModal" class="btn">New Run Chunker</button>
         <button id="deleteRunBtn" class="btn" title="Delete current run">Delete run</button>
+        <button id="themeToggle" class="btn btn-icon" type="button" title="Toggle dark/light theme" aria-label="Toggle theme">
+          <svg id="themeIconSun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="12" cy="12" r="5"/>
+            <line x1="12" y1="1" x2="12" y2="3"/>
+            <line x1="12" y1="21" x2="12" y2="23"/>
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/>
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+            <line x1="1" y1="12" x2="3" y2="12"/>
+            <line x1="21" y1="12" x2="23" y2="12"/>
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/>
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
+          </svg>
+          <svg id="themeIconMoon" width="18" height="18" viewBox="0 0 24 24" fill="currentColor" style="display:none">
+            <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+          </svg>
+        </button>
       </div>
     </header>
 
@@ -563,6 +580,18 @@
         </div>
         <div class="whats-new-body">
           <div class="version-section">
+            <h3 class="version-header">v4.4 <span class="version-date">2025-11-28</span></h3>
+            <ul>
+              <li>Apple Liquid Glass UI redesign with frosted glass effects</li>
+              <li>Dark/light theme toggle (follows system preference by default)</li>
+              <li>Apple system color palette for element types</li>
+              <li>Smooth spring animations on modals, drawer, and toasts</li>
+              <li>Enhanced button, card, and form styling with blur effects</li>
+              <li>Pill-style tabs and settings items</li>
+              <li>Glow effects on review buttons when active</li>
+            </ul>
+          </div>
+          <div class="version-section">
             <h3 class="version-header">v4.3 <span class="version-date">2025-11-27</span></h3>
             <ul>
               <li>Figure elements in Azure DI outline view with child element display</li>
@@ -662,15 +691,16 @@
     </div>
 
     <script src="/vendor/chartjs/chart.umd.min.js" defer></script>
-    <script src="/app-state.js?v=20251127" defer></script>
-    <script src="/app-ui.js?v=20251127" defer></script>
-    <script src="/app-reviews.js?v=20251127" defer></script>
-    <script src="/app-overlays.js?v=20251127" defer></script>
-    <script src="/app-metrics.js?v=20251127" defer></script>
-    <script src="/app-elements.js?v=20251127" defer></script>
-    <script src="/app-chunks.js?v=20251127" defer></script>
-    <script src="/app-feedback.js?v=20251127" defer></script>
-    <script src="/app-runs.js?v=20251127" defer></script>
-    <script src="/app.js?v=20251127" defer></script>
+    <script src="/app-theme.js?v=20251128"></script>
+    <script src="/app-state.js?v=20251128" defer></script>
+    <script src="/app-ui.js?v=20251128" defer></script>
+    <script src="/app-reviews.js?v=20251128" defer></script>
+    <script src="/app-overlays.js?v=20251128" defer></script>
+    <script src="/app-metrics.js?v=20251128" defer></script>
+    <script src="/app-elements.js?v=20251128" defer></script>
+    <script src="/app-chunks.js?v=20251128" defer></script>
+    <script src="/app-feedback.js?v=20251128" defer></script>
+    <script src="/app-runs.js?v=20251128" defer></script>
+    <script src="/app.js?v=20251128" defer></script>
   </body>
   </html>
