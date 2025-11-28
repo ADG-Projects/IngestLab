@@ -46,9 +46,16 @@ function chunkMatchesReviewFilter(chunk, id) {
 
 function filterChunksForCurrentPage(chunks, page = CURRENT_PAGE) {
   return chunks.filter(({ chunk, id }) => {
-    const b = chunkBox(chunk);
-    if (!b || !Number.isFinite(b.page_trimmed)) return false;
-    if (b.page_trimmed !== page) return false;
+    // Check if chunk appears on this page (supports multi-page chunks)
+    const pages = chunkPages(chunk);
+    const onPage = pages.includes(page);
+    if (!onPage) {
+      // Fallback to single bbox check for backwards compatibility
+      const b = chunkBox(chunk);
+      if (!b || !Number.isFinite(b.page_trimmed) || b.page_trimmed !== page) {
+        return false;
+      }
+    }
     if (!chunkMatchesTypeFilter(chunk)) return false;
     if (!chunkMatchesReviewFilter(chunk, id)) return false;
     return true;

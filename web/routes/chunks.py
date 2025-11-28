@@ -125,6 +125,27 @@ def api_chunks(slug: str, provider: str = Query(default=None)) -> Dict[str, Any]
                     segment_span_info = (span[0], span[1], total_rows)
                     if segment_bbox and reference_bbox and not segment_bbox.get("page_trimmed"):
                         segment_bbox["page_trimmed"] = reference_bbox.get("page_trimmed")
+            # Handle multi-page bboxes (page_bboxes field from custom chunker)
+            page_bboxes_simplified: Optional[List[Dict[str, Any]]] = None
+            raw_page_bboxes = meta.get("page_bboxes")
+            if raw_page_bboxes:
+                page_bboxes_simplified = []
+                for pb in raw_page_bboxes:
+                    pb_coords = pb.get("coordinates") or {}
+                    pb_pts = pb_coords.get("points") or []
+                    if pb_pts:
+                        pb_xs = [p[0] for p in pb_pts]
+                        pb_ys = [p[1] for p in pb_pts]
+                        page_bboxes_simplified.append({
+                            "page_trimmed": pb.get("page_number"),
+                            "layout_w": pb_coords.get("layout_width"),
+                            "layout_h": pb_coords.get("layout_height"),
+                            "x": min(pb_xs),
+                            "y": min(pb_ys),
+                            "w": max(pb_xs) - min(pb_xs),
+                            "h": max(pb_ys) - min(pb_ys),
+                        })
+
             chunk_entry: Dict[str, Any] = {
                 "element_id": obj.get("element_id"),
                 "text": text,
@@ -134,6 +155,8 @@ def api_chunks(slug: str, provider: str = Query(default=None)) -> Dict[str, Any]
                 "orig_boxes": orig_boxes,
                 "bbox": bbox,
             }
+            if page_bboxes_simplified:
+                chunk_entry["page_bboxes"] = page_bboxes_simplified
             if segment_bbox:
                 chunk_entry["segment_bbox"] = segment_bbox
                 if segment_span_info:

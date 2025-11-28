@@ -210,7 +210,7 @@ Endpoints (served by FastAPI):
 - `POST /api/run` — execute a new run. Body:
   - `pdf` (string, required): filename under `res/`.
   - `pages` (string, optional): page list/range (e.g., `4-6`, `4,5,6`). If omitted or blank, the server processes the entire document (equivalent to `1-<num_pages>`). The server trims the PDF first and only processes those pages.
-  - `provider` (`unstructured|unstructured-partition|azure-di`, default `unstructured`).
+  - `provider` (`unstructured/local|unstructured/partition|azure/document_intelligence`, default `azure/document_intelligence`).
   - Unstructured: `strategy` (`auto|fast|hi_res`, default `auto`); `infer_table_structure` (bool, default `true`); `chunking` (`basic|by_title`, default `by_title`) plus the chunking knobs (`chunk_max_characters`, `chunk_new_after_n_chars`, `chunk_overlap`, `chunk_include_orig_elements`, `chunk_overlap_all`, `chunk_combine_under_n_chars`, `chunk_multipage_sections`).
   - Unstructured Partition (API): elements-only; honors `strategy` (`auto|fast|hi_res`) and optional `languages` while emitting raw element lines in `*.chunks.jsonl` (no local chunking is applied).
 - Azure: `model_id`, `features`, `locale`, `string_index_type`, `output_content_format`, and `query_fields`. Chunking flags are ignored for Azure providers.

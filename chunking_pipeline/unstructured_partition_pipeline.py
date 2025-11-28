@@ -179,7 +179,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     write_jsonl(output_path, elements)
 
     run_config = {
-        "provider": "unstructured-partition",
+        "provider": "unstructured/partition",
         "input": args.input,
         "trimmed_pdf": trimmed_pdf,
         "pages": args.pages,

@@ -547,7 +547,7 @@ def main(argv: Optional[List[str]] = None) -> int:
         trimmed_pdf=trimmed,
     ) if want_figures else ({}, None)
     elems = normalize_elements(an_result, figure_images)
-    run_provider = "azure-di"
+    run_provider = "azure/document_intelligence"
     args.api_version = api_version
     run_config = build_run_config(run_provider, args, features=features, outputs=outputs, endpoint=endpoint)
     if want_figures:

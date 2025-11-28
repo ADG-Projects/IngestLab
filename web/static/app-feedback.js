@@ -249,7 +249,7 @@ async function analyzeFeedbackSelection() {
       res = await fetch('/api/feedback/analyze/compare', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ providers: ['unstructured', 'unstructured-partition', 'azure-di'] }),
+        body: JSON.stringify({ providers: ['unstructured/local', 'unstructured/partition', 'azure/document_intelligence'] }),
       });
     } else {
       res = await fetch('/api/feedback/analyze/provider', {
@@ -334,9 +334,9 @@ function downloadFeedbackHtml() {
   }, 0)) || 0;
   const scopeMap = {
     all: 'All providers',
-    unstructured: 'Unstructured',
-    'unstructured-partition': 'Unstructured Partition',
-    'azure-di': 'Azure Document Intelligence',
+    'unstructured/local': 'Unstructured (Local)',
+    'unstructured/partition': 'Unstructured Partition (API)',
+    'azure/document_intelligence': 'Azure Document Intelligence',
     compare: 'All providers (compare)',
   };
   const scopeLabel = scopeMap[FEEDBACK_PROVIDER_FILTER || 'all'] || 'All providers';
@@ -497,7 +497,7 @@ function downloadFeedbackHtml() {
 
 async function jumpToRunFromFeedback(slug, provider) {
   if (!slug) return;
-  const providerKey = (provider || 'unstructured').trim() || 'unstructured';
+  const providerKey = (provider || 'unstructured/local').trim() || 'unstructured/local';
   try {
     await refreshRuns();
     const sel = $('runSelect');

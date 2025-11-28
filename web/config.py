@@ -45,19 +45,23 @@ CHART_VENDOR_DIR = STATIC_DIR / "vendor" / "chartjs"
 CHARTJS_VERSION = "4.4.1"
 
 PROVIDERS = {
-    "unstructured": {"id": "unstructured", "label": "Unstructured", "out_dir": OUT_DIR},
-    "unstructured-partition": {
-        "id": "unstructured-partition",
+    "unstructured/local": {
+        "id": "unstructured/local",
+        "label": "Unstructured (Local)",
+        "out_dir": OUT_DIR,
+    },
+    "unstructured/partition": {
+        "id": "unstructured/partition",
         "label": "Unstructured Partition (API)",
         "out_dir": OUT_DIR / "partition_api",
     },
-    "azure-di": {
-        "id": "azure-di",
+    "azure/document_intelligence": {
+        "id": "azure/document_intelligence",
         "label": "Azure Document Intelligence",
         "out_dir": AZURE_OUT_DIR / "document_intelligence",
     },
 }
-DEFAULT_PROVIDER = "azure-di"
+DEFAULT_PROVIDER = "azure/document_intelligence"
 
 
 def ensure_dirs() -> None:

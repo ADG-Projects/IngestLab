@@ -129,9 +129,9 @@ def api_run(payload: Dict[str, Any]) -> Dict[str, Any]:
     if not pdf_name:
         raise HTTPException(status_code=400, detail="Field 'pdf' is required")
 
-    is_unstructured = provider == "unstructured"
-    is_unstructured_partition = provider == "unstructured-partition"
-    is_azure_di = provider == "azure-di"
+    is_unstructured = provider == "unstructured/local"
+    is_unstructured_partition = provider == "unstructured/partition"
+    is_azure_di = provider == "azure/document_intelligence"
 
     strategy = str(payload.get("strategy") or "auto")
     allowed_partition_strategies = {"auto", "fast", "hi_res", "ocr_only", "vlm"}

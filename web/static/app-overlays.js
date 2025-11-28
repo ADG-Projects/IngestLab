@@ -101,10 +101,28 @@ function addBox(rect, layoutW, layoutH, isBest = false, type = null, color = nul
   overlay.appendChild(el);
 }
 
-function chunkBox(chunk) {
+function chunkBox(chunk, pageNum = null) {
   if (!chunk) return null;
   if (chunk.segment_bbox) return chunk.segment_bbox;
+  // For multi-page chunks, find the bbox for the specific page
+  if (pageNum !== null && chunk.page_bboxes && chunk.page_bboxes.length > 0) {
+    const pageBbox = chunk.page_bboxes.find(pb => pb.page_trimmed === pageNum);
+    if (pageBbox) return pageBbox;
+  }
   return chunk.bbox || null;
+}
+
+// Get all pages that a chunk spans (for multi-page chunks)
+function chunkPages(chunk) {
+  if (!chunk) return [];
+  if (chunk.page_bboxes && chunk.page_bboxes.length > 0) {
+    return chunk.page_bboxes.map(pb => pb.page_trimmed).filter(p => p != null);
+  }
+  const box = chunk.segment_bbox || chunk.bbox;
+  if (box && box.page_trimmed != null) {
+    return [box.page_trimmed];
+  }
+  return [];
 }
 
 function drawOrigBoxesForChunk(chunkId, pageNum, color) {
@@ -139,7 +157,8 @@ function drawChunksModeForPage(pageNum) {
 
   if (selectedChunk && selectedChunkVisible) {
     if (SHOW_CHUNK_OVERLAYS) {
-      const box = chunkBox(selectedChunk);
+      // Use page-specific bbox for multi-page chunks
+      const box = chunkBox(selectedChunk, pageNum);
       if (box && box.page_trimmed === pageNum) {
         const meta = { kind: 'chunk', id: selectedChunk.element_id, type: selectedChunk.type, page: box.page_trimmed, chars: selectedChunk.char_len };
         addBox({ x: box.x, y: box.y, w: box.w, h: box.h }, box.layout_w, box.layout_h, true, selectedChunk.type, null, 'chunk', meta);
@@ -160,7 +179,8 @@ function drawChunksModeForPage(pageNum) {
     if (SHOW_CHUNK_OVERLAYS) {
       for (const { chunk } of filteredChunks) {
         if (!chunk) continue;
-        const box = chunkBox(chunk);
+        // Use page-specific bbox for multi-page chunks
+        const box = chunkBox(chunk, pageNum);
         if (box && box.page_trimmed === pageNum) {
           const meta = { kind: 'chunk', id: chunk.element_id, type: chunk.type, page: box.page_trimmed, chars: chunk.char_len };
           addBox({ x: box.x, y: box.y, w: box.w, h: box.h }, box.layout_w, box.layout_h, false, chunk.type, null, 'chunk', meta);
@@ -171,8 +191,10 @@ function drawChunksModeForPage(pageNum) {
     if (SHOW_ELEMENT_OVERLAYS) {
       for (const { chunk } of filteredChunks) {
         if (!chunk || !chunk.element_id) continue;
-        const box = chunkBox(chunk);
-        if (box && box.page_trimmed === pageNum) {
+        // Check if chunk has content on this page (via page_bboxes or orig_boxes)
+        const chunkOnPage = chunkPages(chunk).includes(pageNum) ||
+          (chunk.orig_boxes && chunk.orig_boxes.some(ob => ob.page_trimmed === pageNum));
+        if (chunkOnPage) {
           drawOrigBoxesForChunk(chunk.element_id, pageNum, null);
           if (chunk.orig_boxes) {
             for (const origBox of chunk.orig_boxes) {
@@ -196,7 +218,8 @@ function drawChunkOverlayForId(chunkId, pageNum) {
   if (!chunkId || !CURRENT_CHUNK_LOOKUP) return;
   const chunk = CURRENT_CHUNK_LOOKUP[chunkId];
   if (!chunk) return;
-  const box = chunkBox(chunk);
+  // Use page-specific bbox for multi-page chunks
+  const box = chunkBox(chunk, pageNum);
   if (!box || box.page_trimmed !== pageNum) return;
   clearBoxes();
   const meta = {

@@ -41,7 +41,7 @@ function updateRunConfigCard() {
   }
   const chunkParams = cfg.chunk_params || {};
   const snap = cfg.form_snapshot || cfg.ui_form || {};
-  const provider = preferValues(cfg.provider, snap.provider, 'unstructured');
+  const provider = preferValues(cfg.provider, snap.provider, 'unstructured/local');
   set('settingProvider', provider);
   const featuresRaw = preferValues(cfg.features, snap.features);
   const featuresDisplay = Array.isArray(featuresRaw) ? featuresRaw.join(', ') : featuresRaw;
@@ -53,7 +53,7 @@ function updateRunConfigCard() {
     set('settingModel', null);
   }
   set('settingFeatures', featuresDisplay);
-  if (provider === 'unstructured') {
+  if (provider === 'unstructured/local') {
     set('settingStrategy', cfg.strategy || 'auto');
     set('settingInferTables', String(cfg.infer_table_structure !== false));
     set('settingChunking', cfg.chunking || 'by_title');

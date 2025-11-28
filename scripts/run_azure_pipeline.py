@@ -351,7 +351,7 @@ def main(argv: Optional[List[str]] = None) -> int:
     )
     an_result = _extract_analyze_result(result)
     elems = normalize_elements(an_result)
-    run_provider = "azure-di"
+    run_provider = "azure/document_intelligence"
     args.api_version = api_version
     run_config = build_run_config(run_provider, args, features=features, endpoint=endpoint)
 
