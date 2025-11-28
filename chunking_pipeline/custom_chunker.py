@@ -74,8 +74,8 @@ def chunk_elements(
     for element in elements:
         # Create a copy to avoid modifying the original
         chunk = {
-            "type": element.get("type", "Unknown"),
-            "text": element.get("text", ""),
+            "type": element.get("type") or "Unknown",
+            "text": element.get("text") or "",
             "metadata": dict(element.get("metadata") or {}),
         }
 
@@ -107,7 +107,7 @@ def get_chunk_summary(chunks: List[Dict[str, Any]]) -> Dict[str, Any]:
             "avg_chars": 0,
         }
 
-    char_counts = [len(c.get("text", "")) for c in chunks]
+    char_counts = [len(c.get("text") or "") for c in chunks]
     return {
         "count": len(chunks),
         "total_chars": sum(char_counts),
