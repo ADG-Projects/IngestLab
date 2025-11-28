@@ -28,14 +28,14 @@ def _resolve_elements_file(slug: str, provider: str) -> Path:
     out_dir = get_out_dir(provider)
 
     # Try exact match first
-    path = out_dir / f"{slug}.chunks.jsonl"
+    path = out_dir / f"{slug}.elements.jsonl"
     if path.exists():
         return path
 
     # Try with pages suffix pattern
     base, sep, rest = slug.partition(".pages")
     if sep:
-        candidate = out_dir / f"{base}.pages{rest}.chunks.jsonl"
+        candidate = out_dir / f"{base}.pages{rest}.elements.jsonl"
         if candidate.exists():
             return candidate
 
@@ -147,10 +147,10 @@ async def api_chunk(request: Request) -> Dict[str, Any]:
     )
 
     # Save chunks to output file
-    # Output goes to same directory as source, with .custom-chunks.jsonl suffix
+    # Output goes to same directory as source elements, with .chunks.jsonl suffix
     out_dir = get_out_dir(source_provider)
-    output_stem = elements_path.stem.replace(".chunks", "")
-    output_path = out_dir / f"{output_stem}.custom-chunks.jsonl"
+    output_stem = elements_path.stem.replace(".elements", "")
+    output_path = out_dir / f"{output_stem}.chunks.jsonl"
 
     logger.info(f"Saving chunks to {output_path}")
     _save_chunks(chunks, output_path)
@@ -159,37 +159,5 @@ async def api_chunk(request: Request) -> Dict[str, Any]:
         "success": True,
         "chunks_file": str(output_path),
         "source_elements": len(elements),
-        "summary": summary,
-    }
-
-
-@router.get("/api/custom-chunks/{slug}")
-def api_custom_chunks(slug: str, provider: Optional[str] = None) -> Dict[str, Any]:
-    """Get custom chunks for a run (if they exist)."""
-    prov = provider or DEFAULT_PROVIDER
-    out_dir = get_out_dir(prov)
-
-    # Try to find custom chunks file
-    path = out_dir / f"{slug}.custom-chunks.jsonl"
-    if not path.exists():
-        # Try with pages pattern
-        base, sep, rest = slug.partition(".pages")
-        if sep:
-            candidate = out_dir / f"{base}.pages{rest}.custom-chunks.jsonl"
-            if candidate.exists():
-                path = candidate
-
-    if not path.exists():
-        raise HTTPException(
-            status_code=404,
-            detail=f"Custom chunks not found for {slug}",
-        )
-
-    # Load and return chunks
-    chunks = _load_elements(path)
-    summary = get_chunk_summary(chunks)
-
-    return {
-        "chunks": chunks,
         "summary": summary,
     }

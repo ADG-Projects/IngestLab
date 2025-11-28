@@ -26,9 +26,7 @@ function parseRunKey(key) {
 }
 
 function providerSupportsChunks(provider) {
-  if (!provider) return true;
-  if (provider === 'unstructured-partition') return false;
-  if (provider.startsWith('azure')) return false;
+  // All providers support chunks via the custom chunker
   return true;
 }
 

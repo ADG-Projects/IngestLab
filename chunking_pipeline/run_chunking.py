@@ -39,7 +39,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--strategy", default="auto", choices=["auto", "fast", "hi_res"], help="Unstructured PDF strategy")
     parser.add_argument("--trimmed-out", help="Optional path to save the trimmed PDF slice")
     parser.add_argument("--chunking", choices=["basic", "by_title", "none"], default="none", help="Chunking strategy (use 'none' to skip chunking and keep raw elements)")
-    parser.add_argument("--chunk-output", help="Optional JSONL output path for chunk elements (defaults to --output when chunking drives the match source)")
+    parser.add_argument("--elements-output", help="Path to write elements JSONL output")
+    parser.add_argument("--chunk-output", help="(Deprecated) Alias for --elements-output for backward compatibility")
     parser.add_argument("--chunk-max-characters", type=int, help="Max characters per chunk")
     parser.add_argument("--chunk-new-after-n-chars", type=int, help="Force a new chunk after N chars")
     parser.add_argument("--chunk-combine-under-n-chars", type=int, help="Combine small sections under N chars")
@@ -146,8 +147,10 @@ def main(argv: Optional[List[str]] = None) -> int:
         match_elements = chunk_input
         resolved_source = "orig_elements"
 
-    if args.chunk_output and chunk_elements:
-        write_jsonl(args.chunk_output, chunk_elements)
+    # Write elements output (--elements-output preferred, fall back to --chunk-output for backward compatibility)
+    output_path = args.elements_output or args.chunk_output
+    if output_path and chunk_elements:
+        write_jsonl(output_path, chunk_elements)
     return 0
 
 

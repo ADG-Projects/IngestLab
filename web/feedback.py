@@ -223,7 +223,7 @@ def _load_element_snippets(slug: str, provider: str, item_ids: List[str]) -> Dic
         return {}
     snippets: Dict[str, str] = {}
     try:
-        path = resolve_slug_file(slug, "{slug}.pages*.chunks.jsonl", provider=provider)
+        path = resolve_slug_file(slug, "{slug}.pages*.elements.jsonl", provider=provider)
     except Exception:
         return {}
     try:

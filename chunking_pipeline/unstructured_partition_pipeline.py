@@ -131,7 +131,8 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--input", required=True, help="Path to input PDF")
     parser.add_argument("--pages", required=True, help="Page ranges, e.g., 1-3 or 2,4")
     parser.add_argument("--trimmed-out", required=True, help="Path to write trimmed PDF slice")
-    parser.add_argument("--chunk-output", required=True, help="Path to write elements JSONL (UI expects *.chunks.jsonl)")
+    parser.add_argument("--elements-output", help="Path to write elements JSONL (*.elements.jsonl)")
+    parser.add_argument("--chunk-output", help="(Deprecated) Alias for --elements-output for backward compatibility")
     parser.add_argument(
         "--strategy",
         choices=["auto", "fast", "hi_res", "ocr_only", "vlm"],
@@ -145,6 +146,10 @@ def main(argv: Optional[List[str]] = None) -> int:
     parser.add_argument("--extract-image-block-types", help="Comma-separated list (e.g., Image,Table) to request extracted image blocks")
     parser.add_argument("--extract-image-block-to-payload", action="store_true", help="Embed extracted image blocks as base64 in the response payload")
     args = parser.parse_args(argv)
+
+    # Require at least one output path
+    if not args.elements_output and not args.chunk_output:
+        parser.error("Either --elements-output or --chunk-output is required")
 
     pages = parse_pages(args.pages)
     trimmed_pdf = slice_pdf(args.input, pages, args.trimmed_out)
@@ -169,7 +174,9 @@ def main(argv: Optional[List[str]] = None) -> int:
     if not elements:
         raise SystemExit("Partition API returned no elements")
 
-    write_jsonl(args.chunk_output, elements)
+    # Write elements (--elements-output preferred, fall back to --chunk-output for backward compatibility)
+    output_path = args.elements_output or args.chunk_output
+    write_jsonl(output_path, elements)
 
     run_config = {
         "provider": "unstructured-partition",

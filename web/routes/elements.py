@@ -25,7 +25,7 @@ def clear_index_cache(slug: str, provider: str) -> None:
 
 def _ensure_index(slug: str, provider: str) -> Dict[str, Any]:
     key = _cache_key(slug, provider)
-    path = resolve_slug_file(slug, "{slug}.pages*.chunks.jsonl", provider=provider)
+    path = resolve_slug_file(slug, "{slug}.pages*.elements.jsonl", provider=provider)
     mtime = path.stat().st_mtime
     cached = _INDEX_CACHE.get(key)
     if cached and cached.get("mtime") == mtime and cached.get("path") == path:
@@ -140,7 +140,7 @@ def api_boxes(
 def _scan_element(
     slug: str, element_id: str, provider: str, path: Optional[Path] = None
 ) -> Tuple[Optional[Dict[str, Any]], Optional[Path]]:
-    target = path or resolve_slug_file(slug, "{slug}.pages*.chunks.jsonl", provider=provider)
+    target = path or resolve_slug_file(slug, "{slug}.pages*.elements.jsonl", provider=provider)
     with target.open("r", encoding="utf-8") as f:
         for line in f:
             line = line.strip()
@@ -197,7 +197,7 @@ def _build_image_payload(md: Dict[str, Any], base_dir: Path) -> Dict[str, Any]:
 @router.get("/api/element/{slug}/{element_id}")
 def api_element(slug: str, element_id: str, provider: str = Query(default=None)) -> Dict[str, Any]:
     provider_key = provider or DEFAULT_PROVIDER
-    path = resolve_slug_file(slug, "{slug}.pages*.chunks.jsonl", provider=provider_key)
+    path = resolve_slug_file(slug, "{slug}.pages*.elements.jsonl", provider=provider_key)
     obj, resolved_path = _scan_element(slug, element_id, provider_key, path)
     if not obj:
         return {
