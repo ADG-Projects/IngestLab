@@ -373,6 +373,10 @@ async function openChunkDetailsDrawer(chunkId, elementsSublist) {
           await openElementDetails(b.orig_id);
           stable = await findStableIdByOrig(b.orig_id, p);
           if (stable) { CURRENT_INSPECT_ELEMENT_ID = stable; await drawBoxesForCurrentPage(); }
+        } else if (b.element_id) {
+          CURRENT_INSPECT_ELEMENT_ID = null;
+          await drawBoxesForCurrentPage();
+          await openElementDetails(b.element_id);
         }
       });
       elemList.appendChild(row);
