@@ -1,0 +1,48 @@
+# syntax=docker/dockerfile:1.4
+# Lite Docker image for Azure DI + Unstructured Partition API only
+# Skips heavy local Unstructured deps (PyTorch, transformers, OpenCV, Tesseract)
+# Results in ~400MB image vs ~3GB for full image
+
+ARG PYTHON_VERSION=3.11
+
+FROM public.ecr.aws/docker/library/python:${PYTHON_VERSION}-slim AS runtime
+
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    UV_LINK_MODE=copy \
+    UV_PROJECT_ENVIRONMENT=/app/.venv \
+    APP_HOME=/app \
+    VIRTUAL_ENV=/app/.venv \
+    PATH="/app/.venv/bin:/root/.local/bin:$PATH"
+
+WORKDIR /app
+
+# Minimal system dependencies (only Poppler for PDF rendering)
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+        curl \
+        poppler-utils \
+        && rm -rf /var/lib/apt/lists/*
+
+# Install uv
+RUN pip install --no-cache-dir uv
+
+# Install only core dependencies (no optional extras)
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-dev
+
+# Copy the rest of the application
+COPY . .
+
+# Ensure a dotenv file is present
+RUN if [ -f .env ]; then \
+        echo "using existing .env"; \
+    elif [ -f .env.example ]; then \
+        cp .env.example .env; \
+    else \
+        touch .env; \
+    fi
+
+EXPOSE 8000
+
+CMD ["uv", "run", "python", "main.py"]

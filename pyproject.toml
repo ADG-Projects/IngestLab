@@ -3,27 +3,35 @@ name = "chunking-tests"
 version = "5.0.0"
 description = "Document ingestion experiments for local Unstructured processing."
 requires-python = ">=3.10"
+# Core dependencies for lite image (Azure DI + Unstructured Partition API only)
 dependencies = [
-    "unstructured",
-    "pdfminer.six",
-    "pypdf",
-    "pdf2image",
-    "unstructured.pytesseract",
-    "python-multipart",
-    "pi-heif",
     "fastapi",
     "uvicorn[standard]",
-    "unstructured-inference",
     "azure-ai-documentintelligence",
     "requests",
     "python-dotenv",
+    "python-multipart",
+    "pypdf",
+    "pdf2image",
+    "pdfminer.six",
     "openai",
 ]
 
 [project.optional-dependencies]
-# Heavy deps only needed for hi_res layout (torch/opencv via unstructured-inference)
+# Full Unstructured local processing (adds ~2-3GB to image)
+unstructured = [
+    "unstructured",
+    "unstructured.pytesseract",
+    "pi-heif",
+]
+# Heavy deps for hi_res layout (torch/opencv via unstructured-inference)
 hires = [
     "unstructured-inference",
+]
+# All providers (unstructured local + hires)
+full = [
+    "chunking-tests[unstructured]",
+    "chunking-tests[hires]",
 ]
 
 [build-system]

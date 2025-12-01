@@ -286,11 +286,19 @@ The Feedback tab can ship all stored reviews to OpenAI for summaries and compari
 - Outputs now include per-element suggestions (machine_note, issue_tags, severity, text_snippet), element-type findings, issue taxonomies with severities, review-gap callouts, and multi-dimensional 1–10 scores (overall/actionability/explanations/coverage) surfaced in provider summaries and comparisons.
 - The UI exposes both flows via the Feedback tab (“Send to LLM” for a provider or “Compare all providers”), and you can export the raw aggregated data as JSON or HTML without hitting the model.
 
-### Docker image (hi_res ready)
+### Docker images
 
-Use the included `Dockerfile` when you need hi_res chunking on platforms like Railway. It installs the native libraries (`libgl1`, `libglib2.0-0`, `libsm6`, `libxext6`, `libxrender1`, `tesseract-ocr`, `poppler-utils`, `libheif1`) and uses `uv sync --frozen` so the bundled `.venv` always matches `uv.lock`.
+Two Docker images are available:
 
-Build and test locally:
+**Lite image (~400MB)** — Azure Document Intelligence + Unstructured Partition API only. No local ML dependencies (PyTorch, transformers, OpenCV, Tesseract). Use this for API-only workflows:
+
+```bash
+docker build -f Dockerfile.lite -t chunking-tests:lite .
+docker run -d --name chunking-tests-lite -p 8765:8000 chunking-tests:lite
+curl -sf http://localhost:8765/healthz
+```
+
+**Full image (~3GB)** — All providers including local Unstructured with hi_res layout. Installs native libraries (`libgl1`, `libglib2.0-0`, `libsm6`, `libxext6`, `libxrender1`, `tesseract-ocr`, `poppler-utils`, `libheif1`):
 
 ```bash
 docker build -t chunking-tests:latest .
@@ -299,7 +307,7 @@ curl -sf http://localhost:8765/healthz
 docker stop chunking-tests-local && docker rm chunking-tests-local
 ```
 
-Hi_res is enabled by default inside the container. To produce a slimmed-down fast-only image, pass the build args exposed in the Dockerfile:
+Hi_res is enabled by default in the full image. To produce a slimmed-down fast-only image, pass the build args exposed in the Dockerfile:
 
 ```bash
 docker build -t chunking-tests:min \

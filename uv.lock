@@ -311,7 +311,7 @@ wheels = [
 
 [[package]]
 name = "chunking-tests"
-version = "4.3.0"
+version = "5.0.0"
 source = { editable = "." }
 dependencies = [
     { name = "azure-ai-documentintelligence" },
@@ -319,41 +319,49 @@ dependencies = [
     { name = "openai" },
     { name = "pdf2image" },
     { name = "pdfminer-six" },
-    { name = "pi-heif" },
     { name = "pypdf" },
     { name = "python-dotenv" },
     { name = "python-multipart" },
     { name = "requests" },
-    { name = "unstructured" },
-    { name = "unstructured-inference" },
-    { name = "unstructured-pytesseract" },
     { name = "uvicorn", extra = ["standard"] },
 ]
 
 [package.optional-dependencies]
+full = [
+    { name = "pi-heif" },
+    { name = "unstructured" },
+    { name = "unstructured-inference" },
+    { name = "unstructured-pytesseract" },
+]
 hires = [
     { name = "unstructured-inference" },
+]
+unstructured = [
+    { name = "pi-heif" },
+    { name = "unstructured" },
+    { name = "unstructured-pytesseract" },
 ]
 
 [package.metadata]
 requires-dist = [
     { name = "azure-ai-documentintelligence" },
+    { name = "chunking-tests", extras = ["hires"], marker = "extra == 'full'" },
+    { name = "chunking-tests", extras = ["unstructured"], marker = "extra == 'full'" },
     { name = "fastapi" },
     { name = "openai" },
     { name = "pdf2image" },
     { name = "pdfminer-six" },
-    { name = "pi-heif" },
+    { name = "pi-heif", marker = "extra == 'unstructured'" },
     { name = "pypdf" },
     { name = "python-dotenv" },
     { name = "python-multipart" },
     { name = "requests" },
-    { name = "unstructured" },
-    { name = "unstructured-inference" },
+    { name = "unstructured", marker = "extra == 'unstructured'" },
     { name = "unstructured-inference", marker = "extra == 'hires'" },
-    { name = "unstructured-pytesseract" },
+    { name = "unstructured-pytesseract", marker = "extra == 'unstructured'" },
     { name = "uvicorn", extras = ["standard"] },
 ]
-provides-extras = ["hires"]
+provides-extras = ["unstructured", "hires", "full"]
 
 [[package]]
 name = "click"

@@ -39,9 +39,9 @@ RUN apt-get update && \
 # Install uv so all Python commands use the same resolver/runtime
 RUN pip install --no-cache-dir uv
 
-# Pre-install Python dependencies using the lockfile for better Docker caching
+# Pre-install Python dependencies with full extras (unstructured + hires)
 COPY pyproject.toml uv.lock ./
-RUN uv sync --frozen --no-dev && \
+RUN uv sync --frozen --no-dev --extra full && \
     uv pip uninstall opencv-python || true && \
     uv pip install --no-deps opencv-python-headless==4.11.0.86 && \
     if [ "$WITH_HIRES" = "0" ]; then \
