@@ -28,7 +28,7 @@ class ChunkingConfig:
 
     include_orig_elements: bool = True
     noise_types: List[str] = field(
-        default_factory=lambda: ["pageHeader", "pageFooter", "pageNumber"]
+        default_factory=lambda: ["pageHeader", "pageFooter", "pageNumber", "Line"]
     )
     section_break_types: List[str] = field(
         default_factory=lambda: ["title", "sectionHeading"]
