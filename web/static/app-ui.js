@@ -20,7 +20,7 @@ function updateLegend(types) {
   host.classList.remove('hidden');
 }
 
-function showToast(text, kind='ok', ms=3000) {
+function showToast(text, kind = 'ok', ms = 3000) {
   const host = $('toast');
   if (!host) return;
   const item = document.createElement('div');
@@ -30,11 +30,14 @@ function showToast(text, kind='ok', ms=3000) {
   setTimeout(() => { item.remove(); }, ms);
 }
 
-function typeBorderColor(t) {
-  const cls = String(t || '').replace(/[^A-Za-z0-9_-]/g,'');
+function typeBorderColor(t, altIndex = null) {
+  const cls = String(t || '').replace(/[^A-Za-z0-9_-]/g, '');
   if (!cls) return '#6bbcff';
   const fake = document.createElement('div');
   fake.className = `box type-${cls}`;
+  if (altIndex !== null && altIndex > 0) {
+    fake.classList.add(`alt-${altIndex % 4}`);
+  }
   document.body.appendChild(fake);
   const color = window.getComputedStyle(fake).borderColor;
   document.body.removeChild(fake);

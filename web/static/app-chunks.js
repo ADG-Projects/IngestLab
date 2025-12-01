@@ -166,7 +166,9 @@ function renderChunksTab() {
     card.className = 'chunk-card';
     const chunkId = id || `chunk-${idx}`;
     card.dataset.chunkId = chunkId;
-    const color = typeBorderColor(chunk.type || '');
+    const allChunks = CURRENT_CHUNKS?.chunks || [];
+    const globalIndex = allChunks.indexOf(chunk);
+    const color = typeBorderColor(chunk.type || '', globalIndex);
     card.style.borderLeft = `4px solid ${color}`;
     const chunkReview = getReview('chunk', chunkId);
     const derivedElementReview = chunkHasReviewedElements(chunk);
@@ -204,7 +206,7 @@ function renderChunksTab() {
         const row = document.createElement('div');
         row.className = 'element-row';
         const idDisp = (b.orig_id || b.element_id || '').toString();
-        const short = idDisp.length > 16 ? `${idDisp.slice(0,12)}…` : idDisp || '(no id)';
+        const short = idDisp.length > 16 ? `${idDisp.slice(0, 12)}…` : idDisp || '(no id)';
         row.innerHTML = `<span>${b.type || 'Element'} · p${b.page_trimmed ?? '?'}</span><span class="meta">${short}</span>`;
         row.addEventListener('click', async (ev) => {
           ev.stopPropagation();
@@ -416,5 +418,5 @@ function revealChunkInList(chunkId, expand = true) {
     const sub = card.querySelector('.elements-sublist');
     if (sub) sub.classList.remove('hidden');
   }
-  try { card.scrollIntoView({ block: 'nearest' }); } catch(e) {}
+  try { card.scrollIntoView({ block: 'nearest' }); } catch (e) { }
 }

@@ -1256,6 +1256,7 @@ body.resizing-drawer {
   flex: 1;
   min-height: 0;
   align-items: start;
+  align-content: start;
 }
 
 .chunk-card {

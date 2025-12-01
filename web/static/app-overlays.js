@@ -217,10 +217,7 @@ function drawChunksModeForPage(pageNum) {
     }
   }
 
-  const typesToShow = SHOW_ELEMENT_OVERLAYS && elementTypesPresent.size > 0
-    ? Array.from(elementTypesPresent)
-    : Array.from(chunkTypesPresent);
-  updateLegend(typesToShow);
+  updateLegend([]);
 }
 
 function drawChunkOverlayForId(chunkId, pageNum) {
@@ -239,8 +236,7 @@ function drawChunkOverlayForId(chunkId, pageNum) {
     chars: chunk.char_len,
   };
   addBox({ x: box.x, y: box.y, w: box.w, h: box.h }, box.layout_w, box.layout_h, true, chunk.type, null, 'chunk', meta);
-  const typesToShow = chunk.type ? [chunk.type] : [];
-  updateLegend(typesToShow);
+  updateLegend([]);
 }
 
 function redrawOverlaysForCurrentContext() {
