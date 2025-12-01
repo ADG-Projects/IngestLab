@@ -1990,7 +1990,7 @@ body.resizing-drawer {
   position: fixed;
   top: calc(58px + 60px + 44px);
   right: 0;
-  width: min(700px, calc(100vw - 32px));
+  width: var(--drawer-width, min(700px, calc(100vw - 32px)));
   bottom: 0;
   background: var(--bg-elevated);
   backdrop-filter: blur(var(--glass-blur-heavy)) saturate(var(--glass-saturation));
@@ -2018,6 +2018,24 @@ body.resizing-drawer {
 
 .drawer.hidden {
   display: none;
+}
+
+/* Resize handle for drawer overlay */
+.drawer-resize-handle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  cursor: ew-resize;
+  background: transparent;
+  z-index: 10;
+  transition: background var(--duration-fast);
+}
+
+.drawer-resize-handle:hover,
+.drawer-resize-handle.dragging {
+  background: var(--accent-primary);
 }
 
 .feedback-view {
