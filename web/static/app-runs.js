@@ -1,4 +1,5 @@
 const RUN_JOB_POLL_INTERVAL_MS = 10000;
+const LAST_RUN_KEY = 'chunking-visualizer-last-run';
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function updateZoomSlider() {
@@ -309,10 +310,22 @@ async function refreshRuns() {
     sel.appendChild(opt);
   }
   if (runs.length) {
-    const existing = runs.find(
-      (r) => r.slug === CURRENT_SLUG && (r.provider || 'unstructured/local') === (CURRENT_PROVIDER || 'unstructured/local'),
-    );
-    const chosenRun = existing || runs[0];
+    // Try to restore last run from localStorage
+    const lastRunKey = localStorage.getItem(LAST_RUN_KEY);
+    let chosenRun = null;
+    if (lastRunKey) {
+      const { slug, provider } = parseRunKey(lastRunKey);
+      chosenRun = runs.find(
+        (r) => r.slug === slug && (r.provider || 'unstructured/local') === provider,
+      );
+    }
+    // Fall back to existing selection or first run
+    if (!chosenRun) {
+      const existing = runs.find(
+        (r) => r.slug === CURRENT_SLUG && (r.provider || 'unstructured/local') === (CURRENT_PROVIDER || 'unstructured/local'),
+      );
+      chosenRun = existing || runs[0];
+    }
     CURRENT_SLUG = chosenRun.slug;
     CURRENT_PROVIDER = chosenRun.provider || 'unstructured/local';
     sel.value = runKey(CURRENT_SLUG, CURRENT_PROVIDER);
@@ -346,6 +359,7 @@ async function refreshRuns() {
       (r) => r.slug === CURRENT_SLUG && (r.provider || 'unstructured/local') === CURRENT_PROVIDER,
     );
     if (selected && selected.provider) CURRENT_PROVIDER = selected.provider;
+    localStorage.setItem(LAST_RUN_KEY, sel.value);
     await loadRun(CURRENT_SLUG, CURRENT_PROVIDER);
   };
 }
