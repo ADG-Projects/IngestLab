@@ -103,7 +103,11 @@ function addBox(rect, layoutW, layoutH, isBest = false, type = null, color = nul
 
 function chunkBox(chunk, pageNum = null) {
   if (!chunk) return null;
-  if (chunk.segment_bbox) return chunk.segment_bbox;
+  // Only use segment_bbox for single-element chunks (pure table segments).
+  // For multi-element chunks (e.g., heading + table), use the full bbox
+  // so the overlay covers all elements.
+  const hasMultipleElements = chunk.orig_boxes && chunk.orig_boxes.length > 1;
+  if (chunk.segment_bbox && !hasMultipleElements) return chunk.segment_bbox;
   // For multi-page chunks, find the bbox for the specific page
   if (pageNum !== null && chunk.page_bboxes && chunk.page_bboxes.length > 0) {
     const pageBbox = chunk.page_bboxes.find(pb => pb.page_trimmed === pageNum);

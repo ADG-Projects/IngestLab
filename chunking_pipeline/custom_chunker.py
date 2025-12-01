@@ -126,10 +126,17 @@ def _compute_page_bboxes(
 
 
 def _combine_text(elements: List[Dict[str, Any]]) -> str:
-    """Combine text from multiple elements with newlines."""
+    """Combine text from multiple elements with newlines.
+
+    For Table elements, uses text_as_html if text is empty since Azure DI
+    stores table content in HTML format.
+    """
     texts = []
     for el in elements:
         text = el.get("text") or ""
+        # For Tables, fall back to text_as_html if text is empty
+        if not text.strip() and el.get("type") == "Table":
+            text = el.get("metadata", {}).get("text_as_html") or ""
         if text.strip():
             texts.append(text)
     return "\n\n".join(texts)
@@ -233,6 +240,111 @@ def _create_chunk(
     return chunk
 
 
+def _get_sort_key(element: Dict[str, Any]) -> tuple:
+    """Get sort key for element ordering: (page_number, top_y_position).
+
+    This ensures elements are processed in visual reading order (top to bottom
+    within each page), regardless of how they were ordered in the source.
+    """
+    meta = element.get("metadata") or {}
+    page = meta.get("page_number") or 0
+    coords = meta.get("coordinates") or {}
+    points = coords.get("points") or []
+    # Get top Y coordinate (first point's Y value)
+    top_y = points[0][1] if points and len(points[0]) > 1 else 0
+    return (page, top_y)
+
+
+def _get_element_bbox(element: Dict[str, Any]) -> Optional[tuple]:
+    """Extract bounding box as (page, x_min, y_min, x_max, y_max) from element.
+
+    Returns None if coordinates are missing or invalid.
+    """
+    meta = element.get("metadata") or {}
+    page = meta.get("page_number")
+    coords = meta.get("coordinates") or {}
+    points = coords.get("points") or []
+
+    if not points or len(points) < 4 or page is None:
+        return None
+
+    try:
+        xs = [p[0] for p in points]
+        ys = [p[1] for p in points]
+        return (page, min(xs), min(ys), max(xs), max(ys))
+    except (IndexError, TypeError):
+        return None
+
+
+def _is_inside_bbox(
+    element_bbox: tuple, container_bbox: tuple, tolerance: float = 2.0
+) -> bool:
+    """Check if element_bbox is inside container_bbox (with tolerance).
+
+    Both bboxes are (page, x_min, y_min, x_max, y_max).
+    """
+    e_page, e_x_min, e_y_min, e_x_max, e_y_max = element_bbox
+    c_page, c_x_min, c_y_min, c_x_max, c_y_max = container_bbox
+
+    # Must be on same page
+    if e_page != c_page:
+        return False
+
+    # Check if element is inside container (with tolerance for rounding)
+    return (
+        e_x_min >= c_x_min - tolerance
+        and e_y_min >= c_y_min - tolerance
+        and e_x_max <= c_x_max + tolerance
+        and e_y_max <= c_y_max + tolerance
+    )
+
+
+def _filter_elements_inside_tables(
+    elements: List[Dict[str, Any]], config: ChunkingConfig
+) -> List[Dict[str, Any]]:
+    """Filter out Paragraph elements that fall inside Table bounding boxes.
+
+    Azure DI extracts both Table elements AND individual Paragraph elements for
+    each table cell. This creates duplicate content. We keep Tables and filter
+    out Paragraphs that are geometrically inside them.
+    """
+    # First, collect all Table bounding boxes
+    table_bboxes = []
+    for el in elements:
+        top_type = el.get("type") or ""
+        if top_type in config.standalone_types:
+            bbox = _get_element_bbox(el)
+            if bbox:
+                table_bboxes.append(bbox)
+
+    if not table_bboxes:
+        return elements
+
+    # Filter out Paragraphs inside Tables
+    result = []
+    for el in elements:
+        top_type = el.get("type") or ""
+
+        # Keep non-Paragraph elements
+        if top_type != "Paragraph":
+            result.append(el)
+            continue
+
+        # Check if this Paragraph is inside any Table
+        el_bbox = _get_element_bbox(el)
+        if el_bbox is None:
+            result.append(el)
+            continue
+
+        inside_table = any(
+            _is_inside_bbox(el_bbox, t_bbox) for t_bbox in table_bboxes
+        )
+        if not inside_table:
+            result.append(el)
+
+    return result
+
+
 def chunk_elements(
     elements: List[Dict[str, Any]],
     config: Optional[ChunkingConfig] = None,
@@ -258,6 +370,14 @@ def chunk_elements(
     if not filtered:
         return []
 
+    # Filter out Paragraphs that are inside Table bounding boxes (duplicate content)
+    filtered = _filter_elements_inside_tables(filtered, config)
+
+    # Sort elements by page and vertical position to ensure proper reading order
+    # This is needed because Azure DI groups elements by type (all Tables at end)
+    # rather than by visual position
+    filtered = sorted(filtered, key=_get_sort_key)
+
     chunks: List[Dict[str, Any]] = []
     current_section: List[Dict[str, Any]] = []
     seen_section_break = False
@@ -266,16 +386,29 @@ def chunk_elements(
         classification = _classify_element(element, config)
 
         if classification == "standalone":
-            # Flush current section first
-            if current_section:
+            # Check if current section is just a heading - if so, combine with standalone
+            if len(current_section) == 1 and _classify_element(
+                current_section[0], config
+            ) == "section_break":
+                # Combine heading with standalone element (e.g., heading + table)
+                current_section.append(element)
                 chunks.append(
                     _create_chunk(
                         current_section, config, is_preamble=not seen_section_break
                     )
                 )
                 current_section = []
-            # Add standalone as its own chunk
-            chunks.append(_create_chunk([element], config))
+            else:
+                # Flush current section first
+                if current_section:
+                    chunks.append(
+                        _create_chunk(
+                            current_section, config, is_preamble=not seen_section_break
+                        )
+                    )
+                    current_section = []
+                # Add standalone as its own chunk
+                chunks.append(_create_chunk([element], config))
 
         elif classification == "section_break":
             # Flush current section
