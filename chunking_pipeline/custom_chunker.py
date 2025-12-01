@@ -277,7 +277,7 @@ def _get_element_bbox(element: Dict[str, Any]) -> Optional[tuple]:
 
 
 def _is_inside_bbox(
-    element_bbox: tuple, container_bbox: tuple, tolerance: float = 2.0
+    element_bbox: tuple, container_bbox: tuple, tolerance: float = 5.0
 ) -> bool:
     """Check if element_bbox is inside container_bbox (with tolerance).
 
