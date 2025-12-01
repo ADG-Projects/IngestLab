@@ -736,6 +736,7 @@ section.left {
   min-height: 0;
   height: 0;
   width: 100%;
+  text-align: center;
 }
 
 .page-layer {
