@@ -871,11 +871,35 @@ section.left {
 }
 
 section.right {
+  position: relative;
   border-left: 1px solid var(--border-default);
   overflow: hidden;
   display: flex;
   flex-direction: column;
   height: 100%;
+}
+
+/* Resize handle for right panel */
+.resize-handle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  cursor: ew-resize;
+  background: transparent;
+  z-index: 10;
+  transition: background var(--duration-fast);
+}
+
+.resize-handle:hover,
+.resize-handle.dragging {
+  background: var(--accent-primary);
+}
+
+body.resizing-drawer {
+  cursor: ew-resize !important;
+  user-select: none;
 }
 
 .hidden {

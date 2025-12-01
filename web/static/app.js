@@ -1,6 +1,7 @@
 document.addEventListener('DOMContentLoaded', () => {
   applyLanguageDirection();
   initDrawerAutoCondense();
+  initDrawerResize();
   wireWhatsNewModal();
   const sel = $('elementsTypeSelect');
   if (sel) sel.addEventListener('change', async () => {

@@ -190,3 +190,73 @@ function wireWhatsNewModal() {
   if (closeBtn) closeBtn.addEventListener('click', () => modal.classList.add('hidden'));
   if (backdrop) backdrop.addEventListener('click', () => modal.classList.add('hidden'));
 }
+
+// Right panel resize functionality
+const DRAWER_RESIZE_KEY = 'drawer-width';
+const DRAWER_MIN_WIDTH = 360;
+
+function getDrawerMaxWidth() {
+  // Max is 70% of window width (but at least min width)
+  return Math.max(DRAWER_MIN_WIDTH, Math.round(window.innerWidth * 0.7));
+}
+
+function getDefaultDrawerWidth() {
+  // Calculate a sensible default based on window size
+  // Use ~35% of window width, clamped to min/max
+  const preferred = Math.round(window.innerWidth * 0.35);
+  return Math.max(DRAWER_MIN_WIDTH, Math.min(getDrawerMaxWidth(), preferred));
+}
+
+function initDrawerResize() {
+  const handle = document.getElementById('drawer-resize-handle');
+  const shell = document.querySelector('.inspect-shell');
+  if (!handle || !shell) return;
+
+  let isDragging = false;
+  let currentWidth = null;
+
+  // Restore saved width on load
+  const savedWidth = localStorage.getItem(DRAWER_RESIZE_KEY);
+  if (savedWidth) {
+    const width = parseInt(savedWidth, 10);
+    if (width >= DRAWER_MIN_WIDTH && width <= getDrawerMaxWidth()) {
+      shell.style.gridTemplateColumns = `minmax(0, 1fr) ${width}px`;
+      currentWidth = width;
+    }
+  }
+
+  handle.addEventListener('mousedown', (e) => {
+    isDragging = true;
+    handle.classList.add('dragging');
+    document.body.classList.add('resizing-drawer');
+    e.preventDefault();
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    const shellRect = shell.getBoundingClientRect();
+    const newWidth = Math.max(DRAWER_MIN_WIDTH, Math.min(getDrawerMaxWidth(), shellRect.right - e.clientX));
+    shell.style.gridTemplateColumns = `minmax(0, 1fr) ${newWidth}px`;
+    currentWidth = newWidth;
+  });
+
+  document.addEventListener('mouseup', () => {
+    if (isDragging) {
+      isDragging = false;
+      handle.classList.remove('dragging');
+      document.body.classList.remove('resizing-drawer');
+      // Save width to localStorage
+      if (currentWidth !== null) {
+        localStorage.setItem(DRAWER_RESIZE_KEY, String(currentWidth));
+      }
+    }
+  });
+
+  // Double-click to reset to default width based on current window size
+  handle.addEventListener('dblclick', () => {
+    const defaultWidth = getDefaultDrawerWidth();
+    shell.style.gridTemplateColumns = `minmax(0, 1fr) ${defaultWidth}px`;
+    currentWidth = defaultWidth;
+    localStorage.removeItem(DRAWER_RESIZE_KEY);
+  });
+}
