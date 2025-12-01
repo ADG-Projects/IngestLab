@@ -49,9 +49,9 @@ function updateRunConfigCard() {
 
   const chunkParams = cfg.chunk_params || {};
   const snap = cfg.form_snapshot || cfg.ui_form || {};
-  const provider = preferValues(cfg.provider, snap.provider, 'unstructured');
-  const isAzure = provider && (provider.includes('azure') || provider === 'azure-di');
-  const isUnstructured = provider && (provider.includes('unstructured') || provider === 'unstructured' || provider === 'unstructured-partition');
+  const provider = preferValues(cfg.provider, snap.provider, 'unstructured/local');
+  const isAzure = provider && provider.includes('azure');
+  const isUnstructured = provider && provider.includes('unstructured');
 
   // Build parameter list
   const topRowParams = [];
@@ -59,12 +59,12 @@ function updateRunConfigCard() {
 
   // Provider (always show)
   let providerDisplay = provider;
-  if (provider === 'azure-di') {
+  if (provider === 'azure/document_intelligence') {
     providerDisplay = 'Azure Document Intelligence';
-  } else if (provider === 'unstructured') {
-    providerDisplay = 'Unstructured';
-  } else if (provider === 'unstructured-partition') {
-    providerDisplay = 'Unstructured Partition';
+  } else if (provider === 'unstructured/local') {
+    providerDisplay = 'Unstructured (Local)';
+  } else if (provider === 'unstructured/partition') {
+    providerDisplay = 'Unstructured Partition (API)';
   }
   topRowParams.push({ label: null, value: providerDisplay });
 
