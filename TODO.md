@@ -5,6 +5,9 @@
 
 ## Completed
 
+- [x] 2025-12-02 Release v5.0.1 (Fix legacy runs discovery, add backwards-compatible provider aliases).
+- [x] 2025-12-02 Fix legacy runs (pre-v5.0) not discovered by scanning both .elements.jsonl and .chunks.jsonl files.
+- [x] 2025-12-02 Add backwards-compatible provider aliases (azure-di, unstructured, unstructured-partition) for localStorage and API compatibility.
 - [x] 2025-12-01 Release v5.0 (Custom chunker improvements, element drawer hierarchy, resizable panels, smart parameter banner, run persistence).
 - [x] 2025-12-01 Keep section headings that fall inside figure/table bounding boxes attached to the container chunk so figure captions stay with the figure chunk, and merge consecutive section headings into a single section chunk so intermediate header-only chunks go away.
 - [x] 2025-12-01 Add element drawer hierarchy context mirroring the outline view so ancestors/children stay visible while reviewing.

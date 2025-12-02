@@ -26,9 +26,9 @@ router = APIRouter()
 logger = logging.getLogger("chunking.routes.runs")
 
 
-def _parse_slug_from_elements(path: Path) -> Tuple[str, Optional[str]]:
-    """Parse slug and page range from an elements file path."""
-    stem = path.name[:-len(".elements.jsonl")] if path.name.endswith(".elements.jsonl") else path.stem
+def _parse_slug_from_run_file(path: Path, suffix: str) -> Tuple[str, Optional[str]]:
+    """Parse slug and page range from an elements or chunks file path."""
+    stem = path.name[: -len(suffix)] if path.name.endswith(suffix) else path.stem
     m = re.match(r"^(?P<slug>.+?)\.pages(?P<range>[0-9_\-,]+)$", stem)
     if not m:
         return stem, None
@@ -42,12 +42,36 @@ def discover_runs(provider: Optional[str] = None) -> List[Dict[str, Any]]:
         out_dir = get_out_dir(prov)
         if not out_dir.exists():
             continue
-        elements_files = sorted(out_dir.glob("*.elements.jsonl"), key=lambda p: p.stat().st_mtime, reverse=True)
-        for elements_file in elements_files:
-            ui_slug, page_tag = _parse_slug_from_elements(elements_file)
-            base_stem = elements_file.name[:-len(".elements.jsonl")]
+
+        # Collect runs from both elements files (v5.0+) and chunks files (legacy)
+        seen_stems: set = set()
+        run_files: List[Tuple[Path, bool]] = []  # (path, is_elements)
+
+        # Primary: elements files (v5.0+)
+        for ef in out_dir.glob("*.elements.jsonl"):
+            base_stem = ef.name[: -len(".elements.jsonl")]
+            seen_stems.add(base_stem)
+            run_files.append((ef, True))
+
+        # Fallback: chunks files without corresponding elements (pre-v5.0 legacy)
+        for cf in out_dir.glob("*.chunks.jsonl"):
+            base_stem = cf.name[: -len(".chunks.jsonl")]
+            if base_stem not in seen_stems:
+                run_files.append((cf, False))
+
+        # Sort by mtime, newest first
+        run_files.sort(key=lambda x: x[0].stat().st_mtime, reverse=True)
+
+        for run_file, is_elements in run_files:
+            if is_elements:
+                suffix = ".elements.jsonl"
+            else:
+                suffix = ".chunks.jsonl"
+            base_stem = run_file.name[: -len(suffix)]
+            ui_slug, page_tag = _parse_slug_from_run_file(run_file, suffix)
             pdf_path = out_dir / f"{base_stem}.pdf"
             meta_path = out_dir / f"{base_stem}.run.json"
+            elements_path = out_dir / f"{base_stem}.elements.jsonl"
             chunks_path = out_dir / f"{base_stem}.chunks.jsonl"
             page_range = (page_tag or "").replace("_", ",") or None
             run_config: Dict[str, Any] = {}
@@ -63,7 +87,7 @@ def discover_runs(provider: Optional[str] = None) -> List[Dict[str, Any]]:
                     "provider": prov,
                     "pdf_file": relative_to_root(pdf_path) if pdf_path.exists() else None,
                     "page_range": page_range,
-                    "elements_file": relative_to_root(elements_file),
+                    "elements_file": relative_to_root(elements_path) if elements_path.exists() else None,
                     "chunks_file": relative_to_root(chunks_path) if chunks_path.exists() else None,
                     "run_config": run_config or None,
                 }

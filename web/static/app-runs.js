@@ -2,6 +2,17 @@ const RUN_JOB_POLL_INTERVAL_MS = 10000;
 const LAST_RUN_KEY = 'chunking-visualizer-last-run';
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+// Legacy provider name aliases (pre-v5.0 compatibility)
+const PROVIDER_ALIASES = {
+  'unstructured': 'unstructured/local',
+  'unstructured-partition': 'unstructured/partition',
+  'azure-di': 'azure/document_intelligence',
+};
+
+function resolveProvider(provider) {
+  return PROVIDER_ALIASES[provider] || provider;
+}
+
 function updateZoomSlider() {
   const zoomInput = $('zoom');
   if (!zoomInput) return;
@@ -21,7 +32,7 @@ function parseRunKey(key) {
   const raw = key || '';
   const sep = raw.indexOf(':::');
   if (sep === -1) return { slug: raw, provider: CURRENT_PROVIDER || 'unstructured/local' };
-  const provider = raw.slice(0, sep) || 'unstructured/local';
+  const provider = resolveProvider(raw.slice(0, sep) || 'unstructured/local');
   const slug = raw.slice(sep + 3) || '';
   return { slug, provider };
 }

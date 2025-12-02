@@ -63,6 +63,18 @@ PROVIDERS = {
 }
 DEFAULT_PROVIDER = "azure/document_intelligence"
 
+# Legacy provider name aliases (pre-v5.0 compatibility)
+PROVIDER_ALIASES = {
+    "unstructured": "unstructured/local",
+    "unstructured-partition": "unstructured/partition",
+    "azure-di": "azure/document_intelligence",
+}
+
+
+def resolve_provider(provider: str) -> str:
+    """Resolve legacy provider names to canonical names."""
+    return PROVIDER_ALIASES.get(provider, provider)
+
 
 def ensure_dirs() -> None:
     RES_DIR.mkdir(parents=True, exist_ok=True)
@@ -97,7 +109,8 @@ def relative_to_root(path: Path) -> str:
 
 
 def get_out_dir(provider: str) -> Path:
-    cfg = PROVIDERS.get(provider)
+    resolved = resolve_provider(provider)
+    cfg = PROVIDERS.get(resolved)
     if not cfg:
         raise ValueError(f"Unknown provider: {provider}")
     return cfg["out_dir"]
