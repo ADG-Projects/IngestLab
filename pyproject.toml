@@ -1,6 +1,6 @@
 [project]
 name = "chunking-tests"
-version = "5.0.1"
+version = "5.0.2"
 description = "Document ingestion experiments for local Unstructured processing."
 requires-python = ">=3.10"
 # Core dependencies for lite image (Azure DI + Unstructured Partition API only)

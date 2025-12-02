@@ -5,6 +5,8 @@
 
 ## Completed
 
+- [x] 2025-12-02 Release v5.0.2 (Fix element bounding boxes for legacy chunks-only runs).
+- [x] 2025-12-02 Fix element/box endpoints to extract bounding boxes from legacy .chunks.jsonl files when no .elements.jsonl exists.
 - [x] 2025-12-02 Release v5.0.1 (Fix legacy runs discovery, add backwards-compatible provider aliases).
 - [x] 2025-12-02 Fix legacy runs (pre-v5.0) not discovered by scanning both .elements.jsonl and .chunks.jsonl files.
 - [x] 2025-12-02 Add backwards-compatible provider aliases (azure-di, unstructured, unstructured-partition) for localStorage and API compatibility.

@@ -107,6 +107,7 @@ Outputs for Azure runs live under `outputs/azure/document_intelligence/` with th
 
 ## Release history
 
+- **v5.0.2 (2025-12-02)** – Fix: Element bounding boxes now display for legacy chunks-only runs (pre-v5.0). Element type filtering works on legacy runs without .elements.jsonl files.
 - **v5.0.1 (2025-12-02)** – Fix: Legacy runs (pre-v5.0) now discovered correctly by scanning both .elements.jsonl and .chunks.jsonl files. Added backwards-compatible provider aliases (azure-di, unstructured, unstructured-partition).
 - **v5.0 (2025-12-01)** – Custom chunker improvements: section headings inside Table/Figure boxes stay attached to container (captions stay with figures), consecutive headings merge into single section, paragraphs inside tables filtered, tables/figures included in parent sections. UI: element drawer hierarchy context, resizable panels, centered PDF viewer, smart parameter banner, alternating chunk overlay colors, and run persistence across reloads.
 - **v4.4 (2025-11-28)** – Apple Liquid Glass UI redesign with frosted glass effects, dark/light theme toggle, Apple system color palette, smooth spring animations, and enhanced button/card styling.

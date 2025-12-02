@@ -118,6 +118,8 @@ For UI changes, verify:
 
 ## Deployment Guide
 
+New deployments have to be backwards compatible with existing data (for ex., we had a situation where old runs were not being discovered anymore because we were scanning for different files and provider names had changed).
+
 1. Bump version in UI (header badge), code/metadata (pyproject.toml, uv.lock, README release history, database-schema notes, TODO).
 2. Write release notes into the version "what's new" modal.
 3. Commit the version bumps and any related changes.
