@@ -15,10 +15,10 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from chunking_pipeline.custom_chunker import (
+from src.extractors.custom_chunker import (
     ChunkingConfig,
     chunk_elements,
-    get_chunk_summary,
+    get_chunk_statistics,
 )
 
 logger = logging.getLogger(__name__)
@@ -87,11 +87,11 @@ def main(argv: Optional[List[str]] = None) -> int:
     logger.info("Running chunker...")
     chunks = chunk_elements(elements, config)
 
-    summary = get_chunk_summary(chunks)
+    stats = get_chunk_statistics(chunks)
     logger.info(
-        f"Generated {summary['count']} chunks "
-        f"(avg {summary['avg_chars']} chars, "
-        f"min {summary['min_chars']}, max {summary['max_chars']})"
+        f"Generated {stats.count} chunks "
+        f"(avg {stats.avg_chars} chars, "
+        f"min {stats.min_chars}, max {stats.max_chars})"
     )
 
     # Ensure output directory exists

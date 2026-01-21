@@ -10,11 +10,11 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from fastapi import APIRouter, HTTPException, Request
 
-from chunking_pipeline.chunker import decode_orig_elements
-from chunking_pipeline.custom_chunker import (
+from src.extractors.custom_chunker import (
     ChunkingConfig,
     chunk_elements,
-    get_chunk_summary,
+    decode_orig_elements,
+    get_chunk_statistics,
 )
 
 from ..config import DEFAULT_PROVIDER, PROVIDERS, get_out_dir
@@ -196,7 +196,8 @@ async def api_chunk(request: Request) -> Dict[str, Any]:
 
     # Run chunker
     chunks = chunk_elements(elements, config)
-    summary = get_chunk_summary(chunks)
+    stats = get_chunk_statistics(chunks)
+    summary = stats.model_dump()
 
     logger.info(
         f"Generated {summary['count']} chunks "

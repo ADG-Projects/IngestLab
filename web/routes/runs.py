@@ -14,7 +14,6 @@ from ..config import (
     PROVIDERS,
     RES_DIR,
     get_out_dir,
-    env_true,
     relative_to_root,
     safe_pages_tag,
 )
@@ -141,11 +140,21 @@ def api_delete_run(slug: str, provider: str = Query(default=DEFAULT_PROVIDER)) -
     return {"status": "ok", "removed": removed}
 
 
+# Providers that support creating new runs (Unstructured is sunsetted)
+RUNNABLE_PROVIDERS = {"azure/document_intelligence"}
+
+
 @router.post("/api/run")
 def api_run(payload: Dict[str, Any]) -> Dict[str, Any]:
     provider = str(payload.get("provider") or DEFAULT_PROVIDER).strip() or DEFAULT_PROVIDER
     if provider not in PROVIDERS:
         raise HTTPException(status_code=400, detail=f"Unknown provider: {provider}")
+    if provider not in RUNNABLE_PROVIDERS:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Provider '{provider}' is no longer supported for new runs. "
+            "Use 'azure/document_intelligence' instead.",
+        )
     out_dir = get_out_dir(provider)
 
     pdf_name = str(payload.get("pdf") or payload.get("pdf_name") or "").strip()
@@ -153,50 +162,21 @@ def api_run(payload: Dict[str, Any]) -> Dict[str, Any]:
     if not pdf_name:
         raise HTTPException(status_code=400, detail="Field 'pdf' is required")
 
-    is_unstructured = provider == "unstructured/local"
-    is_unstructured_partition = provider == "unstructured/partition"
-    is_azure_di = provider == "azure/document_intelligence"
-
-    strategy = str(payload.get("strategy") or "auto")
-    allowed_partition_strategies = {"auto", "fast", "hi_res", "ocr_only", "vlm"}
-    allowed_unstructured_strategies = {"auto", "fast", "hi_res"}
-    if is_unstructured:
-        if strategy not in allowed_unstructured_strategies:
-            raise HTTPException(status_code=400, detail=f"strategy must be one of: {', '.join(sorted(allowed_unstructured_strategies))}")
-        if env_true("DISABLE_HI_RES") and strategy in {"auto", "hi_res"}:
-            strategy = "fast"
-    elif is_unstructured_partition:
-        if strategy not in allowed_partition_strategies:
-            raise HTTPException(status_code=400, detail=f"strategy must be one of: {', '.join(sorted(allowed_partition_strategies))}")
-        if env_true("DISABLE_HI_RES") and strategy in {"auto", "hi_res"}:
-            strategy = "fast"
-    else:
-        strategy = None
-
-    infer_table_structure = bool(payload.get("infer_table_structure", True)) if is_unstructured else True
     # All providers now output elements only; chunking is done via separate custom chunker
-    chunking = "none"
     ocr_languages = str(payload.get("ocr_languages") or "eng+ara").strip() or None
     languages_raw = payload.get("languages")
     primary_language = str(payload.get("primary_language") or "eng").strip().lower()
     if primary_language not in {"eng", "ara"}:
         primary_language = "eng"
 
-    azure_model_id: Optional[str] = None
-    azure_features_raw = None
-    azure_outputs_raw = None
-    azure_locale = None
-    azure_string_index_type = None
-    azure_output_content_format = None
-    azure_query_fields = None
-    if is_azure_di:
-        azure_model_id = str(payload.get("model_id") or "prebuilt-layout").strip()
-        azure_features_raw = payload.get("features")
-        azure_outputs_raw = payload.get("outputs")
-        azure_locale = payload.get("locale")
-        azure_string_index_type = payload.get("string_index_type")
-        azure_output_content_format = payload.get("output_content_format")
-        azure_query_fields = payload.get("query_fields")
+    # Azure Document Intelligence specific options
+    azure_model_id = str(payload.get("model_id") or "prebuilt-layout").strip()
+    azure_features_raw = payload.get("features")
+    azure_outputs_raw = payload.get("outputs")
+    azure_locale = payload.get("locale")
+    azure_string_index_type = payload.get("string_index_type")
+    azure_output_content_format = payload.get("output_content_format")
+    azure_query_fields = payload.get("query_fields")
 
     def _normalize_languages(value: Any) -> Optional[List[str]]:
         if value is None:
@@ -253,30 +233,6 @@ def api_run(payload: Dict[str, Any]) -> Dict[str, Any]:
         seen_outputs.add(key)
         normalized_outputs.append(out)
 
-    def _coerce_bool(name: str) -> Optional[bool]:
-        val = payload.get(name)
-        if val is None:
-            return None
-        if isinstance(val, bool):
-            return val
-        if isinstance(val, str):
-            txt = val.strip().lower()
-            if not txt:
-                return None
-            if txt in {"true", "1", "yes"}:
-                return True
-            if txt in {"false", "0", "no"}:
-                return False
-        raise HTTPException(status_code=400, detail=f"{name} must be a boolean")
-
-    detect_language_per_element = _coerce_bool("detect_language_per_element") if is_unstructured else False
-    if detect_language_per_element is None:
-        detect_language_per_element = False
-    extract_image_block_types = _normalize_feature_list(payload.get("extract_image_block_types")) if is_unstructured_partition else None
-    extract_image_block_to_payload = _coerce_bool("extract_image_block_to_payload") if is_unstructured_partition else None
-    if is_unstructured_partition and extract_image_block_to_payload and not extract_image_block_types:
-        extract_image_block_types = ["Image"]
-
     input_pdf = RES_DIR / pdf_name
     if not input_pdf.exists():
         raise HTTPException(status_code=404, detail=f"PDF not found: {pdf_name}")
@@ -308,23 +264,17 @@ def api_run(payload: Dict[str, Any]) -> Dict[str, Any]:
         "pdf": pdf_name,
         "pages": pages,
         "tag": raw_tag or None,
-        "strategy": strategy,
-        "infer_table_structure": infer_table_structure if is_unstructured else None,
         "ocr_languages": ocr_languages,
         "languages": languages,
-        "detect_language_per_element": detect_language_per_element,
         "primary_language": primary_language,
         "provider": provider,
-        "model_id": azure_model_id if is_azure_di else None,
-        "features": (normalized_features or azure_features_raw) if is_azure_di else None,
-        "outputs": (normalized_outputs or azure_outputs_raw) if is_azure_di else None,
-        "locale": azure_locale if is_azure_di else None,
-        "string_index_type": azure_string_index_type if is_azure_di else None,
-        "output_content_format": azure_output_content_format if is_azure_di else None,
-        "query_fields": azure_query_fields if is_azure_di else None,
-        "analyzer_id": None,
-        "extract_image_block_types": extract_image_block_types if is_unstructured_partition else None,
-        "extract_image_block_to_payload": extract_image_block_to_payload if is_unstructured_partition else None,
+        "model_id": azure_model_id,
+        "features": normalized_features or azure_features_raw,
+        "outputs": normalized_outputs or azure_outputs_raw,
+        "locale": azure_locale,
+        "string_index_type": azure_string_index_type,
+        "output_content_format": azure_output_content_format,
+        "query_fields": azure_query_fields,
     }
     payload["form_snapshot"] = form_snapshot
 
@@ -349,99 +299,46 @@ def api_run(payload: Dict[str, Any]) -> Dict[str, Any]:
                 break
             n += 1
 
-    if is_unstructured:
-        cmd: List[str] = [
-            sys.executable,
-            "-m",
-            "chunking_pipeline.run_chunking",
-            "--input",
-            str(input_pdf),
-            "--pages",
-            pages,
-            "--strategy",
-            strategy or "auto",
-            "--trimmed-out",
-            str(trimmed_out),
-            "--elements-output",
-            str(elements_out),
-        ]
-        if not infer_table_structure:
-            cmd.append("--no-infer-table-structure")
-        # Always use --chunking none; custom chunking done separately
-        cmd += ["--chunking", "none"]
-        if ocr_languages:
-            cmd += ["--ocr-languages", ocr_languages]
-        if languages:
-            cmd += ["--languages", ",".join(languages)]
-        if detect_language_per_element:
-            cmd.append("--detect-language-per-element")
-        if primary_language:
-            cmd += ["--primary-language", primary_language]
-    elif is_unstructured_partition:
-        cmd = [
-            sys.executable,
-            "-m",
-            "chunking_pipeline.unstructured_partition_pipeline",
-            "--input",
-            str(input_pdf),
-            "--pages",
-            pages,
-            "--strategy",
-            strategy or "auto",
-            "--trimmed-out",
-            str(trimmed_out),
-            "--elements-output",
-            str(elements_out),
-            "--run-metadata-out",
-            str(meta_out),
-        ]
-        if languages:
-            cmd += ["--languages", ",".join(languages)]
-        if extract_image_block_types:
-            cmd += ["--extract-image-block-types", ",".join(extract_image_block_types)]
-        if extract_image_block_to_payload is True:
-            cmd.append("--extract-image-block-to-payload")
-    else:
-        azure_provider = "document_intelligence"
-        cmd = [
-            sys.executable,
-            "-m",
-            "chunking_pipeline.azure_pipeline",
-            "--provider",
-            azure_provider,
-            "--input",
-            str(input_pdf),
-            "--pages",
-            pages,
-            "--trimmed-out",
-            str(trimmed_out),
-            "--output",
-            str(elements_out),
-            "--model-id",
-            azure_model_id,
-        ]
-        if normalized_features:
-            cmd += ["--features", ",".join(normalized_features)]
-        if normalized_outputs:
-            cmd += ["--outputs", ",".join(normalized_outputs)]
-        if azure_locale:
-            cmd += ["--locale", str(azure_locale)]
-        if azure_string_index_type:
-            cmd += ["--string-index-type", str(azure_string_index_type)]
-        if azure_output_content_format:
-            cmd += ["--output-content-format", str(azure_output_content_format)]
-        if azure_query_fields:
-            if isinstance(azure_query_fields, (list, tuple)):
-                cmd += ["--query-fields", ",".join(str(x) for x in azure_query_fields)]
-            else:
-                cmd += ["--query-fields", str(azure_query_fields)]
-        cmd += ["--run-metadata-out", str(meta_out)]
-        if primary_language:
-            cmd += ["--primary-language", primary_language]
-        if ocr_languages:
-            cmd += ["--ocr-languages", ocr_languages]
-        if languages:
-            cmd += ["--languages", ",".join(languages)]
+    # Build Azure Document Intelligence command
+    cmd: List[str] = [
+        sys.executable,
+        "-m",
+        "chunking_pipeline.azure_pipeline",
+        "--provider",
+        "document_intelligence",
+        "--input",
+        str(input_pdf),
+        "--pages",
+        pages,
+        "--trimmed-out",
+        str(trimmed_out),
+        "--output",
+        str(elements_out),
+        "--model-id",
+        azure_model_id,
+    ]
+    if normalized_features:
+        cmd += ["--features", ",".join(normalized_features)]
+    if normalized_outputs:
+        cmd += ["--outputs", ",".join(normalized_outputs)]
+    if azure_locale:
+        cmd += ["--locale", str(azure_locale)]
+    if azure_string_index_type:
+        cmd += ["--string-index-type", str(azure_string_index_type)]
+    if azure_output_content_format:
+        cmd += ["--output-content-format", str(azure_output_content_format)]
+    if azure_query_fields:
+        if isinstance(azure_query_fields, (list, tuple)):
+            cmd += ["--query-fields", ",".join(str(x) for x in azure_query_fields)]
+        else:
+            cmd += ["--query-fields", str(azure_query_fields)]
+    cmd += ["--run-metadata-out", str(meta_out)]
+    if primary_language:
+        cmd += ["--primary-language", primary_language]
+    if ocr_languages:
+        cmd += ["--ocr-languages", ocr_languages]
+    if languages:
+        cmd += ["--languages", ",".join(languages)]
 
     logger.info(
         "Submitting run slug=%s provider=%s command=%s",
