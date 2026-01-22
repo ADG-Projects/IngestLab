@@ -16,8 +16,8 @@ dependencies = [
     "pdfminer.six",
     "openai",
     # Import extractors from PolicyAsCode (formerly BRD-Demo)
-    # Using feature branch for figure vision pipeline (EXPERIMENTAL)
-    "brd-to-opa-pipeline @ git+https://github.com/kyndryl-agentic-ai/PolicyAsCode.git@feature/figure-vision-pr5c-api-endpoints",
+    # Using integration branch with lightweight deps (SAM3 is optional)
+    "brd-to-opa-pipeline @ git+https://github.com/kyndryl-agentic-ai/PolicyAsCode.git@feature/chunking-visualizer-integration",
 ]
 
 [build-system]
