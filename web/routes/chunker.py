@@ -10,12 +10,13 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from fastapi import APIRouter, HTTPException, Request
 
-from chunking_pipeline.chunker import decode_orig_elements
-from chunking_pipeline.custom_chunker import (
+from src.extractors.custom_chunker import (
     ChunkingConfig,
     chunk_elements,
-    get_chunk_summary,
+    decode_orig_elements,
+    get_chunk_statistics,
 )
+from src.models.elements import Element
 
 from ..config import DEFAULT_PROVIDER, PROVIDERS, get_out_dir
 from ..run_jobs import RUN_JOB_MANAGER
@@ -115,11 +116,13 @@ def _load_elements_from_chunks_file(path: Path) -> List[Dict[str, Any]]:
     return elements
 
 
-def _save_chunks(chunks: List[Dict[str, Any]], path: Path) -> None:
+def _save_chunks(chunks: List[Any], path: Path) -> None:
     """Save chunks to a JSONL file."""
     with path.open("w", encoding="utf-8") as f:
         for chunk in chunks:
-            f.write(json.dumps(chunk, ensure_ascii=False) + "\n")
+            # Convert Pydantic models to dicts if needed
+            data = chunk.model_dump() if hasattr(chunk, "model_dump") else chunk
+            f.write(json.dumps(data, ensure_ascii=False) + "\n")
 
 
 @router.post("/api/chunk")
@@ -194,9 +197,13 @@ async def api_chunk(request: Request) -> Dict[str, Any]:
 
     logger.info(f"Loaded {len(elements)} elements, running chunker")
 
+    # Convert dicts to Element models (chunk_elements expects Pydantic models)
+    element_models = [Element.model_validate(el) for el in elements]
+
     # Run chunker
-    chunks = chunk_elements(elements, config)
-    summary = get_chunk_summary(chunks)
+    chunks = chunk_elements(element_models, config)
+    stats = get_chunk_statistics(chunks)
+    summary = stats.model_dump()
 
     logger.info(
         f"Generated {summary['count']} chunks "

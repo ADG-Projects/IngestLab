@@ -255,6 +255,17 @@ function buildDrawerReviewSection(kind, itemId) {
   } else {
     note.value = existing?.note || '';
   }
+  const warning = document.createElement('div');
+  warning.className = 'review-note-warning';
+  warning.textContent = 'Select Good or Bad to save your note';
+  const updateWarning = () => {
+    const state = getReview(kind, itemId);
+    const hasContent = note.value.trim().length > 0;
+    const hasRating = Boolean(state?.rating);
+    const showWarning = hasContent && !hasRating;
+    warning.classList.toggle('visible', showWarning);
+    note.classList.toggle('warning', showWarning);
+  };
   const debouncedSave = debounce(async () => {
     const state = getReview(kind, itemId);
     if (state?.rating) {
@@ -264,9 +275,12 @@ function buildDrawerReviewSection(kind, itemId) {
   }, 600);
   note.addEventListener('input', () => {
     setReviewDraft(kind, itemId, note.value);
+    updateWarning();
     debouncedSave();
   });
   noteWrap.appendChild(note);
+  noteWrap.appendChild(warning);
   reviewSection.appendChild(noteWrap);
+  updateWarning();
   return reviewSection;
 }

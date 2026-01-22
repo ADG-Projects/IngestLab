@@ -2,6 +2,9 @@
 
 Local playground for document ingestion experiments. It now supports the open-source Unstructured chunker, the hosted Unstructured Partition API (elements-only), and Azure Document Intelligence (Layout) so you can compare layout/ocr quality side by side.
 
+> **Note:** Unstructured providers (Local and Partition API) are deprecated.
+> Use Azure Document Intelligence for new runs. Legacy Unstructured runs remain viewable.
+
 Two helper scripts exist today:
 - `process_unstructured.py`: interactive full-document runs against Unstructured.
 - `scripts/preview_unstructured_pages.py`: fast page slicing + gold-table matching for targeted QA (Unstructured).
@@ -21,7 +24,9 @@ uv sync
 
 `uv sync` creates a `.venv` in the project root and installs all required packages, including `unstructured[pdf]` and `azure-ai-documentintelligence`.
 
-### Unstructured Partition (API) credentials
+### Unstructured Partition (API) credentials (Legacy)
+
+> **Deprecated:** This section is for legacy reference only. Use Azure Document Intelligence for new runs.
 
 Set the hosted Partition API base URL and key (elements-only provider) in your environment or `.env`:
 
@@ -33,7 +38,9 @@ UNSTRUCTURED_PARTITION_API_KEY=<your-key>
 If you omit these, the Partition provider will fail fast in the worker.
 The Partition provider uses the official SDK client, fetches coordinates, and emits elements-only artifacts (the UI hides the Chunks tab for this provider but still renders overlays from the returned elements). Strategies available: `auto`, `fast`, `hi_res`, `ocr_only`, and `vlm`.
 
-## Process a PDF
+## Process a PDF (Legacy)
+
+> **Deprecated:** This script uses the Unstructured provider, which is deprecated. Use Azure Document Intelligence for new runs.
 
 ```bash
 uv run python process_unstructured.py
@@ -47,7 +54,9 @@ The script:
 
 Each JSON document includes the source path, timestamp, optional page limit, element count, and the raw Unstructured element payloads.
 
-## Preview specific pages & compare to gold tables
+## Preview specific pages & compare to gold tables (Legacy)
+
+> **Deprecated:** This script uses the Unstructured provider, which is deprecated. Use Azure Document Intelligence for new runs.
 
 When you just need a few pages (or want to evaluate table extraction quality), use the preview helper:
 
@@ -74,8 +83,10 @@ Use `--input-jsonl` when you want to re-evaluate matches from a previously saved
 
 ## Azure runs (Document Intelligence)
 
-Set the Azure credentials before running either via CLI or the UI. You can drop them into a local `.env` (see `.env.example`) and they will be auto-loaded by the app and the CLI helpers. Foundry deployments use a single endpoint/key:
-- `AZURE_FT_ENDPOINT` / `AZURE_FT_KEY`
+Set the Azure credentials before running either via CLI or the UI. You can drop them into a local `.env` (see `.env.example`) and they will be auto-loaded by the app and the CLI helpers. The standard env var names are:
+- `AZURE_DOCUMENTINTELLIGENCE_ENDPOINT` / `AZURE_DOCUMENTINTELLIGENCE_KEY` (PolicyAsCode standard)
+
+Legacy aliases are also supported for backward compatibility: `AZURE_FT_ENDPOINT`/`AZURE_FT_KEY`, `DOCUMENTINTELLIGENCE_ENDPOINT`/`DOCUMENTINTELLIGENCE_API_KEY`.
 
 When Azure language detection is enabled (e.g., including `languages` in the features), detected locales are captured in `run_config` (persisted from the pipeline output) so reloading a run flips previews to RTL automatically for Arabic-heavy documents.
 When Azure returns markdown (e.g., `output_content_format=markdown`), the Inspect drawers render the formatted markdown directly and fall back to plain text only when no richer content is present; table HTML still prefers `text_as_html` for accurate column order.
@@ -85,7 +96,7 @@ Supported DI `features`: `languages`, `barcodes`, `keyValuePairs`, `ocrHighResol
 
 CLI example (Document Intelligence layout):
 ```bash
-AZURE_FT_ENDPOINT=<endpoint> AZURE_FT_KEY=<key> \
+AZURE_DOCUMENTINTELLIGENCE_ENDPOINT=<endpoint> AZURE_DOCUMENTINTELLIGENCE_KEY=<key> \
 uv run python -m chunking_pipeline.azure_pipeline \
   --provider document_intelligence \
   --input res/V3.0_Reviewed_translation_EN_full\ 4.pdf \

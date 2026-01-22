@@ -1,8 +1,8 @@
 # Data Notes
 
 The project does not persist to a database yet. Instead, artifacts are written to `outputs/`:
-- `outputs/unstructured/` — Unstructured runs (existing behavior).
-- `outputs/unstructured/partition_api/` — Unstructured Partition (hosted API) runs (elements-only; no local chunking).
+- `outputs/unstructured/` — Unstructured runs (**deprecated**).
+- `outputs/unstructured/partition_api/` — Unstructured Partition (hosted API) runs (**deprecated**; elements-only; no local chunking).
 - `outputs/azure/document_intelligence/` — Azure runs (Document Intelligence Layout). API endpoints accept an optional `provider` query parameter to resolve the correct directory.
 - When Document Intelligence is invoked with `outputs=figures`, cropped figure PNGs are saved alongside the chunk JSONL as `<chunk_stem>.figures/<figure-id>.png`; element metadata references those files so the UI can preview them just like Unstructured image payloads.
 - Azure Document Intelligence runs are elements-only in the UI; the Chunks tab stays hidden even if chunk-style JSONL artifacts are present.

@@ -62,9 +62,9 @@ function updateRunConfigCard() {
   if (provider === 'azure/document_intelligence') {
     providerDisplay = 'Azure Document Intelligence';
   } else if (provider === 'unstructured/local') {
-    providerDisplay = 'Unstructured (Local)';
+    providerDisplay = 'Unstructured (Local) — Deprecated';
   } else if (provider === 'unstructured/partition') {
-    providerDisplay = 'Unstructured Partition (API)';
+    providerDisplay = 'Unstructured Partition (API) — Deprecated';
   }
   topRowParams.push({ label: null, value: providerDisplay });
 

@@ -49,16 +49,19 @@ PROVIDERS = {
         "id": "unstructured/local",
         "label": "Unstructured (Local)",
         "out_dir": OUT_DIR,
+        "deprecated": True,
     },
     "unstructured/partition": {
         "id": "unstructured/partition",
         "label": "Unstructured Partition (API)",
         "out_dir": OUT_DIR / "partition_api",
+        "deprecated": True,
     },
     "azure/document_intelligence": {
         "id": "azure/document_intelligence",
         "label": "Azure Document Intelligence",
         "out_dir": AZURE_OUT_DIR / "document_intelligence",
+        "deprecated": False,
     },
 }
 DEFAULT_PROVIDER = "azure/document_intelligence"

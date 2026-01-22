@@ -1,16 +1,19 @@
 from __future__ import annotations
 
+import io
 import json
 import logging
 import shlex
 import subprocess
+import sys
 import threading
 import time
+import traceback
 import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
 from queue import Queue
-from typing import Any, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional
 
 from .config import DEFAULT_PROVIDER, relative_to_root
 
@@ -28,8 +31,14 @@ def _tail_text(value: Optional[str], limit: int = 8000) -> Optional[str]:
 
 @dataclass
 class RunJob:
+    """A queued or running extraction job.
+
+    Jobs can be either command-based (subprocess) or callable-based (Python function).
+    """
+
     id: str
-    command: List[str]
+    command: Optional[List[str]] = None
+    callable_fn: Optional[Callable[[Dict[str, Any]], None]] = None
     metadata: Dict[str, Any] = field(default_factory=dict)
     status: str = "queued"
     created_at: float = field(default_factory=time.time)
@@ -100,7 +109,7 @@ class RunJobManager:
             self.jobs[job_id] = job
             self.queue.put(job)
         logger.info(
-            "Queued chunking job %s for %s (pages=%s) slug=%s",
+            "Queued command job %s for %s (pages=%s) slug=%s",
             job.id,
             metadata.get("pdf_name"),
             metadata.get("pages"),
@@ -108,15 +117,103 @@ class RunJobManager:
         )
         return job
 
+    def enqueue_callable(
+        self,
+        *,
+        callable_fn: Callable[[Dict[str, Any]], None],
+        metadata: Dict[str, Any],
+    ) -> RunJob:
+        """Enqueue a Python callable for execution.
+
+        The callable will receive the metadata dict as its only argument.
+        This avoids subprocess overhead and allows direct Python calls.
+
+        Args:
+            callable_fn: Function to call with metadata dict
+            metadata: Job metadata (passed to callable and used for finalization)
+
+        Returns:
+            The queued RunJob
+        """
+        job_id = uuid.uuid4().hex
+        job = RunJob(
+            id=job_id,
+            callable_fn=callable_fn,
+            metadata=dict(metadata),
+        )
+        job.metadata.setdefault("slug_with_pages", metadata.get("slug_with_pages"))
+        # Display callable name for debugging
+        callable_name = getattr(callable_fn, "__name__", str(callable_fn))
+        job.metadata["display_command"] = f"<callable: {callable_name}>"
+        with self.lock:
+            self.jobs[job_id] = job
+            self.queue.put(job)
+        logger.info(
+            "Queued callable job %s for %s (pages=%s) slug=%s callable=%s",
+            job.id,
+            metadata.get("pdf_name"),
+            metadata.get("pages"),
+            metadata.get("slug_with_pages"),
+            callable_name,
+        )
+        return job
+
     def _execute(self, job: RunJob) -> None:
         job.status = "running"
         job.started_at = time.time()
         logger.info(
-            "Starting chunking job %s slug=%s command=%s",
+            "Starting chunking job %s slug=%s callable=%s command=%s",
             job.id,
             job.metadata.get("slug_with_pages"),
+            job.callable_fn is not None,
             job.metadata.get("display_command"),
         )
+
+        if job.callable_fn is not None:
+            # Execute Python callable directly
+            self._execute_callable(job)
+        elif job.command is not None:
+            # Execute subprocess command
+            self._execute_command(job)
+        else:
+            job.status = "failed"
+            job.error = "Job has neither command nor callable"
+            job.finished_at = time.time()
+            logger.error("Job %s has neither command nor callable", job.id)
+
+    def _execute_callable(self, job: RunJob) -> None:
+        """Execute a callable-based job."""
+        # Capture stdout/stderr from the callable
+        old_stdout, old_stderr = sys.stdout, sys.stderr
+        captured_stdout = io.StringIO()
+        captured_stderr = io.StringIO()
+
+        try:
+            sys.stdout = captured_stdout
+            sys.stderr = captured_stderr
+            job.callable_fn(job.metadata)  # type: ignore[misc]
+            job.finished_at = time.time()
+            job.stdout_tail = _tail_text(captured_stdout.getvalue())
+            job.stderr_tail = _tail_text(captured_stderr.getvalue())
+            self._finalize_success(job)
+        except Exception as exc:
+            job.finished_at = time.time()
+            job.stdout_tail = _tail_text(captured_stdout.getvalue())
+            tb_str = traceback.format_exc()
+            job.stderr_tail = _tail_text(captured_stderr.getvalue() + "\n" + tb_str)
+            job.status = "failed"
+            job.error = f"Callable failed: {exc}"
+            logger.error(
+                "Callable job %s failed slug=%s error=%s",
+                job.id,
+                job.metadata.get("slug_with_pages"),
+                exc,
+            )
+        finally:
+            sys.stdout, sys.stderr = old_stdout, old_stderr
+
+    def _execute_command(self, job: RunJob) -> None:
+        """Execute a command-based job via subprocess."""
         proc = subprocess.run(job.command, capture_output=True, text=True)
         job.finished_at = time.time()
         job.stdout_tail = _tail_text(proc.stdout)
@@ -125,7 +222,7 @@ class RunJobManager:
             job.status = "failed"
             job.error = f"Run failed with exit code {proc.returncode}"
             logger.error(
-                "Chunking job %s failed (exit=%s) slug=%s stderr_tail=%s",
+                "Command job %s failed (exit=%s) slug=%s stderr_tail=%s",
                 job.id,
                 proc.returncode,
                 job.metadata.get("slug_with_pages"),

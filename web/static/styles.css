@@ -2427,6 +2427,21 @@ body.drawer-open #right-metrics {
   resize: vertical;
 }
 
+.drawer-review-note textarea.warning {
+  border-color: var(--warning, #d97706);
+}
+
+.review-note-warning {
+  display: none;
+  font-size: 12px;
+  color: var(--warning, #d97706);
+  margin-top: 6px;
+}
+
+.review-note-warning.visible {
+  display: block;
+}
+
 .drawer-review-actions {
   margin-top: 8px;
   display: flex;

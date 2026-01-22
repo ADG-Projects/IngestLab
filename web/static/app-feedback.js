@@ -334,8 +334,8 @@ function downloadFeedbackHtml() {
   }, 0)) || 0;
   const scopeMap = {
     all: 'All providers',
-    'unstructured/local': 'Unstructured (Local)',
-    'unstructured/partition': 'Unstructured Partition (API)',
+    'unstructured/local': 'Unstructured (Local) — Deprecated',
+    'unstructured/partition': 'Unstructured Partition (API) — Deprecated',
     'azure/document_intelligence': 'Azure Document Intelligence',
     compare: 'All providers (compare)',
   };

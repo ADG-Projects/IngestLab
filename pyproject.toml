@@ -1,9 +1,9 @@
 [project]
 name = "chunking-tests"
-version = "5.0.3"
-description = "Document ingestion experiments for local Unstructured processing."
-requires-python = ">=3.10"
-# Core dependencies for lite image (Azure DI + Unstructured Partition API only)
+version = "5.0.4"
+description = "Document ingestion sandbox for Azure Document Intelligence with custom chunking."
+requires-python = ">=3.11,<3.12"
+# Core dependencies for Azure DI + PolicyAsCode custom chunker
 dependencies = [
     "fastapi",
     "uvicorn[standard]",
@@ -15,23 +15,8 @@ dependencies = [
     "pdf2image",
     "pdfminer.six",
     "openai",
-]
-
-[project.optional-dependencies]
-# Full Unstructured local processing (adds ~2-3GB to image)
-unstructured = [
-    "unstructured",
-    "unstructured.pytesseract",
-    "pi-heif",
-]
-# Heavy deps for hi_res layout (torch/opencv via unstructured-inference)
-hires = [
-    "unstructured-inference",
-]
-# All providers (unstructured local + hires)
-full = [
-    "chunking-tests[unstructured]",
-    "chunking-tests[hires]",
+    # Import extractors from PolicyAsCode (formerly BRD-Demo)
+    "brd-to-opa-pipeline @ git+https://github.com/kyndryl-agentic-ai/PolicyAsCode.git",
 ]
 
 [build-system]

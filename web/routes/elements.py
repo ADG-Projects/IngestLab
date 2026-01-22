@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from fastapi import APIRouter, HTTPException, Query
 
-from chunking_pipeline.chunker import decode_orig_elements
+from src.extractors.custom_chunker import decode_orig_elements
 
 from ..config import DEFAULT_PROVIDER, get_out_dir
 from ..file_utils import resolve_slug_file

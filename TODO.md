@@ -5,6 +5,7 @@
 
 ## Completed
 
+- [x] 2025-01-22 Release v5.0.4 (Fix Pydantic serialization for chunker and extraction pipelines).
 - [x] 2025-12-02 Release v5.0.3 (Fix custom chunker to work on legacy runs).
 - [x] 2025-12-02 Fix chunker endpoint to extract elements from legacy .chunks.jsonl files when no .elements.jsonl exists.
 - [x] 2025-12-02 Release v5.0.2 (Fix element bounding boxes for legacy chunks-only runs).
