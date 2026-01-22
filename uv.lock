@@ -323,15 +323,13 @@ wheels = [
 
 [[package]]
 name = "chunking-tests"
-version = "5.0.3"
+version = "5.0.4"
 source = { editable = "." }
 dependencies = [
     { name = "azure-ai-documentintelligence" },
     { name = "brd-to-opa-pipeline" },
     { name = "fastapi" },
     { name = "openai" },
-    { name = "pdf2image" },
-    { name = "pdfminer-six" },
     { name = "pypdf" },
     { name = "python-dotenv" },
     { name = "python-multipart" },
@@ -345,8 +343,6 @@ requires-dist = [
     { name = "brd-to-opa-pipeline", git = "https://github.com/kyndryl-agentic-ai/PolicyAsCode.git" },
     { name = "fastapi" },
     { name = "openai" },
-    { name = "pdf2image" },
-    { name = "pdfminer-six" },
     { name = "pypdf" },
     { name = "python-dotenv" },
     { name = "python-multipart" },
