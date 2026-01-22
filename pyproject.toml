@@ -14,7 +14,7 @@ dependencies = [
     "pypdf",
     "openai",
     # Import extractors from PolicyAsCode (formerly BRD-Demo)
-    "brd-to-opa-pipeline @ git+https://github.com/kyndryl-agentic-ai/PolicyAsCode.git",
+    "brd-to-opa-pipeline @ git+https://github.com/kyndryl-agentic-ai/PolicyAsCode.git@feature/chunking-visualizer-integration",
 ]
 
 [build-system]
