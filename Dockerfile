@@ -23,6 +23,12 @@ RUN apt-get update && \
         git \
         && rm -rf /var/lib/apt/lists/*
 
+# Configure git to use GitHub token for private repos (token passed via build arg)
+ARG GH_TOKEN
+RUN if [ -n "$GH_TOKEN" ]; then \
+        git config --global url."https://${GH_TOKEN}@github.com/".insteadOf "https://github.com/"; \
+    fi
+
 # Install uv for Python dependency management
 RUN pip install --no-cache-dir uv
 
