@@ -255,6 +255,26 @@ async function openFigureDetails(elementId) {
 
     const figure = await res.json();
     renderFigurePipelineView(figure);
+
+    // Initialize Cytoscape if extraction is done and it's a flowchart
+    const processing = figure.processing || {};
+    const stages = figure.stages || { extracted: false };
+    const figureType = processing.figure_type || figure.sam3?.figure_type || 'unknown';
+    const sam3 = figure.sam3 || {};
+
+    if (stages.extracted && processing.processed_content && figureType === 'flowchart') {
+      // Get shape positions from SAM3 data
+      const shapePositions = sam3.shape_positions || [];
+
+      // Initialize Cytoscape after DOM update
+      setTimeout(() => {
+        initCytoscapeDiagram(
+          `cytoscape-${figure.element_id}`,
+          processing.processed_content,
+          shapePositions
+        );
+      }, 100);
+    }
   } catch (err) {
     console.error('Failed to load figure details:', err);
     detailsEl.innerHTML = '<div class="error">Failed to load figure details</div>';
@@ -384,6 +404,21 @@ function renderFigurePipelineView(figure) {
         </div>
       </div>
     </div>
+
+    ${extractionDone && processing.processed_content && figureType === 'flowchart' ? `
+    <div class="cytoscape-section">
+      <div class="cytoscape-header">
+        <h5>Interactive Graph</h5>
+        <div class="cytoscape-controls">
+          <button class="btn btn-icon" onclick="cytoscapeZoomIn()" title="Zoom in">+</button>
+          <button class="btn btn-icon" onclick="cytoscapeZoomOut()" title="Zoom out">−</button>
+          <button class="btn btn-icon" onclick="cytoscapeReset()" title="Reset view">⟲</button>
+          <button class="btn btn-icon" onclick="cytoscapeFullscreen()" title="Fullscreen">⛶</button>
+        </div>
+      </div>
+      <div class="cytoscape-container" id="cytoscape-${figure.element_id}"></div>
+    </div>
+    ` : ''}
 
     <div class="figure-original">
       <h4>Original Image</h4>

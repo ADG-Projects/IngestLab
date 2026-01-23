@@ -4318,3 +4318,64 @@ body.drawer-open #right-metrics {
   transform: scale(1.02);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
+
+/* =============================================================================
+   Cytoscape Graph Visualization
+   ============================================================================= */
+
+.cytoscape-section {
+  margin-top: 16px;
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+}
+
+.cytoscape-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.cytoscape-header h5 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.cytoscape-controls {
+  display: flex;
+  gap: 4px;
+}
+
+.cytoscape-controls .btn-icon {
+  width: 28px;
+  height: 28px;
+  font-size: 14px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cytoscape-container {
+  height: 400px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--surface-glass);
+  overflow: hidden;
+}
+
+.cytoscape-container:fullscreen {
+  height: 100vh;
+  background: var(--bg-primary);
+}
+
+.cytoscape-container .no-data {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--muted);
+  font-size: 13px;
+}
