@@ -807,6 +807,21 @@ function renderUploadPipelineView(data) {
         </div>
       </div>
 
+      ${extractionDone && processing.processed_content && figureType === 'flowchart' ? `
+      <div class="cytoscape-section">
+        <div class="cytoscape-header">
+          <h5>Interactive Graph</h5>
+          <div class="cytoscape-controls">
+            <button class="btn btn-icon" onclick="cytoscapeZoomIn()" title="Zoom in">+</button>
+            <button class="btn btn-icon" onclick="cytoscapeZoomOut()" title="Zoom out">−</button>
+            <button class="btn btn-icon" onclick="cytoscapeReset()" title="Reset view">⟲</button>
+            <button class="btn btn-icon" onclick="cytoscapeFullscreen()" title="Fullscreen">⛶</button>
+          </div>
+        </div>
+        <div class="cytoscape-container" id="cytoscape-upload-${uploadId}"></div>
+      </div>
+      ` : ''}
+
       ${processing.description ? `
       <div class="upload-result-description">
         <h5>Description</h5>
@@ -815,6 +830,18 @@ function renderUploadPipelineView(data) {
       ` : ''}
     </div>
   `;
+
+  // Initialize Cytoscape if extraction is done and it's a flowchart
+  if (extractionDone && processing.processed_content && figureType === 'flowchart') {
+    const shapePositions = sam3.shape_positions || [];
+    setTimeout(() => {
+      initCytoscapeDiagram(
+        `cytoscape-upload-${uploadId}`,
+        processing.processed_content,
+        shapePositions
+      );
+    }, 100);
+  }
 }
 
 /**
