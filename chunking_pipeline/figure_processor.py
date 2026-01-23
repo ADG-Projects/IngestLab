@@ -2,11 +2,18 @@
 
 Wraps PolicyAsCode's FigureProcessor to handle image processing,
 result serialization, and storage of annotated images and JSON results.
+
+Supports two-stage processing:
+1. SAM3 Segmentation - Quick visual inspection of shape detection
+2. Mermaid Extraction - Structure extraction + mermaid generation using SAM3 results
 """
 
 from __future__ import annotations
 
 import json
+import shutil
+import time
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -171,6 +178,306 @@ class FigureProcessorWrapper:
         processor = self._get_processor()
         result = processor.classify_figure(Path(image_path), ocr_text=ocr_text)
         return result.model_dump()
+
+    def segment_only(
+        self,
+        image_path: str | Path,
+        ocr_text: str = "",
+        *,
+        run_id: str | None = None,
+        text_positions: list[dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
+        """Run classification + SAM3 segmentation without mermaid extraction.
+
+        This is stage 1 of the two-stage pipeline, allowing visual inspection
+        of shape detection before proceeding with mermaid generation.
+
+        Args:
+            image_path: Path to the figure image
+            ocr_text: OCR text for additional context
+            run_id: Optional run identifier for tracking
+            text_positions: Text position data for SAM3 annotations
+
+        Returns:
+            Dict containing:
+                - figure_type: Classification result
+                - confidence: Classification confidence
+                - direction: Detected flow direction (LR/TB/RL/BT)
+                - shape_positions: SAM3 detected shapes
+                - annotated_path: Path to annotated image (if available)
+                - classification_duration_ms: Time for classification
+                - sam3_duration_ms: Time for SAM3 segmentation
+        """
+        from src.figure_processing import FigureProcessor as PolicyFigureProcessor
+
+        processor = self._get_processor()
+        service = self._get_service()
+        image_path = Path(image_path)
+
+        # Step 1: Classification
+        classification_start = time.perf_counter()
+        classification = processor.classify_figure(image_path, ocr_text=ocr_text)
+        classification_duration = int((time.perf_counter() - classification_start) * 1000)
+
+        result: dict[str, Any] = {
+            "figure_type": classification.figure_type.value,
+            "confidence": classification.confidence,
+            "reasoning": classification.reasoning,
+            "classification_duration_ms": classification_duration,
+            "direction": None,
+            "shape_positions": None,
+            "annotated_path": None,
+            "sam3_duration_ms": None,
+        }
+
+        # Step 2: SAM3 segmentation (only for flowchart types)
+        if classification.figure_type not in PolicyFigureProcessor.FLOWCHART_TYPES:
+            logger.debug(f"Skipping SAM3 for non-flowchart type: {classification.figure_type}")
+            return result
+
+        # Detect flow direction
+        direction = "LR"
+        try:
+            from src.prompts.figure_direction_prompt import detect_direction
+
+            direction_result = detect_direction(image_path)
+            direction = direction_result.direction.value
+            logger.debug(f"Detected flow direction: {direction}")
+        except Exception as e:
+            logger.warning(f"Direction detection failed, using default LR: {e}")
+
+        result["direction"] = direction
+
+        # Run SAM3 segmentation
+        sam3_start = time.perf_counter()
+        try:
+            annotated_path, shape_positions, _ = service._prepare_sam3_annotations(
+                image_path, text_positions, direction, run_id
+            )
+            sam3_duration = int((time.perf_counter() - sam3_start) * 1000)
+            result["sam3_duration_ms"] = sam3_duration
+
+            if annotated_path and shape_positions:
+                result["annotated_path"] = str(annotated_path)
+                result["shape_positions"] = shape_positions
+                logger.info(f"SAM3 segmentation complete: {len(shape_positions)} shapes")
+            else:
+                logger.warning("SAM3 returned no shape positions")
+        except Exception as e:
+            sam3_duration = int((time.perf_counter() - sam3_start) * 1000)
+            result["sam3_duration_ms"] = sam3_duration
+            logger.warning(f"SAM3 segmentation failed: {e}")
+            result["error"] = str(e)
+
+        return result
+
+    def segment_and_save(
+        self,
+        image_path: str | Path,
+        output_dir: str | Path,
+        element_id: str,
+        ocr_text: str = "",
+        *,
+        run_id: str | None = None,
+        text_positions: list[dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
+        """Run SAM3 segmentation and save results.
+
+        Creates:
+            - {element_id}.sam3.json - Segmentation results
+            - {element_id}.annotated.png - Annotated image (if SAM3 available)
+
+        Args:
+            image_path: Path to the original figure image
+            output_dir: Directory to save results
+            element_id: Unique identifier for the figure element
+            ocr_text: OCR text from the figure
+            run_id: Optional run identifier
+            text_positions: Text position data for SAM3 annotations
+
+        Returns:
+            Segmentation results dict with added 'output_paths' key
+        """
+        output_dir = Path(output_dir)
+        output_dir.mkdir(parents=True, exist_ok=True)
+        image_path = Path(image_path)
+
+        result = self.segment_only(
+            image_path, ocr_text, run_id=run_id, text_positions=text_positions
+        )
+
+        # Copy annotated image to output directory
+        if result.get("annotated_path"):
+            src_annotated = Path(result["annotated_path"])
+            if src_annotated.exists():
+                dst_annotated = output_dir / f"{element_id}.annotated.png"
+                shutil.copy2(src_annotated, dst_annotated)
+                result["annotated_path"] = str(dst_annotated)
+
+        # Build SAM3 result JSON
+        sam3_data = {
+            "version": "1.0",
+            "stage": "segmented",
+            "timestamp": datetime.now(timezone.utc).isoformat(),
+            "element_id": element_id,
+            "figure_type": result.get("figure_type"),
+            "confidence": result.get("confidence"),
+            "reasoning": result.get("reasoning"),
+            "direction": result.get("direction"),
+            "classification_duration_ms": result.get("classification_duration_ms"),
+            "sam3_duration_ms": result.get("sam3_duration_ms"),
+            "shape_positions": result.get("shape_positions"),
+            "annotated_image": f"{element_id}.annotated.png" if result.get("annotated_path") else None,
+        }
+
+        if result.get("error"):
+            sam3_data["error"] = result["error"]
+
+        # Save SAM3 results
+        sam3_path = output_dir / f"{element_id}.sam3.json"
+        with sam3_path.open("w", encoding="utf-8") as fh:
+            json.dump(sam3_data, fh, ensure_ascii=False, indent=2)
+            fh.write("\n")
+
+        result["output_paths"] = {
+            "sam3_json": str(sam3_path),
+            "annotated": result.get("annotated_path"),
+            "original": str(image_path),
+        }
+
+        logger.debug(f"Figure {element_id} segmented: type={result.get('figure_type')}")
+        return result
+
+    def extract_mermaid_from_sam3(
+        self,
+        image_path: str | Path,
+        sam3_result: dict[str, Any],
+        ocr_text: str = "",
+        *,
+        run_id: str | None = None,
+        text_positions: list[dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
+        """Run mermaid extraction using pre-computed SAM3 results.
+
+        This is stage 2 of the two-stage pipeline. Requires SAM3 results
+        from segment_only() or loaded from a .sam3.json file.
+
+        Args:
+            image_path: Path to the figure image (or annotated version)
+            sam3_result: Pre-computed SAM3 segmentation results
+            ocr_text: OCR text for additional context
+            run_id: Optional run identifier
+            text_positions: Text position data (optional, used if not in sam3_result)
+
+        Returns:
+            Full processing result with mermaid code
+        """
+        from src.figure_processing import FigureType
+
+        processor = self._get_processor()
+        image_path = Path(image_path)
+
+        # Use annotated image if available
+        annotated_path = sam3_result.get("annotated_path")
+        if annotated_path and Path(annotated_path).exists():
+            processing_image_path = Path(annotated_path)
+        else:
+            processing_image_path = image_path
+
+        # Get shape positions from SAM3 result
+        shape_positions = sam3_result.get("shape_positions")
+
+        # Determine force_type from SAM3 result
+        figure_type_str = sam3_result.get("figure_type", "other")
+        try:
+            force_type = FigureType(figure_type_str)
+        except ValueError:
+            force_type = FigureType.OTHER
+
+        # Call processor with pre-computed shape positions
+        result = processor.process_figure(
+            image_path=processing_image_path,
+            ocr_text=ocr_text,
+            shape_positions=shape_positions,
+            text_positions=text_positions,
+            run_id=run_id,
+            force_type=force_type,
+        )
+
+        return result.model_dump()
+
+    def extract_mermaid_and_save(
+        self,
+        image_path: str | Path,
+        output_dir: str | Path,
+        element_id: str,
+        ocr_text: str = "",
+        *,
+        run_id: str | None = None,
+        text_positions: list[dict[str, Any]] | None = None,
+    ) -> dict[str, Any]:
+        """Load SAM3 results and run mermaid extraction.
+
+        Prerequisites: {element_id}.sam3.json must exist in output_dir.
+
+        Creates:
+            - {element_id}.json - Full processing results
+
+        Args:
+            image_path: Path to the original figure image
+            output_dir: Directory containing SAM3 results and to save final results
+            element_id: Unique identifier for the figure element
+            ocr_text: OCR text from the figure
+            run_id: Optional run identifier
+            text_positions: Text position data for processing
+
+        Returns:
+            Full processing results with mermaid code
+
+        Raises:
+            FileNotFoundError: If SAM3 results don't exist
+        """
+        output_dir = Path(output_dir)
+        image_path = Path(image_path)
+
+        # Load SAM3 results
+        sam3_path = output_dir / f"{element_id}.sam3.json"
+        if not sam3_path.exists():
+            raise FileNotFoundError(f"SAM3 results not found: {sam3_path}")
+
+        with sam3_path.open("r", encoding="utf-8") as fh:
+            sam3_result = json.load(fh)
+
+        # Resolve annotated image path
+        annotated_image = sam3_result.get("annotated_image")
+        if annotated_image:
+            sam3_result["annotated_path"] = str(output_dir / annotated_image)
+
+        result = self.extract_mermaid_from_sam3(
+            image_path, sam3_result, ocr_text, run_id=run_id, text_positions=text_positions
+        )
+
+        # Save full JSON results
+        json_path = output_dir / f"{element_id}.json"
+        with json_path.open("w", encoding="utf-8") as fh:
+            json.dump(result, fh, ensure_ascii=False, indent=2)
+            fh.write("\n")
+
+        # Update SAM3 file to mark extraction complete
+        sam3_result["stage"] = "complete"
+        sam3_result["extraction_timestamp"] = datetime.now(timezone.utc).isoformat()
+        with sam3_path.open("w", encoding="utf-8") as fh:
+            json.dump(sam3_result, fh, ensure_ascii=False, indent=2)
+            fh.write("\n")
+
+        result["output_paths"] = {
+            "json": str(json_path),
+            "sam3_json": str(sam3_path),
+            "original": str(image_path),
+        }
+
+        logger.debug(f"Figure {element_id} mermaid extracted: type={result.get('figure_type')}")
+        return result
 
     def process_and_save(
         self,
