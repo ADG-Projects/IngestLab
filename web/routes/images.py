@@ -143,6 +143,18 @@ def _load_figure_processing_result(figures_dir: Path, element_id: str) -> Option
         return None
 
 
+def _load_sam3_result(figures_dir: Path, element_id: str) -> Optional[Dict[str, Any]]:
+    """Load the SAM3 segmentation result for a figure if it exists."""
+    sam3_path = figures_dir / f"{element_id}.sam3.json"
+    if not sam3_path.exists():
+        return None
+    try:
+        with sam3_path.open("r", encoding="utf-8") as fh:
+            return json.load(fh)
+    except (json.JSONDecodeError, IOError):
+        return None
+
+
 def _image_to_data_uri(image_path: Path) -> Optional[str]:
     """Convert an image file to a data URI."""
     if not image_path.exists():
@@ -293,8 +305,9 @@ def api_figure_detail(
     md = target.get("metadata", {})
     figure_image = md.get("figure_image_filename") or target.get("figure_image_filename")
 
-    # Load processing result
+    # Load processing results
     proc_result = _load_figure_processing_result(figures_dir, element_id)
+    sam3_result = _load_sam3_result(figures_dir, element_id)
     figure_processing = target.get("figure_processing", {})
 
     # Build response
@@ -333,6 +346,32 @@ def api_figure_detail(
         result["processing"] = figure_processing
     else:
         result["processing"] = None
+
+    # Add two-stage pipeline status
+    stages = {
+        "segmented": False,
+        "extracted": False,
+    }
+    sam3_info = None
+
+    if sam3_result:
+        stages["segmented"] = True
+        stages["extracted"] = sam3_result.get("stage") == "complete"
+        sam3_info = {
+            "shape_count": len(sam3_result.get("shape_positions") or []),
+            "direction": sam3_result.get("direction"),
+            "figure_type": sam3_result.get("figure_type"),
+            "confidence": sam3_result.get("confidence"),
+            "classification_duration_ms": sam3_result.get("classification_duration_ms"),
+            "sam3_duration_ms": sam3_result.get("sam3_duration_ms"),
+        }
+    elif proc_result:
+        # Full processing was done (legacy or reprocess)
+        stages["segmented"] = True
+        stages["extracted"] = True
+
+    result["stages"] = stages
+    result["sam3"] = sam3_info
 
     return result
 
@@ -565,13 +604,202 @@ def api_figure_reprocess(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.post("/api/figures/{slug}/{element_id}/segment")
+def api_figure_segment(
+    slug: str,
+    element_id: str,
+    provider: str = Query(default=None),
+) -> Dict[str, Any]:
+    """Run SAM3 segmentation on a figure (stage 1 of two-stage pipeline).
+
+    This performs classification and shape detection without mermaid extraction,
+    allowing visual inspection of the segmentation before proceeding.
+    """
+    provider_key = provider or DEFAULT_PROVIDER
+    elements_path = _resolve_elements_file(slug, provider_key)
+    figures_dir = _get_figures_dir(elements_path)
+
+    # Find the figure
+    figures = _load_figures_from_elements(elements_path)
+    target = None
+    for fig in figures:
+        if fig.get("element_id") == element_id:
+            target = fig
+            break
+
+    if not target:
+        raise HTTPException(status_code=404, detail=f"Figure {element_id} not found")
+
+    md = target.get("metadata", {})
+    figure_image = md.get("figure_image_filename") or target.get("figure_image_filename")
+
+    if not figure_image:
+        raise HTTPException(status_code=400, detail="Figure has no associated image")
+
+    # Find the image
+    image_path = None
+    for candidate in [figures_dir.parent / figure_image, figures_dir / figure_image]:
+        if candidate.exists():
+            image_path = candidate
+            break
+
+    if not image_path:
+        raise HTTPException(status_code=404, detail="Image file not found")
+
+    # Run segmentation
+    try:
+        from chunking_pipeline.figure_processor import get_processor
+
+        processor = get_processor()
+        ocr_text = target.get("content", "") or target.get("text", "")
+        result = processor.segment_and_save(
+            image_path=image_path,
+            output_dir=figures_dir,
+            element_id=element_id,
+            ocr_text=ocr_text,
+            run_id=slug,
+        )
+        return {
+            "status": "ok",
+            "stage": "segmented",
+            "figure_type": result.get("figure_type"),
+            "confidence": result.get("confidence"),
+            "direction": result.get("direction"),
+            "shape_count": len(result.get("shape_positions") or []),
+            "classification_duration_ms": result.get("classification_duration_ms"),
+            "sam3_duration_ms": result.get("sam3_duration_ms"),
+        }
+    except ImportError as e:
+        logger.exception(f"Import error during segmentation: {e}")
+        raise HTTPException(
+            status_code=503,
+            detail=f"Figure processing import error: {e}",
+        )
+    except Exception as e:
+        logger.exception(f"Failed to segment figure {element_id}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.post("/api/figures/{slug}/{element_id}/extract-mermaid")
+def api_figure_extract_mermaid(
+    slug: str,
+    element_id: str,
+    provider: str = Query(default=None),
+) -> Dict[str, Any]:
+    """Run mermaid extraction using pre-computed SAM3 results (stage 2).
+
+    Prerequisite: /segment must have been called first.
+    """
+    provider_key = provider or DEFAULT_PROVIDER
+    elements_path = _resolve_elements_file(slug, provider_key)
+    figures_dir = _get_figures_dir(elements_path)
+
+    # Check SAM3 results exist
+    sam3_result = _load_sam3_result(figures_dir, element_id)
+    if not sam3_result:
+        raise HTTPException(
+            status_code=400,
+            detail="SAM3 segmentation not found. Run /segment first.",
+        )
+
+    # Find the figure
+    figures = _load_figures_from_elements(elements_path)
+    target = None
+    for fig in figures:
+        if fig.get("element_id") == element_id:
+            target = fig
+            break
+
+    if not target:
+        raise HTTPException(status_code=404, detail=f"Figure {element_id} not found")
+
+    md = target.get("metadata", {})
+    figure_image = md.get("figure_image_filename") or target.get("figure_image_filename")
+
+    if not figure_image:
+        raise HTTPException(status_code=400, detail="Figure has no associated image")
+
+    # Find the image
+    image_path = None
+    for candidate in [figures_dir.parent / figure_image, figures_dir / figure_image]:
+        if candidate.exists():
+            image_path = candidate
+            break
+
+    if not image_path:
+        raise HTTPException(status_code=404, detail="Image file not found")
+
+    # Run mermaid extraction
+    try:
+        from chunking_pipeline.figure_processor import get_processor
+
+        processor = get_processor()
+        ocr_text = target.get("content", "") or target.get("text", "")
+        result = processor.extract_mermaid_and_save(
+            image_path=image_path,
+            output_dir=figures_dir,
+            element_id=element_id,
+            ocr_text=ocr_text,
+            run_id=slug,
+        )
+        return {
+            "status": "ok",
+            "stage": "complete",
+            "figure_type": result.get("figure_type"),
+            "processed_content": result.get("processed_content"),
+            "description": result.get("description"),
+            "intermediate_nodes": result.get("intermediate_nodes"),
+            "intermediate_edges": result.get("intermediate_edges"),
+            "step1_duration_ms": result.get("step1_duration_ms"),
+            "step2_duration_ms": result.get("step2_duration_ms"),
+        }
+    except ImportError as e:
+        logger.exception(f"Import error during mermaid extraction: {e}")
+        raise HTTPException(
+            status_code=503,
+            detail=f"Figure processing import error: {e}",
+        )
+    except FileNotFoundError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        logger.exception(f"Failed to extract mermaid for figure {element_id}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/api/figures/{slug}/{element_id}/sam3")
+def api_figure_sam3(
+    slug: str,
+    element_id: str,
+    provider: str = Query(default=None),
+) -> Dict[str, Any]:
+    """Get SAM3 segmentation results for a figure."""
+    provider_key = provider or DEFAULT_PROVIDER
+    elements_path = _resolve_elements_file(slug, provider_key)
+    figures_dir = _get_figures_dir(elements_path)
+
+    sam3_result = _load_sam3_result(figures_dir, element_id)
+    if not sam3_result:
+        raise HTTPException(status_code=404, detail="SAM3 results not found")
+
+    return sam3_result
+
+
 @router.post("/api/figures/upload")
 async def api_figure_upload(
     file: UploadFile = File(...),
+    stage: str = Query(default="full", description="Processing stage: 'segment' for SAM3 only, 'full' for complete pipeline"),
 ) -> Dict[str, Any]:
-    """Upload and process a standalone image through the vision pipeline."""
+    """Upload and process a standalone image through the vision pipeline.
+
+    Args:
+        file: Image file to upload
+        stage: Processing stage - 'segment' for SAM3 only, 'full' for complete pipeline
+    """
     if not file.filename:
         raise HTTPException(status_code=400, detail="No file provided")
+
+    if stage not in ("segment", "full"):
+        raise HTTPException(status_code=400, detail="Invalid stage. Use 'segment' or 'full'.")
 
     # Validate file type
     allowed_types = {"image/png", "image/jpeg", "image/jpg", "image/webp"}
@@ -595,19 +823,33 @@ async def api_figure_upload(
         from chunking_pipeline.figure_processor import get_processor
 
         processor = get_processor()
-        result = processor.process_figure(tmp_path, ocr_text="", run_id=f"upload-{upload_id}")
 
         # Include base64 of original image for display
         b64 = base64.b64encode(content).decode("ascii")
         data_uri = f"data:{content_type};base64,{b64}"
 
-        return {
-            "status": "ok",
-            "upload_id": upload_id,
-            "filename": file.filename,
-            "original_image_data_uri": data_uri,
-            "result": result,
-        }
+        if stage == "segment":
+            # SAM3 segmentation only
+            result = processor.segment_only(tmp_path, ocr_text="", run_id=f"upload-{upload_id}")
+            return {
+                "status": "ok",
+                "stage": "segmented",
+                "upload_id": upload_id,
+                "filename": file.filename,
+                "original_image_data_uri": data_uri,
+                "result": result,
+            }
+        else:
+            # Full pipeline
+            result = processor.process_figure(tmp_path, ocr_text="", run_id=f"upload-{upload_id}")
+            return {
+                "status": "ok",
+                "stage": "complete",
+                "upload_id": upload_id,
+                "filename": file.filename,
+                "original_image_data_uri": data_uri,
+                "result": result,
+            }
     except ImportError as e:
         logger.exception(f"Import error during figure processing: {e}")
         raise HTTPException(
