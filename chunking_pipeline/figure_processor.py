@@ -21,7 +21,6 @@ from loguru import logger
 
 if TYPE_CHECKING:
     from src.figure_processing import FigureProcessor
-    from src.services.figure_processing_service import FigureProcessingService
 
 
 class FigureProcessorWrapper:
@@ -30,7 +29,6 @@ class FigureProcessorWrapper:
     def __init__(self) -> None:
         """Initialize the processor lazily to avoid import overhead."""
         self._processor: FigureProcessor | None = None
-        self._service: FigureProcessingService | None = None
 
     def _get_processor(self) -> FigureProcessor:
         """Lazy-load the FigureProcessor from PolicyAsCode."""
@@ -56,28 +54,6 @@ class FigureProcessorWrapper:
                     "from the feature/figure-vision-pr5c-api-endpoints branch."
                 ) from e
         return self._processor
-
-    def _get_service(self) -> FigureProcessingService:
-        """Lazy-load FigureProcessingService for SAM3 annotations.
-
-        The service is used as an adapter - its _prepare_sam3_annotations method
-        doesn't use the database session, so we can pass None.
-        """
-        if self._service is None:
-            try:
-                from src.services.figure_processing_service import (
-                    FigureProcessingService,
-                )
-
-                # Pass None for session - _prepare_sam3_annotations doesn't use it
-                self._service = FigureProcessingService(session=None)  # type: ignore[arg-type]
-                logger.info("FigureProcessingService initialized for SAM3 annotations")
-            except ImportError as e:
-                raise ImportError(
-                    "FigureProcessingService not available. Ensure PolicyAsCode is installed "
-                    "from the feature/figure-vision-pr5c-api-endpoints branch."
-                ) from e
-        return self._service
 
     def process_figure(
         self,
@@ -111,7 +87,6 @@ class FigureProcessorWrapper:
         from src.figure_processing import FigureClassification
 
         processor = self._get_processor()
-        service = self._get_service()
         image_path = Path(image_path)
 
         # Classify first to determine if SAM3 annotations are needed
@@ -132,10 +107,12 @@ class FigureProcessorWrapper:
             except Exception as e:
                 logger.warning(f"Direction detection failed, using default LR: {e}")
 
-            # Use service's SAM3 annotation method (doesn't need DB session)
+            # Use processor's segment_and_annotate directly (PaC Facade pattern)
             try:
-                annotated_path, shape_positions, _ = service._prepare_sam3_annotations(
-                    image_path, text_positions, direction, run_id
+                annotated_path, shape_positions, _ = processor.segment_and_annotate(
+                    image_path,
+                    text_positions=text_positions,
+                    direction=direction,
                 )
 
                 if annotated_path and shape_positions:
@@ -351,7 +328,6 @@ class FigureProcessorWrapper:
         from src.figure_processing import FigureProcessor as PolicyFigureProcessor
 
         processor = self._get_processor()
-        service = self._get_service()
         image_path = Path(image_path)
 
         # Step 1: Classification
@@ -388,22 +364,23 @@ class FigureProcessorWrapper:
 
         result["direction"] = direction
 
-        # Run SAM3 segmentation
+        # Run SAM3 segmentation using processor's segment_and_annotate (PaC Facade pattern)
         sam3_start = time.perf_counter()
         try:
-            logger.debug(f"Calling _prepare_sam3_annotations with:")
+            logger.debug(f"Calling segment_and_annotate with:")
             logger.debug(f"  image_path: {image_path}")
             logger.debug(f"  text_positions: {len(text_positions) if text_positions else 'None'}")
             logger.debug(f"  direction: {direction}")
-            logger.debug(f"  run_id: {run_id}")
 
-            annotated_path, shape_positions, raw_sam3_result = service._prepare_sam3_annotations(
-                image_path, text_positions, direction, run_id
+            annotated_path, shape_positions, _ = processor.segment_and_annotate(
+                image_path,
+                text_positions=text_positions,
+                direction=direction,
             )
             sam3_duration = int((time.perf_counter() - sam3_start) * 1000)
             result["sam3_duration_ms"] = sam3_duration
 
-            logger.debug(f"SAM3 _prepare_sam3_annotations returned:")
+            logger.debug(f"SAM3 segment_and_annotate returned:")
             logger.debug(f"  annotated_path: {annotated_path}")
             logger.debug(f"  shape_positions count: {len(shape_positions) if shape_positions else 'None'}")
             if shape_positions:
