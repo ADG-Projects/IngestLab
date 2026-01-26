@@ -3,7 +3,7 @@
  * Extracted from app-images.js for modularity
  */
 
-/* global $, showToast, escapeHtml, initCytoscapeDiagram, openImageLightbox, renderActionDetectionStep,
+/* global $, showToast, escapeHtml, initCytoscapeDiagram, openImageLightbox,
           runUploadFullPipeline, runUploadClassification, runUploadDirectionDetection,
           runUploadDescriptionGeneration, runUploadSegmentation, runUploadMermaidExtraction,
           refreshUploadDetails, CURRENT_UPLOAD_ID, CURRENT_UPLOAD_DATA_URI */
@@ -338,9 +338,6 @@ function renderUploadPipelineView(data, options = {}) {
           </div>
         </div>
       `;
-
-      // Step 5: Action Detection (only for flowcharts)
-      pipelineStepsHtml += renderActionDetectionStep(processing.intermediate_edges, extractionDone);
     }
   }
 

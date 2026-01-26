@@ -391,11 +391,26 @@ class FigureProcessorWrapper:
         # Run SAM3 segmentation
         sam3_start = time.perf_counter()
         try:
-            annotated_path, shape_positions, _ = service._prepare_sam3_annotations(
+            logger.debug(f"Calling _prepare_sam3_annotations with:")
+            logger.debug(f"  image_path: {image_path}")
+            logger.debug(f"  text_positions: {len(text_positions) if text_positions else 'None'}")
+            logger.debug(f"  direction: {direction}")
+            logger.debug(f"  run_id: {run_id}")
+
+            annotated_path, shape_positions, raw_sam3_result = service._prepare_sam3_annotations(
                 image_path, text_positions, direction, run_id
             )
             sam3_duration = int((time.perf_counter() - sam3_start) * 1000)
             result["sam3_duration_ms"] = sam3_duration
+
+            logger.debug(f"SAM3 _prepare_sam3_annotations returned:")
+            logger.debug(f"  annotated_path: {annotated_path}")
+            logger.debug(f"  shape_positions count: {len(shape_positions) if shape_positions else 'None'}")
+            if shape_positions:
+                for i, sp in enumerate(shape_positions[:5]):  # Log first 5
+                    logger.debug(f"  shape_positions[{i}]: id={sp.get('id')}, bbox={sp.get('bbox')}, color={sp.get('color')}")
+                if len(shape_positions) > 5:
+                    logger.debug(f"  ... and {len(shape_positions) - 5} more shapes")
 
             if annotated_path and shape_positions:
                 result["annotated_path"] = str(annotated_path)
@@ -470,6 +485,11 @@ class FigureProcessorWrapper:
             "annotated_image": f"{element_id}.annotated.png" if result.get("annotated_path") else None,
         }
 
+        logger.debug(f"segment_and_save saving SAM3 data:")
+        logger.debug(f"  element_id: {element_id}")
+        logger.debug(f"  figure_type: {sam3_data.get('figure_type')}")
+        logger.debug(f"  shape_positions count: {len(sam3_data.get('shape_positions') or [])}")
+
         if result.get("error"):
             sam3_data["error"] = result["error"]
 
@@ -534,6 +554,14 @@ class FigureProcessorWrapper:
         except ValueError:
             force_type = FigureType.OTHER
 
+        # Debug logging to diagnose Mermaid extraction issues
+        logger.debug(f"Calling process_figure with:")
+        logger.debug(f"  image_path: {processing_image_path}")
+        logger.debug(f"  ocr_text length: {len(ocr_text)}")
+        logger.debug(f"  shape_positions: {len(shape_positions) if shape_positions else 'None'}")
+        logger.debug(f"  text_positions: {len(text_positions) if text_positions else 'None'}")
+        logger.debug(f"  force_type: {force_type}")
+
         # Call processor with pre-computed shape positions
         result = processor.process_figure(
             image_path=processing_image_path,
@@ -543,6 +571,13 @@ class FigureProcessorWrapper:
             run_id=run_id,
             force_type=force_type,
         )
+
+        # Debug logging for result inspection
+        logger.debug(
+            f"Raw result processed_content (first 500 chars): "
+            f"{result.processed_content[:500] if result.processed_content else 'None'}"
+        )
+        logger.debug(f"Result intermediate_nodes: {result.intermediate_nodes}")
 
         return result.model_dump()
 
@@ -587,6 +622,14 @@ class FigureProcessorWrapper:
 
         with sam3_path.open("r", encoding="utf-8") as fh:
             sam3_result = json.load(fh)
+
+        logger.debug(f"extract_mermaid_and_save loaded SAM3 data from {sam3_path}:")
+        logger.debug(f"  figure_type: {sam3_result.get('figure_type')}")
+        logger.debug(f"  direction: {sam3_result.get('direction')}")
+        logger.debug(f"  shape_positions count: {len(sam3_result.get('shape_positions') or [])}")
+        if sam3_result.get("shape_positions"):
+            for i, sp in enumerate(sam3_result["shape_positions"][:5]):
+                logger.debug(f"  shape_positions[{i}]: id={sp.get('id')}, bbox={sp.get('bbox')}, color={sp.get('color')}")
 
         # Resolve annotated image path
         annotated_image = sam3_result.get("annotated_image")

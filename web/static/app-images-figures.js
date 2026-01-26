@@ -4,7 +4,7 @@
  */
 
 /* global $, showToast, CURRENT_SLUG, CURRENT_PROVIDER, truncateId, renderEmptyState, escapeHtml,
-          initCytoscapeDiagram, openImageLightbox, renderActionDetectionStep,
+          initCytoscapeDiagram, openImageLightbox,
           IMAGES_FIGURE_LIST, IMAGES_STATS, IMAGES_CURRENT_FIGURE */
 
 /**
@@ -314,8 +314,6 @@ function renderFigurePipelineView(figure) {
           `}
         </div>
       </div>
-
-      ${renderActionDetectionStep(processing.intermediate_edges, extractionDone)}
     </div>
 
     ${extractionDone && processing.processed_content && figureType === 'flowchart' ? `

@@ -572,70 +572,67 @@
   max-height: 150px;
 }
 
-/* Action Detection Step */
-.edge-count {
-  font-size: 11px;
-  color: var(--text-primary);
-  background: var(--color-purple);
-  padding: 3px 8px;
-  border-radius: var(--radius-pill);
-  font-weight: 500;
-  margin-left: auto;
+/* Cytoscape Graph Container */
+.cytoscape-section {
+  margin-top: 16px;
 }
 
-.edge-details {
-  font-size: 12px;
-}
-
-.edge-details summary {
-  cursor: pointer;
-  color: var(--text-secondary);
-  font-weight: 500;
-  padding: 4px 0;
-}
-
-.edge-details summary:hover {
-  color: var(--text-primary);
-}
-
-.edge-list {
-  list-style: none;
-  padding: 0;
-  margin: 8px 0 0 0;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.edge-item {
+.cytoscape-header {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
-  background: var(--surface-glass-active);
-  border-radius: var(--radius-sm);
-  font-family: var(--font-mono);
-  font-size: 11px;
+  justify-content: space-between;
+  margin-bottom: 8px;
 }
 
-.edge-from,
-.edge-to {
-  color: var(--text-primary);
-  font-weight: 500;
-}
-
-.edge-arrow {
-  color: var(--color-purple);
+.cytoscape-header h5 {
+  margin: 0;
+  font-size: 13px;
   font-weight: 600;
+  color: var(--text-primary);
 }
 
-.edge-label {
-  color: var(--text-secondary);
-  font-style: italic;
-  margin-left: auto;
-  padding: 2px 6px;
+.cytoscape-controls {
+  display: flex;
+  gap: 4px;
+}
+
+.cytoscape-container {
+  width: 100%;
+  aspect-ratio: 4/3;  /* Match SAM3 image proportions */
+  max-width: 100%;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
   background: var(--surface-glass);
-  border-radius: var(--radius-sm);
+  min-height: 250px;
+}
+
+/* Maximized state for Cytoscape viewer */
+.cytoscape-container.maximized {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 90vw;
+  height: 90vh;
+  max-width: none;
+  z-index: 9999;
+  aspect-ratio: auto;
+  box-shadow: var(--shadow-lg);
+  background: var(--surface-card);
+  border-radius: var(--radius-lg);
+}
+
+.cytoscape-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  z-index: 9998;
 }
 
 /* Upload stage badges */

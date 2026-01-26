@@ -4,6 +4,7 @@
  */
 
 let currentCyInstance = null;
+let cytoscapeOverlay = null;
 
 /**
  * Convert SAM3 color names to hex codes.
@@ -52,6 +53,9 @@ function parseMermaidToCytoscape(mermaidCode) {
       .replace(/#quot;/g, '"')
       .replace(/#40;/g, '(')
       .replace(/#41;/g, ')')
+      .replace(/#39;/g, "'")
+      .replace(/#amp;/g, '&')
+      .replace(/^["']+|["']+$/g, '')  // Strip surrounding quotes (handles "" empty labels)
       .trim();
   }
 
@@ -97,8 +101,9 @@ function parseMermaidToCytoscape(mermaidCode) {
     const parts = trimmed.split(/\s*(?:-->|---)\s*(?:\|[^|]*\|)?\s*/);
     for (const part of parts) {
       const info = extractNodeInfo(part.trim());
-      if (info && info.label && !nodeMap[info.id]) {
-        nodeMap[info.id] = info.label;
+      // Allow nodes even if label is empty - use ID as fallback
+      if (info && !nodeMap[info.id]) {
+        nodeMap[info.id] = info.label || info.id;  // Fallback to ID when label is empty
         nodeTypes[info.id] = info.type;
       }
     }
@@ -154,7 +159,7 @@ const CYTOSCAPE_STYLE = [
       'label': 'data(label)',
       'text-wrap': 'wrap',
       'text-max-width': '110px',
-      'font-size': '9px',
+      'font-size': '12px',
       'font-family': 'Segoe UI, Tahoma, sans-serif',
       'text-valign': 'center',
       'text-halign': 'center',
@@ -289,28 +294,44 @@ function initCytoscapeDiagram(containerId, mermaidCode, shapePositions) {
     return;
   }
 
-  // Apply SAM3 positions and colors
-  const imageWidth = 800;
-  const imageHeight = 600;
+  // Get container dimensions for proper scaling
+  // SAM3 bbox coordinates are normalized (0-1 range)
+  const containerWidth = container.clientWidth || 400;
+  const containerHeight = container.clientHeight || 300;
   let matchedCount = 0;
+
+  // Debug logging
+  console.log('initCytoscapeDiagram:', {
+    containerId,
+    containerWidth,
+    containerHeight,
+    nodeCount: nodes.length,
+    shapePositionsCount: shapePositions?.length || 0,
+    shapePositions: shapePositions
+  });
 
   if (shapePositions && shapePositions.length > 0) {
     for (const node of nodes) {
       const shape = shapePositions.find(s => s.id === node.data.id);
       if (shape && shape.bbox && shape.bbox.length === 4) {
         const [x1, y1, x2, y2] = shape.bbox;
+        // Scale normalized bbox (0-1) to container dimensions
         node.position = {
-          x: ((x1 + x2) / 2) * imageWidth,
-          y: ((y1 + y2) / 2) * imageHeight
+          x: ((x1 + x2) / 2) * containerWidth,
+          y: ((y1 + y2) / 2) * containerHeight
         };
         if (shape.color) {
           node.data.shapeColor = sam3ColorToHex(shape.color);
         }
         matchedCount++;
+        console.log(`Node ${node.data.id} matched shape:`, { bbox: shape.bbox, color: shape.color, position: node.position });
+      } else {
+        console.log(`Node ${node.data.id} NOT matched, available shapes:`, shapePositions.map(s => s.id));
       }
     }
   }
 
+  console.log(`SAM3 position matching: ${matchedCount}/${nodes.length} nodes matched`);
   const usePresetLayout = matchedCount >= nodes.length * 0.8;
 
   // Destroy existing instance
@@ -370,12 +391,69 @@ function cytoscapeFullscreen() {
   const container = document.querySelector('.cytoscape-container');
   if (!container) return;
 
-  if (document.fullscreenElement) {
-    document.exitFullscreen();
+  // Toggle maximized state
+  if (container.classList.contains('maximized')) {
+    cytoscapeMinimize();
   } else {
-    container.requestFullscreen().catch(err => {
-      console.warn('Fullscreen not supported:', err);
-    });
+    cytoscapeMaximize();
+  }
+}
+
+function cytoscapeMaximize() {
+  const container = document.querySelector('.cytoscape-container');
+  if (!container) return;
+
+  // Create overlay
+  if (!cytoscapeOverlay) {
+    cytoscapeOverlay = document.createElement('div');
+    cytoscapeOverlay.className = 'cytoscape-overlay';
+    cytoscapeOverlay.addEventListener('click', cytoscapeMinimize);
+    document.body.appendChild(cytoscapeOverlay);
+  }
+  cytoscapeOverlay.style.display = 'block';
+
+  // Maximize container
+  container.classList.add('maximized');
+
+  // Resize cytoscape instance after animation
+  setTimeout(() => {
+    if (currentCyInstance) {
+      currentCyInstance.resize();
+      currentCyInstance.fit();
+    }
+  }, 100);
+
+  // Handle Escape key
+  document.addEventListener('keydown', cytoscapeEscapeHandler);
+}
+
+function cytoscapeMinimize() {
+  const container = document.querySelector('.cytoscape-container');
+  if (!container) return;
+
+  // Hide overlay
+  if (cytoscapeOverlay) {
+    cytoscapeOverlay.style.display = 'none';
+  }
+
+  // Remove maximized state
+  container.classList.remove('maximized');
+
+  // Resize cytoscape instance after animation
+  setTimeout(() => {
+    if (currentCyInstance) {
+      currentCyInstance.resize();
+      currentCyInstance.fit();
+    }
+  }, 100);
+
+  // Remove Escape key handler
+  document.removeEventListener('keydown', cytoscapeEscapeHandler);
+}
+
+function cytoscapeEscapeHandler(e) {
+  if (e.key === 'Escape') {
+    cytoscapeMinimize();
   }
 }
 
@@ -387,3 +465,5 @@ window.cytoscapeZoomIn = cytoscapeZoomIn;
 window.cytoscapeZoomOut = cytoscapeZoomOut;
 window.cytoscapeReset = cytoscapeReset;
 window.cytoscapeFullscreen = cytoscapeFullscreen;
+window.cytoscapeMaximize = cytoscapeMaximize;
+window.cytoscapeMinimize = cytoscapeMinimize;
