@@ -560,6 +560,7 @@ def api_upload_detail(upload_id: str) -> Dict[str, Any]:
             "confidence": sam3_result.get("confidence"),
             "direction": sam3_result.get("direction"),
             "shape_count": len(sam3_result.get("shape_positions") or []),
+            "shape_positions": sam3_result.get("shape_positions"),
             "classification_duration_ms": sam3_result.get("classification_duration_ms"),
             "sam3_duration_ms": sam3_result.get("sam3_duration_ms"),
         }
