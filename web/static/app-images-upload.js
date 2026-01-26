@@ -4,7 +4,8 @@
  */
 
 /* global $, showToast, escapeHtml, initCytoscapeDiagram, openImageLightbox, renderActionDetectionStep,
-          runUploadClassification, runUploadDirectionDetection, refreshUploadDetails,
+          runUploadFullPipeline, runUploadClassification, runUploadDirectionDetection,
+          runUploadSegmentation, runUploadMermaidExtraction, refreshUploadDetails,
           CURRENT_UPLOAD_ID, CURRENT_UPLOAD_DATA_URI */
 
 /**
@@ -81,17 +82,11 @@ async function uploadImage(file) {
 
     showToast('Image uploaded successfully', 'success');
 
-    // Render initial view with auto-classification running
+    // Render initial view with pipeline starting
     renderUploadPipelineView(data, { classificationRunning: true });
 
-    // Auto-run classification (which will auto-run direction detection if flowchart)
-    try {
-      await runUploadClassification(data.upload_id);
-    } catch (classifyErr) {
-      // Classification failed, but upload succeeded - refresh view
-      console.error('Auto-classification failed:', classifyErr);
-      refreshUploadDetails(data.upload_id);
-    }
+    // Auto-run full pipeline: Classification → Direction → SAM3 → Mermaid
+    runUploadFullPipeline(data.upload_id);
   } catch (err) {
     console.error('Upload failed:', err);
     resultEl.innerHTML = `<div class="error">Upload failed: ${escapeHtml(err.message)}</div>`;
@@ -244,20 +239,16 @@ function renderUploadPipelineView(data, options = {}) {
             </div>
           </div>
 
-          <!-- Step 3: SAM3 Segmentation (manual) -->
+          <!-- Step 3: SAM3 Segmentation (auto) -->
           <div class="pipeline-step step-segmentation ${segmentationDone ? 'step-complete' : 'step-pending'}" id="upload-step-segmentation">
             <div class="step-header">
               <span class="step-number">${segmentationDone ? '✓' : '3'}</span>
               <span class="step-title">SAM3 Segmentation</span>
-              <span class="step-badge step-badge-manual">manual</span>
+              <span class="step-badge step-badge-auto">auto</span>
               <span class="step-time">${sam3Time}</span>
-              ${classificationDone && !segmentationDone ? `
-                <button class="btn btn-sm btn-primary step-action" onclick="runUploadSegmentation('${uploadId}')">Run SAM3</button>
-              ` : segmentationDone ? `
+              ${segmentationDone ? `
                 <button class="btn btn-sm btn-secondary step-action" onclick="runUploadSegmentation('${uploadId}')" title="Re-run segmentation">Re-run</button>
-              ` : `
-                <button class="btn btn-sm btn-secondary step-action" disabled title="Classification required first">Run SAM3</button>
-              `}
+              ` : ''}
             </div>
             <div class="step-content">
               ${segmentationDone ? `
@@ -271,27 +262,21 @@ function renderUploadPipelineView(data, options = {}) {
                        data-lightbox-title="SAM3 Annotated Image"
                        onerror="this.style.display='none'" />
                 ` : ''}
-              ` : classificationDone ? `
-                <span class="no-data">Click "Run SAM3" to detect shapes</span>
               ` : `
-                <span class="no-data">Complete classification first</span>
+                <span class="no-data">Waiting...</span>
               `}
             </div>
           </div>
 
-          <!-- Step 4: Mermaid Extraction (manual) -->
+          <!-- Step 4: Mermaid Extraction (auto) -->
           <div class="pipeline-step step-mermaid ${extractionDone ? 'step-complete' : 'step-pending'}" id="upload-step-mermaid">
             <div class="step-header">
               <span class="step-number">${extractionDone ? '✓' : '4'}</span>
               <span class="step-title">Mermaid Extraction</span>
-              <span class="step-badge step-badge-manual">manual</span>
-              ${segmentationDone && !extractionDone ? `
-                <button class="btn btn-sm btn-primary step-action" onclick="runUploadMermaidExtraction('${uploadId}')">Extract Mermaid</button>
-              ` : extractionDone ? `
+              <span class="step-badge step-badge-auto">auto</span>
+              ${extractionDone ? `
                 <button class="btn btn-sm btn-secondary step-action" onclick="runUploadMermaidExtraction('${uploadId}')" title="Re-run extraction">Re-run</button>
-              ` : `
-                <button class="btn btn-sm btn-secondary step-action" disabled title="Run SAM3 first">Extract Mermaid</button>
-              `}
+              ` : ''}
             </div>
             <div class="step-content">
               ${extractionDone && processing.processed_content && figureType === 'flowchart' ? `
@@ -307,10 +292,8 @@ function renderUploadPipelineView(data, options = {}) {
                 <pre class="mermaid-code">${escapeHtml(processing.processed_content)}</pre>
               ` : extractionDone ? `
                 <span class="no-data">Mermaid diagram not available (figure type: ${figureType})</span>
-              ` : segmentationDone ? `
-                <span class="no-data">Click "Extract Mermaid" to generate diagram</span>
               ` : `
-                <span class="no-data">Complete SAM3 segmentation first</span>
+                <span class="no-data">Waiting...</span>
               `}
             </div>
           </div>

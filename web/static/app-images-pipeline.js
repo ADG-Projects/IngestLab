@@ -105,6 +105,37 @@ async function runMermaidExtraction(elementId) {
 }
 
 /**
+ * Run the full pipeline automatically on uploaded image.
+ * Steps: Classification → Direction Detection (if flowchart) → SAM3 → Mermaid Extraction
+ */
+async function runUploadFullPipeline(uploadId) {
+  try {
+    // Step 1: Classification
+    const classResult = await runUploadClassification(uploadId);
+
+    // Step 2: Direction detection (auto for flowcharts)
+    if (classResult.figure_type === 'flowchart') {
+      await runUploadDirectionDetection(uploadId);
+    } else {
+      window.CURRENT_UPLOAD_DIRECTION = { skipped: true };
+    }
+
+    // Step 3: SAM3 Segmentation
+    await runUploadSegmentation(uploadId);
+
+    // Step 4: Mermaid Extraction
+    await runUploadMermaidExtraction(uploadId);
+
+    // Pipeline complete - final refresh
+    refreshUploadDetails(uploadId);
+  } catch (err) {
+    console.error('Pipeline failed:', err);
+    // Individual step functions already show toasts, just refresh to show current state
+    refreshUploadDetails(uploadId);
+  }
+}
+
+/**
  * Run classification only on uploaded image (auto step after upload).
  */
 async function runUploadClassification(uploadId) {
@@ -129,15 +160,6 @@ async function runUploadClassification(uploadId) {
 
     // Store classification result for UI updates
     window.CURRENT_UPLOAD_CLASSIFICATION = data;
-
-    // If flowchart, auto-run direction detection
-    if (data.figure_type === 'flowchart') {
-      await runUploadDirectionDetection(uploadId);
-    } else {
-      // Not a flowchart, mark direction as skipped and refresh
-      window.CURRENT_UPLOAD_DIRECTION = { skipped: true };
-      refreshUploadDetails(uploadId);
-    }
 
     return data;
   } catch (err) {
@@ -177,9 +199,6 @@ async function runUploadDirectionDetection(uploadId) {
 
     // Store direction result for UI updates
     window.CURRENT_UPLOAD_DIRECTION = data;
-
-    // Refresh the view
-    refreshUploadDetails(uploadId);
 
     return data;
   } catch (err) {
@@ -325,6 +344,7 @@ function renderActionDetectionStep(edges, extractionDone) {
 // Window exports
 window.runSegmentation = runSegmentation;
 window.runMermaidExtraction = runMermaidExtraction;
+window.runUploadFullPipeline = runUploadFullPipeline;
 window.runUploadClassification = runUploadClassification;
 window.runUploadDirectionDetection = runUploadDirectionDetection;
 window.runUploadSegmentation = runUploadSegmentation;
