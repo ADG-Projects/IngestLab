@@ -383,6 +383,7 @@ class FigureProcessorWrapper:
             logger.debug(f"SAM3 segment_and_annotate returned:")
             logger.debug(f"  annotated_path: {annotated_path}")
             logger.debug(f"  shape_positions count: {len(shape_positions) if shape_positions else 'None'}")
+            logger.debug(f"  text_positions count: {len(annotated_text_positions) if annotated_text_positions else 'None'}")
             if shape_positions:
                 for i, sp in enumerate(shape_positions[:5]):  # Log first 5
                     logger.debug(f"  shape_positions[{i}]: id={sp.get('id')}, bbox={sp.get('bbox')}, color={sp.get('color')}")
@@ -392,6 +393,7 @@ class FigureProcessorWrapper:
             if annotated_path and shape_positions:
                 result["annotated_path"] = str(annotated_path)
                 result["shape_positions"] = shape_positions
+                result["text_positions"] = annotated_text_positions
                 logger.info(f"SAM3 segmentation complete: {len(shape_positions)} shapes")
             else:
                 logger.warning("SAM3 returned no shape positions")
@@ -523,6 +525,10 @@ class FigureProcessorWrapper:
 
         # Get shape positions from SAM3 result
         shape_positions = sam3_result.get("shape_positions")
+
+        # Get text_positions from SAM3 result if not provided as parameter
+        if text_positions is None:
+            text_positions = sam3_result.get("text_positions")
 
         # Determine force_type from SAM3 result
         figure_type_str = sam3_result.get("figure_type", "other")
