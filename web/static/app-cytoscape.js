@@ -513,13 +513,16 @@ function cytoscapeMaximize() {
   // Maximize container
   container.classList.add('maximized');
 
-  // Resize cytoscape instance after CSS transition completes
-  setTimeout(() => {
-    if (currentCyInstance) {
-      currentCyInstance.resize();
-      currentCyInstance.fit();
-    }
-  }, 50);
+  // Resize cytoscape instance after container is in DOM and sized
+  // Use requestAnimationFrame to ensure layout is complete
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      if (currentCyInstance) {
+        currentCyInstance.resize();
+        currentCyInstance.fit(undefined, 50);  // 50px padding
+      }
+    });
+  });
 
   // Handle Escape key
   document.addEventListener('keydown', cytoscapeEscapeHandler);
