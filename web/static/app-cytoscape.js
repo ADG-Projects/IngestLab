@@ -5,6 +5,7 @@
 
 let currentCyInstance = null;
 let cytoscapeOverlay = null;
+let originalParent = null;  // Store original parent for minimize
 
 /**
  * Convert SAM3 color names to hex codes.
@@ -505,22 +506,20 @@ function cytoscapeMaximize() {
   }
   cytoscapeOverlay.style.display = 'block';
 
+  // Store original parent and move container to body to escape stacking context
+  originalParent = container.parentNode;
+  document.body.appendChild(container);
+
   // Maximize container
   container.classList.add('maximized');
 
   // Resize cytoscape instance after CSS transition completes
-  // Use multiple resize calls to ensure proper rendering
   setTimeout(() => {
     if (currentCyInstance) {
       currentCyInstance.resize();
       currentCyInstance.fit();
-      // Second resize to handle any layout recalculation
-      setTimeout(() => {
-        currentCyInstance.resize();
-        currentCyInstance.fit();
-      }, 100);
     }
-  }, 300);
+  }, 50);
 
   // Handle Escape key
   document.addEventListener('keydown', cytoscapeEscapeHandler);
@@ -540,13 +539,19 @@ function cytoscapeMinimize() {
   // Remove maximized state
   container.classList.remove('maximized');
 
+  // Move container back to original parent
+  if (originalParent) {
+    originalParent.appendChild(container);
+    originalParent = null;
+  }
+
   // Resize cytoscape instance after transition
   setTimeout(() => {
     if (currentCyInstance) {
       currentCyInstance.resize();
       currentCyInstance.fit();
     }
-  }, 300);
+  }, 50);
 
   // Remove Escape key handler
   document.removeEventListener('keydown', cytoscapeEscapeHandler);
