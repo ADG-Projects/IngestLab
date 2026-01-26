@@ -91,6 +91,70 @@ curl http://localhost:8765/healthz
 
 `README.md`, `TODO.md`, and `database-schema.md` must move in lockstep with any new capability.
 
+## Frontend Module Organization
+
+The frontend uses vanilla JavaScript with no build step. Files are organized by domain/feature.
+
+### CSS Modules (`web/static/`)
+
+Master file `styles.css` imports all modules via `@import`:
+
+| File | Purpose |
+|------|---------|
+| `tokens.css` | Design tokens: colors, spacing, typography, themes |
+| `base.css` | Reset, body styles, glass utility classes |
+| `layout.css` | Header, main grid, PDF container, page controls |
+| `components.css` | Buttons, cards, badges, form elements, toasts |
+| `tabs.css` | Tab styling, view toggles, panes |
+| `elements.css` | Elements view, cards, outline, hierarchy |
+| `chunks.css` | Chunks view, cards, pagination |
+| `drawer.css` | Drawer layout, preview, mini-metrics |
+| `modal.css` | Run modal, chunker modal, progress states |
+| `feedback.css` | Feedback view, stats, charts, analysis |
+| `images.css` | Images tab, figures, pipeline, lightbox |
+| `overlays.css` | Box overlays, tooltips, legend, type colors |
+
+### JavaScript Modules (`web/static/`)
+
+Core modules (load order matters):
+- `app-state.js` — Global state, constants, utility functions
+- `app-ui.js` — DOM helpers, toast notifications
+- `app-theme.js` — Theme toggle (dark/light)
+
+Elements domain:
+- `app-elements-filter.js` — Type loading, filtering, view mode
+- `app-elements-cards.js` — Card building, image section, hierarchy
+- `app-elements-outline.js` — Outline rendering, hierarchy building
+- `app-elements.js` — Box drawing, list rendering, orchestration
+
+Chunks domain:
+- `app-chunks.js` — Chunk list, pagination, selection
+
+Images domain:
+- `app-lightbox.js` — Modal zoom/pan, keyboard handling
+- `app-cytoscape.js` — Mermaid parsing, Cytoscape diagrams
+- `app-images-pipeline.js` — SAM3 segmentation, Mermaid extraction
+- `app-images-figures.js` — PDF figures loading, cards, details
+- `app-images-upload.js` — Drag-drop, file handling, upload pipeline
+- `app-images-history.js` — Upload history list, refresh
+- `app-images.js` — Tab orchestration, mode switching
+
+Runs domain:
+- `app-pdf.js` — PDF rendering, zoom controls
+- `app-run-jobs.js` — Job polling, progress tracking
+- `app-run-form.js` — Form wiring, validation
+- `app-modal.js` — Modal management (open/close)
+- `app-run-preview.js` — Preview helpers, page range utils
+- `app-runs.js` — Orchestration, init, loadRun, view switching
+
+Other:
+- `app-overlays.js` — SVG overlay drawing
+- `app-reviews.js` — Review state, persistence
+- `app-metrics.js` — Metrics computation
+- `app-feedback.js` — Feedback view, charts
+
+All modules export functions to `window.*` for global access.
+
 ## Coding Style & Conventions
 
 - Python 3.10+, 4-space indentation, f-strings for all dynamic text
