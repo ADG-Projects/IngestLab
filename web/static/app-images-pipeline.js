@@ -292,8 +292,9 @@ function renderActionDetectionStep(edges, extractionDone) {
   return `
     <div class="pipeline-step step-action-detection ${extractionDone ? 'step-complete' : 'step-pending'}" id="step-action-detection">
       <div class="step-header">
-        <span class="step-number">${extractionDone ? '✓' : '4'}</span>
+        <span class="step-number">${extractionDone ? '✓' : '5'}</span>
         <span class="step-title">Action Detection</span>
+        <span class="step-badge step-badge-auto">auto</span>
         ${hasEdges ? `<span class="edge-count">${edgeCount} edge${edgeCount !== 1 ? 's' : ''}</span>` : ''}
       </div>
       <div class="step-content">
