@@ -170,6 +170,22 @@ const CYTOSCAPE_STYLE = [
       'color': '#1a1a1a'
     }
   },
+  // Dynamic sizing for nodes with SAM3 bbox data
+  {
+    selector: 'node[nodeWidth]',
+    style: {
+      'width': 'data(nodeWidth)',
+      'height': 'data(nodeHeight)',
+      'text-max-width': function(ele) {
+        return Math.max(ele.data('nodeWidth') - 10, 40) + 'px';
+      },
+      'font-size': function(ele) {
+        // Scale font based on node size
+        const size = Math.min(ele.data('nodeWidth'), ele.data('nodeHeight'));
+        return Math.max(Math.min(size / 6, 14), 8) + 'px';
+      }
+    }
+  },
   {
     selector: 'node[type = "decision"]',
     style: {
@@ -182,6 +198,13 @@ const CYTOSCAPE_STYLE = [
       'height': 70,
       'text-max-width': '70px',
       'font-size': '8px'
+    }
+  },
+  {
+    selector: 'node[type = "decision"][nodeWidth]',
+    style: {
+      'width': 'data(nodeWidth)',
+      'height': 'data(nodeHeight)'
     }
   },
   {
@@ -200,6 +223,13 @@ const CYTOSCAPE_STYLE = [
     }
   },
   {
+    selector: 'node[type = "terminal"][nodeWidth]',
+    style: {
+      'width': 'data(nodeWidth)',
+      'height': 'data(nodeHeight)'
+    }
+  },
+  {
     selector: 'node[type = "subprocess"]',
     style: {
       'background-color': '#ce93d8',
@@ -207,6 +237,13 @@ const CYTOSCAPE_STYLE = [
       'border-color': '#7b1fa2',
       'border-width': 4,
       'shape': 'round-rectangle'
+    }
+  },
+  {
+    selector: 'node[type = "subprocess"][nodeWidth]',
+    style: {
+      'width': 'data(nodeWidth)',
+      'height': 'data(nodeHeight)'
     }
   },
   {
@@ -310,21 +347,33 @@ function initCytoscapeDiagram(containerId, mermaidCode, shapePositions) {
     shapePositions: shapePositions
   });
 
+  // Calculate a scale factor based on the spread of SAM3 positions
+  // We want positions to be spread out enough that nodes don't overlap
+  // Use a virtual coordinate space that's larger than the container
+  const VIRTUAL_SCALE = 1500;  // Virtual coordinate space size
+
   if (shapePositions && shapePositions.length > 0) {
     for (const node of nodes) {
       const shape = shapePositions.find(s => s.id === node.data.id);
       if (shape && shape.bbox && shape.bbox.length === 4) {
         const [x1, y1, x2, y2] = shape.bbox;
-        // Scale normalized bbox (0-1) to container dimensions
+        // Scale normalized bbox (0-1) to virtual coordinate space
+        // This preserves relative positions, then cy.fit() scales to container
         node.position = {
-          x: ((x1 + x2) / 2) * containerWidth,
-          y: ((y1 + y2) / 2) * containerHeight
+          x: ((x1 + x2) / 2) * VIRTUAL_SCALE,
+          y: ((y1 + y2) / 2) * VIRTUAL_SCALE
         };
+        // Calculate node dimensions from bbox (also in virtual space)
+        const bboxWidth = (x2 - x1) * VIRTUAL_SCALE;
+        const bboxHeight = (y2 - y1) * VIRTUAL_SCALE;
+        // Store dimensions for per-node sizing (with minimum sizes)
+        node.data.nodeWidth = Math.max(bboxWidth * 0.9, 60);
+        node.data.nodeHeight = Math.max(bboxHeight * 0.9, 30);
         if (shape.color) {
           node.data.shapeColor = sam3ColorToHex(shape.color);
         }
         matchedCount++;
-        console.log(`Node ${node.data.id} matched shape:`, { bbox: shape.bbox, color: shape.color, position: node.position });
+        console.log(`Node ${node.data.id} matched shape:`, { bbox: shape.bbox, color: shape.color, position: node.position, size: { w: node.data.nodeWidth, h: node.data.nodeHeight } });
       } else {
         console.log(`Node ${node.data.id} NOT matched, available shapes:`, shapePositions.map(s => s.id));
       }
@@ -343,6 +392,7 @@ function initCytoscapeDiagram(containerId, mermaidCode, shapePositions) {
     container,
     elements: { nodes, edges },
     style: CYTOSCAPE_STYLE,
+    pixelRatio: 'auto',  // Handle high-DPI displays and browser zoom
     layout: usePresetLayout ? {
       name: 'preset',
       fit: true,
