@@ -188,7 +188,7 @@ function renderUploadPipelineView(data, options = {}) {
         <div class="upload-image-preview">
           <img src="${data.original_image_data_uri || `/api/figures/upload/${uploadId}/image/original`}"
                alt="Original image" class="original-image zoomable-image"
-               onclick="openImageLightbox(this.src, 'Original Image')" />
+               data-lightbox-title="Original Image" />
         </div>
 
         <div class="pipeline-view">
@@ -268,7 +268,7 @@ function renderUploadPipelineView(data, options = {}) {
                   <img src="/api/figures/upload/${uploadId}/image/annotated"
                        alt="SAM3 Annotated"
                        class="annotated-image zoomable-image"
-                       onclick="openImageLightbox(this.src, 'SAM3 Annotated Image')"
+                       data-lightbox-title="SAM3 Annotated Image"
                        onerror="this.style.display='none'" />
                 ` : ''}
               ` : classificationDone ? `
@@ -342,6 +342,14 @@ function renderUploadPipelineView(data, options = {}) {
       ` : ''}
     </div>
   `;
+
+  // Add click handlers for zoomable images (CSP-safe approach)
+  resultEl.querySelectorAll('.zoomable-image').forEach(img => {
+    img.addEventListener('click', function() {
+      const title = this.getAttribute('data-lightbox-title') || this.alt || 'Image';
+      openImageLightbox(this.src, title);
+    });
+  });
 
   // Initialize Cytoscape if extraction is done and it's a flowchart
   if (extractionDone && processing.processed_content && figureType === 'flowchart') {

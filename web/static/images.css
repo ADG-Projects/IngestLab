@@ -1105,6 +1105,16 @@
   line-height: 1.5;
 }
 
+/* Zoomable images (lightbox functionality) */
+.zoomable-image {
+  cursor: zoom-in;
+  transition: opacity var(--duration-fast);
+}
+
+.zoomable-image:hover {
+  opacity: 0.9;
+}
+
 /* Empty and loading states */
 .images-view .empty-state,
 .images-view .loading,

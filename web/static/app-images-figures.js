@@ -273,7 +273,7 @@ function renderFigurePipelineView(figure) {
               <img src="/api/figures/${encodeURIComponent(CURRENT_SLUG)}/${encodeURIComponent(figure.element_id)}/image/annotated?provider=${encodeURIComponent(provider)}"
                    alt="SAM3 Annotated"
                    class="annotated-image zoomable-image"
-                   onclick="openImageLightbox(this.src, 'SAM3 Annotated Image')"
+                   data-lightbox-title="SAM3 Annotated Image"
                    onerror="this.parentElement.innerHTML='<span class=\\'no-image\\'>Annotated image not available</span>'" />
             ` : '<span class="no-data">Annotated image not available</span>'}
           ` : '<span class="no-data">Run SAM3 to detect shapes</span>'}
@@ -338,7 +338,7 @@ function renderFigurePipelineView(figure) {
       <img src="/api/figures/${encodeURIComponent(CURRENT_SLUG)}/${encodeURIComponent(figure.element_id)}/image/original?provider=${encodeURIComponent(provider)}"
            alt="Original figure"
            class="original-image zoomable-image"
-           onclick="openImageLightbox(this.src, 'Original Image')" />
+           data-lightbox-title="Original Image" />
     </div>
 
     ${processing.description ? `
@@ -355,6 +355,14 @@ function renderFigurePipelineView(figure) {
     </div>
     ` : ''}
   `;
+
+  // Add click handlers for zoomable images (CSP-safe approach)
+  detailsEl.querySelectorAll('.zoomable-image').forEach(img => {
+    img.addEventListener('click', function() {
+      const title = this.getAttribute('data-lightbox-title') || this.alt || 'Image';
+      openImageLightbox(this.src, title);
+    });
+  });
 }
 
 /**
