@@ -177,6 +177,73 @@ def _load_sam3_result(figures_dir: Path, element_id: str) -> Optional[Dict[str, 
         return None
 
 
+def _load_all_elements(elements_path: Path) -> List[Dict[str, Any]]:
+    """Load all elements from an elements JSONL file."""
+    elements = []
+    with elements_path.open("r", encoding="utf-8") as fh:
+        for line in fh:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                el = json.loads(line)
+                elements.append(el)
+            except json.JSONDecodeError:
+                continue
+    return elements
+
+
+def _get_bbox_from_coordinates(coordinates: Dict[str, Any]) -> Optional[tuple]:
+    """Extract bounding box (x0, y0, x1, y1) from coordinates dict.
+
+    Coordinates format: {'points': [[x1,y1], [x2,y2], [x3,y3], [x4,y4]], ...}
+    Returns: (min_x, min_y, max_x, max_y) or None if invalid.
+    """
+    points = coordinates.get("points", [])
+    if len(points) < 4:
+        return None
+    xs = [p[0] for p in points]
+    ys = [p[1] for p in points]
+    return (min(xs), min(ys), max(xs), max(ys))
+
+
+def _boxes_overlap(
+    coords1: Dict[str, Any],
+    coords2: Dict[str, Any],
+    margin: float = 10.0,
+) -> bool:
+    """Check if two coordinate boxes overlap or are within margin distance.
+
+    Args:
+        coords1: First coordinates dict with 'points'
+        coords2: Second coordinates dict with 'points'
+        margin: Extra margin to consider nearby boxes as overlapping
+
+    Returns:
+        True if boxes overlap or are within margin of each other.
+    """
+    bbox1 = _get_bbox_from_coordinates(coords1)
+    bbox2 = _get_bbox_from_coordinates(coords2)
+    if not bbox1 or not bbox2:
+        return False
+
+    x0_1, y0_1, x1_1, y1_1 = bbox1
+    x0_2, y0_2, x1_2, y1_2 = bbox2
+
+    # Expand first box by margin for proximity detection
+    x0_1 -= margin
+    y0_1 -= margin
+    x1_1 += margin
+    y1_1 += margin
+
+    # Check for overlap
+    if x1_1 < x0_2 or x1_2 < x0_1:
+        return False
+    if y1_1 < y0_2 or y1_2 < y0_1:
+        return False
+    return True
+
+
 def _image_to_data_uri(image_path: Path) -> Optional[str]:
     """Convert an image file to a data URI."""
     if not image_path.exists():
@@ -1041,6 +1108,35 @@ def api_figure_extract_mermaid(
     if not image_path:
         raise HTTPException(status_code=404, detail="Image file not found")
 
+    # Extract text_positions from elements that overlap with the figure
+    fig_coords = md.get("coordinates", {})
+    fig_page = target.get("page_number") or md.get("page_number")
+    text_positions: List[Dict[str, Any]] = []
+
+    if fig_coords.get("points") and fig_page:
+        all_elements = _load_all_elements(elements_path)
+        text_types = {"text", "narrativetext", "title", "listitem", "paragraph"}
+        for el in all_elements:
+            el_type = el.get("type", "").lower()
+            if el_type not in text_types:
+                continue
+            el_md = el.get("metadata", {})
+            el_page = el.get("page_number") or el_md.get("page_number")
+            if el_page != fig_page:
+                continue
+            el_coords = el_md.get("coordinates", {})
+            if _boxes_overlap(fig_coords, el_coords, margin=20.0):
+                el_bbox = _get_bbox_from_coordinates(el_coords)
+                if el_bbox:
+                    text_positions.append({
+                        "bbox": list(el_bbox),
+                        "text": el.get("text", ""),
+                    })
+        if text_positions:
+            logger.info(
+                f"Found {len(text_positions)} text elements overlapping figure {element_id}"
+            )
+
     # Run mermaid extraction
     try:
         from chunking_pipeline.figure_processor import get_processor
@@ -1053,6 +1149,7 @@ def api_figure_extract_mermaid(
             element_id=element_id,
             ocr_text=ocr_text,
             run_id=slug,
+            text_positions=text_positions if text_positions else None,
         )
         return {
             "status": "ok",
