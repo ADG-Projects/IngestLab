@@ -670,6 +670,7 @@ def api_figure_detail(
         stages["extracted"] = sam3_result.get("stage") == "complete"
         sam3_info = {
             "shape_count": len(sam3_result.get("shape_positions") or []),
+            "shape_positions": sam3_result.get("shape_positions"),
             "direction": sam3_result.get("direction"),
             "figure_type": sam3_result.get("figure_type"),
             "confidence": sam3_result.get("confidence"),
