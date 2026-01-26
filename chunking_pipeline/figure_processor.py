@@ -55,6 +55,122 @@ class FigureProcessorWrapper:
                 ) from e
         return self._processor
 
+    def extract_text_positions_from_image(
+        self,
+        image_path: str | Path,
+    ) -> list[dict[str, Any]]:
+        """Extract text positions from an image using Azure Document Intelligence.
+
+        Calls Azure DI to perform OCR on the image and returns word-level
+        text positions normalized to 0-1 relative coordinates.
+
+        Args:
+            image_path: Path to the image file (PNG/JPEG)
+
+        Returns:
+            List of dicts with {x, y, width, height, content} where
+            x, y, width, height are 0-1 relative to image dimensions.
+            Returns empty list if Azure DI is not configured or fails.
+        """
+        import os
+
+        from PIL import Image
+
+        # Environment variable names (same as azure_pipeline.py)
+        endpoint_envs = (
+            "AZURE_DOCUMENTINTELLIGENCE_ENDPOINT",
+            "AZURE_FT_ENDPOINT",
+            "DOCUMENTINTELLIGENCE_ENDPOINT",
+            "DI_ENDPOINT",
+        )
+        key_envs = (
+            "AZURE_DOCUMENTINTELLIGENCE_KEY",
+            "AZURE_FT_KEY",
+            "DOCUMENTINTELLIGENCE_API_KEY",
+            "DI_KEY",
+        )
+
+        # Get credentials
+        endpoint = next((os.environ.get(e) for e in endpoint_envs if os.environ.get(e)), None)
+        key = next((os.environ.get(k) for k in key_envs if os.environ.get(k)), None)
+
+        if not endpoint or not key:
+            logger.warning("Azure DI not configured - text_positions will be empty")
+            return []
+
+        image_path = Path(image_path)
+        if not image_path.exists():
+            logger.warning(f"Image not found: {image_path}")
+            return []
+
+        try:
+            from azure.ai.documentintelligence import DocumentIntelligenceClient
+            from azure.ai.documentintelligence.models import AnalyzeDocumentRequest
+            from azure.core.credentials import AzureKeyCredential
+        except ImportError:
+            logger.warning("azure-ai-documentintelligence not installed - text_positions will be empty")
+            return []
+
+        try:
+            # Get image dimensions for normalization
+            with Image.open(image_path) as img:
+                img_width, img_height = img.size
+
+            # Read image bytes
+            with open(image_path, "rb") as f:
+                image_bytes = f.read()
+
+            # Call Azure DI
+            client = DocumentIntelligenceClient(
+                endpoint=endpoint,
+                credential=AzureKeyCredential(key),
+            )
+
+            logger.info(f"Extracting text positions from image via Azure DI: {image_path.name}")
+
+            poller = client.begin_analyze_document(
+                model_id="prebuilt-layout",
+                body=AnalyzeDocumentRequest(bytes_source=image_bytes),
+            )
+            result = poller.result()
+
+            # Extract word-level positions
+            text_positions: list[dict[str, Any]] = []
+
+            if result.pages:
+                for page in result.pages:
+                    # Get page dimensions (Azure uses points, we need relative)
+                    page_width = page.width or img_width
+                    page_height = page.height or img_height
+
+                    if page.words:
+                        for word in page.words:
+                            if not word.content or not word.polygon:
+                                continue
+
+                            # Convert polygon to bounding box (polygon is [x1,y1,x2,y2,...])
+                            xs = [word.polygon[i] for i in range(0, len(word.polygon), 2)]
+                            ys = [word.polygon[i] for i in range(1, len(word.polygon), 2)]
+
+                            x_min, x_max = min(xs), max(xs)
+                            y_min, y_max = min(ys), max(ys)
+
+                            # Normalize to 0-1
+                            text_positions.append({
+                                "x": round(x_min / page_width, 4),
+                                "y": round(y_min / page_height, 4),
+                                "width": round((x_max - x_min) / page_width, 4),
+                                "height": round((y_max - y_min) / page_height, 4),
+                                "content": word.content,
+                            })
+
+            logger.info(f"Extracted {len(text_positions)} text positions from image")
+            return text_positions
+
+        except Exception as e:
+            logger.warning(f"Azure DI text extraction failed: {e}")
+            return []
+
     def process_figure(
         self,
         image_path: str | Path,

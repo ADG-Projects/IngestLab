@@ -786,7 +786,17 @@ def api_upload_segment(upload_id: str) -> Dict[str, Any]:
         from chunking_pipeline.figure_processor import get_processor
 
         processor = get_processor()
-        result = processor.segment_only(image_path, ocr_text="", run_id=f"upload-{upload_id}")
+
+        # Extract text positions from image using Azure DI
+        text_positions = processor.extract_text_positions_from_image(image_path)
+        logger.info(f"Extracted {len(text_positions)} text positions for segmentation")
+
+        result = processor.segment_only(
+            image_path,
+            ocr_text="",
+            run_id=f"upload-{upload_id}",
+            text_positions=text_positions,
+        )
 
         # Copy annotated image if generated
         if result.get("annotated_path"):
@@ -796,7 +806,7 @@ def api_upload_segment(upload_id: str) -> Dict[str, Any]:
                 shutil.copy2(src_annotated, dst_annotated)
                 result["annotated_path"] = str(dst_annotated)
 
-        # Save SAM3 results
+        # Save SAM3 results (including text_positions for Mermaid extraction)
         sam3_data = {
             "figure_type": result.get("figure_type"),
             "confidence": result.get("confidence"),
@@ -805,6 +815,7 @@ def api_upload_segment(upload_id: str) -> Dict[str, Any]:
             "classification_duration_ms": result.get("classification_duration_ms"),
             "sam3_duration_ms": result.get("sam3_duration_ms"),
             "shape_positions": result.get("shape_positions"),
+            "text_positions": result.get("text_positions"),
             "segmented_at": datetime.now(timezone.utc).isoformat(),
         }
         sam3_path = upload_dir / "sam3.json"
