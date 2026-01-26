@@ -623,18 +623,20 @@
 
 /* Maximized state for Cytoscape viewer */
 .cytoscape-container.maximized {
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 90vw;
-  height: 90vh;
-  max-width: none;
-  z-index: 9999;
-  aspect-ratio: auto;
-  box-shadow: var(--shadow-lg);
-  background: var(--surface-card);
+  position: fixed !important;
+  top: 5vh !important;
+  left: 5vw !important;
+  transform: none !important;
+  width: 90vw !important;
+  height: 90vh !important;
+  max-width: none !important;
+  min-height: auto !important;
+  z-index: 9999 !important;
+  aspect-ratio: auto !important;
+  box-shadow: 0 0 60px rgba(0, 0, 0, 0.5);
+  background: #1a1a1a !important;
   border-radius: var(--radius-lg);
+  border: 2px solid rgba(255, 255, 255, 0.1);
 }
 
 .cytoscape-overlay {
@@ -721,8 +723,8 @@
 }
 
 .upload-content {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 20px;
 }
 
@@ -743,7 +745,6 @@
 }
 
 .upload-pipeline-view .upload-result-description {
-  grid-column: 1 / -1;
   margin-top: 16px;
   padding-top: 16px;
   border-top: 1px solid var(--border);
@@ -756,10 +757,6 @@
 }
 
 @media (max-width: 900px) {
-  .upload-content {
-    grid-template-columns: 1fr;
-  }
-
   .upload-image-preview .original-image {
     max-height: 250px;
   }
