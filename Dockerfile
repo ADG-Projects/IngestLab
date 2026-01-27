@@ -16,18 +16,17 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     UV_PROJECT_ENVIRONMENT=/app/.venv \
     APP_HOME=/app \
     VIRTUAL_ENV=/app/.venv \
-    PATH="/app/.venv/bin:/root/.local/bin:$PATH" \
-    DISABLE_HI_RES=${DISABLE_HI_RES} \
-    TESSDATA_PREFIX=/usr/share/tesseract-ocr/5/tessdata
+    PATH="/app/.venv/bin:/root/.local/bin:$PATH"
 
 WORKDIR /app
 
 # Install system dependencies needed for hi_res layout (OpenCV, Tesseract, Poppler, HEIF)
-# Also install Node.js for mermaid-cli (diagram validation)
+# Also install Node.js for mermaid-cli (diagram validation) and git for uv
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         build-essential \
         curl \
+        git \
         poppler-utils \
         tesseract-ocr \
         tesseract-ocr-ara \
@@ -41,6 +40,12 @@ RUN apt-get update && \
         nodejs \
         npm \
         && rm -rf /var/lib/apt/lists/*
+
+# Configure git to use GitHub token for private repos (token passed via build arg)
+ARG GH_TOKEN
+RUN if [ -n "$GH_TOKEN" ]; then \
+        git config --global url."https://${GH_TOKEN}@github.com/".insteadOf "https://github.com/"; \
+    fi
 
 # Install uv so all Python commands use the same resolver/runtime
 RUN pip install --no-cache-dir uv
@@ -62,7 +67,7 @@ RUN if [ "$WITH_SAM3_LOCAL" = "1" ]; then \
         uv pip uninstall unstructured-inference || true; \
     fi
 
-# Copy the rest of the application after deps to preserve cached layers
+# Copy the rest of the application
 COPY . .
 
 # Install Node.js dependencies (mermaid-cli for diagram validation)

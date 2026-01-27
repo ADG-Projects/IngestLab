@@ -13,8 +13,6 @@ dependencies = [
     "python-dotenv",
     "python-multipart",
     "pypdf",
-    "pdf2image",
-    "pdfminer.six",
     "openai",
     # PolicyAsCode extractors and figure processing
     "brd-to-opa-pipeline @ git+https://github.com/kyndryl-agentic-ai/PolicyAsCode.git@feature/chunking-visualizer-integration",
