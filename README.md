@@ -121,6 +121,7 @@ Outputs for Azure runs live under `outputs/azure/document_intelligence/` with th
 
 ## Release history
 
+- **v6.0.0 (2026-01-27)** – **Images Tab & Vision Pipeline**: New top-level Images tab for exploring PDF figures and standalone image uploads. Two-stage vision pipeline with SAM3 segmentation preview + Mermaid extraction. Cytoscape graph visualization with fullscreen mode. Upload history management. Lightbox for zoomable previews. Azure DI OCR text extraction for improved Mermaid labeling. LLM reasoning trace display. Frontend refactored into modular CSS/JS.
 - **v5.0.3 (2025-12-02)** – Fix: Custom chunker now works on legacy runs by extracting elements from .chunks.jsonl files.
 - **v5.0.2 (2025-12-02)** – Fix: Element bounding boxes now display for legacy chunks-only runs (pre-v5.0). Element type filtering works on legacy runs without .elements.jsonl files.
 - **v5.0.1 (2025-12-02)** – Fix: Legacy runs (pre-v5.0) now discovered correctly by scanning both .elements.jsonl and .chunks.jsonl files. Added backwards-compatible provider aliases (azure-di, unstructured, unstructured-partition).

@@ -1,6 +1,6 @@
 [project]
 name = "chunking-tests"
-version = "5.0.4"
+version = "6.0.0"
 description = "Document ingestion sandbox for Azure Document Intelligence with custom chunking."
 requires-python = ">=3.11,<3.12"
 

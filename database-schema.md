@@ -18,6 +18,7 @@ Source PDFs are read from a configurable directory:
 
 ## Version history
 
+- **v6.0.0 (2026-01-27)** – Images Tab & Vision Pipeline: New top-level Images tab for exploring PDF figures and standalone image uploads. Two-stage vision pipeline with SAM3 segmentation preview + Mermaid extraction. Cytoscape graph visualization with fullscreen mode. Upload history management. Lightbox for zoomable previews. Azure DI OCR text extraction for improved Mermaid labeling. LLM reasoning trace display. Frontend refactored into modular CSS/JS for maintainability.
 - **v5.0 (2025-12-01)** – Custom chunker improvements: section headings inside Table/Figure boxes stay attached to container, consecutive headings merge, paragraphs inside tables filtered, tables/figures included in parent sections. UI: element drawer hierarchy, resizable panels, centered PDF viewer, smart parameter banner, alternating chunk overlay colors, run persistence across reloads.
 - **v4.4 (2025-11-28)** – Apple Liquid Glass UI redesign with frosted glass effects, dark/light theme toggle, Apple system color palette, smooth spring animations.
 - **v4.3 (2025-11-27)** – Figure elements in Azure DI outline view, direct page jump input, What's New modal, RTL table fix, fixed PDF legend, Azure DI as default provider.
