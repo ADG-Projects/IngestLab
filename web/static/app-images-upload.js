@@ -335,6 +335,12 @@ function renderUploadPipelineView(data, options = {}) {
                   </div>
                 </details>
               ` : ''}
+              ${processing.reasoning_trace ? `
+                <details class="step-reasoning">
+                  <summary>Reasoning</summary>
+                  <p>${escapeHtml(processing.reasoning_trace)}</p>
+                </details>
+              ` : ''}
               <pre class="mermaid-code">${escapeHtml(processing.processed_content)}</pre>
             ` : extractionDone ? `
               <span class="no-data">Mermaid diagram not available (figure type: ${figureType})</span>

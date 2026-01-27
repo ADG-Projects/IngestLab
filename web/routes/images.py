@@ -585,6 +585,7 @@ def api_upload_detail(upload_id: str) -> Dict[str, Any]:
             "description": proc_result.get("description"),
             "intermediate_nodes": proc_result.get("intermediate_nodes"),
             "intermediate_edges": proc_result.get("intermediate_edges"),
+            "reasoning_trace": proc_result.get("reasoning_trace"),
         }
 
     # Check for annotated image
@@ -1113,6 +1114,7 @@ def api_figure_detail(
             "step2_duration_ms": proc_result.get("step2_duration_ms"),
             "intermediate_nodes": proc_result.get("intermediate_nodes"),
             "intermediate_edges": proc_result.get("intermediate_edges"),
+            "reasoning_trace": proc_result.get("reasoning_trace"),
         }
     elif figure_processing:
         result["processing"] = figure_processing
