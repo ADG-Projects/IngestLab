@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Chunking Visualizer</title>
-    <link rel="stylesheet" href="/styles.css?v=20251128-glass" />
+    <link rel="stylesheet" href="/styles.css?v=20250123-cytoscape" />
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%230a223f'/%3E%3Cpath d='M18 42l14-20 14 20-14-7z' fill='%23f5a524'/%3E%3C/svg%3E" />
     <!-- Prefer local vendor copy (server auto-fetches if missing), fallback to CDN -->
     <script>
@@ -81,11 +81,15 @@
       <div class="header-left">
         <div class="title-stack">
           <h1>Chunking Visualizer</h1>
-          <span class="version-badge" id="versionBadge" title="What's new">v5.0.4</span>
+          <span class="version-badge" id="versionBadge" title="What's new">v6.0.0</span>
         </div>
         <div class="view-tabs" role="tablist" aria-label="Primary view">
           <button id="viewTabInspect" class="tab active" data-view="inspect" role="tab" aria-selected="true">Inspect</button>
           <button id="viewTabFeedback" class="tab" data-view="feedback" role="tab" aria-selected="false">Feedback</button>
+          <button id="viewTabImages" class="tab" data-view="images" role="tab" aria-selected="false">
+            Images
+            <span class="experimental-badge">EXPERIMENTAL</span>
+          </button>
         </div>
       </div>
       <div class="controls">
@@ -310,6 +314,73 @@
         <pre id="feedbackAnalysis" class="analysis-output" aria-live="polite"></pre>
       </div>
     </section>
+
+    <!-- Images View (EXPERIMENTAL) -->
+    <section id="imagesView" class="images-view hidden" aria-labelledby="viewTabImages">
+      <div class="images-header card">
+        <div class="images-mode-tabs">
+          <button class="mode-tab active" data-mode="pdf-figures">PDF Figures</button>
+          <button class="mode-tab" data-mode="upload">Upload Image</button>
+        </div>
+        <div class="experimental-notice">
+          This feature requires the PolicyAsCode figure-vision branch.
+        </div>
+      </div>
+
+      <!-- PDF Figures Panel -->
+      <div id="imagesPdfFiguresPanel" class="images-panel">
+        <div id="imagesStats" class="images-stats card"></div>
+        <div class="images-content">
+          <div id="imagesFigureList" class="figure-list">
+            <div class="empty-state">Select a run to view figures</div>
+          </div>
+          <div id="imagesFigureDetails" class="figure-details hidden"></div>
+        </div>
+      </div>
+
+      <!-- Upload Panel -->
+      <div id="imagesUploadPanel" class="images-panel hidden">
+        <div class="upload-panel-layout">
+          <!-- History Sidebar -->
+          <aside class="upload-history-sidebar">
+            <div class="upload-history-header">
+              <h4>History</h4>
+              <button id="refreshHistoryBtn" class="btn btn-icon" title="Refresh history">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <polyline points="23,4 23,10 17,10"/>
+                  <polyline points="1,20 1,14 7,14"/>
+                  <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                </svg>
+              </button>
+            </div>
+            <div id="uploadHistoryList" class="upload-history-list">
+              <div class="empty-state">No previous uploads</div>
+            </div>
+          </aside>
+
+          <!-- Main Upload Area -->
+          <div class="upload-main-area">
+            <div class="upload-container card">
+              <form id="imageUploadForm" class="upload-form">
+                <div id="imageUploadZone" class="upload-zone">
+                  <div class="upload-icon">
+                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                      <polyline points="17,8 12,3 7,8"/>
+                      <line x1="12" y1="3" x2="12" y2="15"/>
+                    </svg>
+                  </div>
+                  <p class="upload-text">Drop an image here or click to browse</p>
+                  <p class="upload-hint">Supports PNG, JPEG, WebP</p>
+                  <input type="file" id="imageUploadInput" accept="image/png,image/jpeg,image/webp" hidden />
+                </div>
+              </form>
+              <div id="imageUploadResult" class="upload-result-container"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
   </main>
 
     <div id="toast" class="toast"></div>
@@ -516,6 +587,21 @@
         </div>
         <div class="whats-new-body">
           <div class="version-section">
+            <h3 class="version-header">v6.0.0 <span class="version-date">2026-01-27</span></h3>
+            <ul>
+              <li><strong>Images Tab</strong>: New top-level tab for exploring PDF figures and standalone image uploads</li>
+              <li><strong>Two-stage Vision Pipeline</strong>: Interactive SAM3 segmentation preview + separate Mermaid diagram extraction</li>
+              <li><strong>Cytoscape Visualization</strong>: Interactive graph rendering for extracted diagrams with fullscreen mode</li>
+              <li><strong>Upload History</strong>: Track and manage previously uploaded images with deletion support</li>
+              <li><strong>Lightbox</strong>: Zoomable image previews with keyboard navigation</li>
+              <li><strong>Text Position Extraction</strong>: Azure DI OCR for uploaded images improves Mermaid label accuracy</li>
+              <li><strong>Reasoning Trace Display</strong>: View LLM reasoning steps in the pipeline view</li>
+              <li>Frontend refactored into domain-specific CSS and JS modules for better maintainability</li>
+              <li>Pipeline steps now update incrementally during processing</li>
+              <li>Improved Cytoscape node layout with proper aspect ratio preservation</li>
+            </ul>
+          </div>
+          <div class="version-section">
             <h3 class="version-header">v5.0.4 <span class="version-date">2025-01-22</span></h3>
             <ul>
               <li>Fix: Chunker endpoint properly converts element dicts to Pydantic models before chunking</li>
@@ -670,16 +756,37 @@
     </div>
 
     <script src="/vendor/chartjs/chart.umd.min.js" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cytoscape/3.28.1/cytoscape.min.js" defer></script>
+    <script src="https://unpkg.com/elkjs@0.9.3/lib/elk.bundled.js" defer></script>
+    <script src="https://unpkg.com/cytoscape-elk@2.2.0/dist/cytoscape-elk.js" defer></script>
     <script src="/app-theme.js?v=20251201"></script>
     <script src="/app-state.js?v=20251201" defer></script>
     <script src="/app-ui.js?v=20251201" defer></script>
     <script src="/app-reviews.js?v=20251201" defer></script>
     <script src="/app-overlays.js?v=20251201" defer></script>
     <script src="/app-metrics.js?v=20251201" defer></script>
-    <script src="/app-elements.js?v=20251201" defer></script>
+    <!-- Elements modules (dependencies for app-elements.js) -->
+    <script src="/app-elements-filter.js?v=20250126" defer></script>
+    <script src="/app-elements-outline.js?v=20250126" defer></script>
+    <script src="/app-elements-cards.js?v=20250126" defer></script>
+    <script src="/app-elements.js?v=20250126" defer></script>
     <script src="/app-chunks.js?v=20251201" defer></script>
     <script src="/app-feedback.js?v=20251201" defer></script>
-    <script src="/app-runs.js?v=20251201" defer></script>
+    <!-- Images modules (dependencies for app-images.js) -->
+    <script src="/app-lightbox.js?v=20250126" defer></script>
+    <script src="/app-cytoscape.js?v=20250127g" defer></script>
+    <script src="/app-images-pipeline.js?v=20250126" defer></script>
+    <script src="/app-images-figures.js?v=20250127b" defer></script>
+    <script src="/app-images-upload.js?v=20250127b" defer></script>
+    <script src="/app-images-history.js?v=20250126" defer></script>
+    <script src="/app-images.js?v=20250126" defer></script>
+    <!-- Runs modules (dependencies for app-runs.js) -->
+    <script src="/app-pdf.js?v=20250126" defer></script>
+    <script src="/app-run-jobs.js?v=20250126" defer></script>
+    <script src="/app-run-preview.js?v=20250126" defer></script>
+    <script src="/app-run-form.js?v=20250126" defer></script>
+    <script src="/app-modal.js?v=20250126" defer></script>
+    <script src="/app-runs.js?v=20250126" defer></script>
     <script src="/app.js?v=20251201" defer></script>
   </body>
   </html>

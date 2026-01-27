@@ -27,3 +27,4 @@ dist/
 
 # Testing artifacts
 .playwright-mcp/
+node_modules

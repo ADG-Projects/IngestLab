@@ -1,9 +1,10 @@
 [project]
 name = "chunking-tests"
-version = "5.0.4"
+version = "6.0.0"
 description = "Document ingestion sandbox for Azure Document Intelligence with custom chunking."
 requires-python = ">=3.11,<3.12"
-# Core dependencies for Azure DI + PolicyAsCode custom chunker
+
+# Core dependencies - web server and document processing
 dependencies = [
     "fastapi",
     "uvicorn[standard]",
@@ -13,8 +14,26 @@ dependencies = [
     "python-multipart",
     "pypdf",
     "openai",
-    # Import extractors from PolicyAsCode (formerly BRD-Demo)
+    # PolicyAsCode extractors and figure processing
     "brd-to-opa-pipeline @ git+https://github.com/kyndryl-agentic-ai/PolicyAsCode.git@feature/chunking-visualizer-integration",
+    # Required for figure processing (FigureProcessor)
+    "pymupdf>=1.26.7",
+    "opencv-python>=4.13.0.90",
+]
+
+[project.optional-dependencies]
+# For running SAM3 model server locally (GPU recommended)
+# Not needed if using remote SAM3 endpoint (RunPod, etc.)
+sam3-local = [
+    "torch>=2.10.0",
+    "transformers>=5.0.0rc1",
+    "huggingface-hub>=0.36.0",
+    "torchvision>=0.25.0",
+]
+
+# Full install with all optional features
+full = [
+    "chunking-tests[sam3-local]",
 ]
 
 [build-system]

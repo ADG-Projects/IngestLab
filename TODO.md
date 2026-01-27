@@ -5,6 +5,15 @@
 
 ## Completed
 
+- [x] 2026-01-27 Release v6.0.0 (Images tab, vision pipeline, Cytoscape visualization, upload history, lightbox, reasoning traces).
+- [x] 2026-01-27 Add reasoning trace display in pipeline view showing LLM reasoning steps.
+- [x] 2026-01-27 Improve Cytoscape viewer with proper aspect ratio, fullscreen, and dynamic node sizing.
+- [x] 2026-01-27 Extract text_positions from uploaded images via Azure DI OCR for improved Mermaid labeling.
+- [x] 2026-01-26 Refactor frontend into domain-specific CSS and JS modules.
+- [x] 2026-01-25 Add Cytoscape visualization for extracted diagrams with interactive graph rendering.
+- [x] 2026-01-25 Add upload history UI with deletion support.
+- [x] 2026-01-24 Add image lightbox for zoomable previews with keyboard navigation.
+- [x] 2025-01-23 Add two-stage figure pipeline with SAM3 segmentation preview and separate mermaid extraction.
 - [x] 2025-01-22 Release v5.0.4 (Fix Pydantic serialization for chunker and extraction pipelines).
 - [x] 2025-12-02 Release v5.0.3 (Fix custom chunker to work on legacy runs).
 - [x] 2025-12-02 Fix chunker endpoint to extract elements from legacy .chunks.jsonl files when no .elements.jsonl exists.

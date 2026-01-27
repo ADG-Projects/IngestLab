@@ -1,0 +1,182 @@
+/* =============================================================================
+   DESIGN TOKENS - Apple Liquid Glass Aesthetic
+   ============================================================================= */
+
+:root {
+  /* === COLOR PALETTE - Apple System Colors === */
+  --color-primary: #0a84ff;
+  --color-primary-hover: #409cff;
+  --color-success: #30d158;
+  --color-success-hover: #34c759;
+  --color-danger: #ff453a;
+  --color-danger-hover: #ff6961;
+  --color-warning: #ffd60a;
+  --color-orange: #ff9f0a;
+  --color-purple: #bf5af2;
+  --color-pink: #ff375f;
+  --color-cyan: #64d2ff;
+  --color-indigo: #5e5ce6;
+  --color-brown: #ac8e68;
+
+  /* === DARK THEME (Default) === */
+  --bg-base: #000000;
+  --bg-primary: rgba(28, 28, 30, 0.72);
+  --bg-secondary: rgba(44, 44, 46, 0.65);
+  --bg-tertiary: rgba(58, 58, 60, 0.55);
+  --bg-elevated: rgba(44, 44, 46, 0.85);
+  --bg-solid: #1c1c1e;
+  --bg-solid-secondary: #2c2c2e;
+
+  --surface-glass: rgba(255, 255, 255, 0.06);
+  --surface-glass-hover: rgba(255, 255, 255, 0.10);
+  --surface-glass-active: rgba(255, 255, 255, 0.14);
+
+  --text-primary: rgba(255, 255, 255, 0.92);
+  --text-secondary: rgba(255, 255, 255, 0.60);
+  --text-tertiary: rgba(255, 255, 255, 0.40);
+  --text-inverted: rgba(0, 0, 0, 0.85);
+
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-default: rgba(255, 255, 255, 0.10);
+  --border-strong: rgba(255, 255, 255, 0.16);
+  --border-highlight: rgba(255, 255, 255, 0.22);
+
+  /* === ELEMENT TYPE COLORS - Apple System Palette === */
+  --type-paragraph: #30d158;
+  --type-text: #30d158;
+  --type-narrative: #30d158;
+  --type-table: #0a84ff;
+  --type-figure: #bf5af2;
+  --type-image: #bf5af2;
+  --type-title: #ff9f0a;
+  --type-header: #64d2ff;
+  --type-footer: #64d2ff;
+  --type-page-number: #98989d;
+  --type-list: #ffd60a;
+  --type-line: #ff9f0a;
+  --type-code: #ff375f;
+  --type-formula: #5e5ce6;
+  --type-default: #98989d;
+
+  /* === GLASS EFFECTS === */
+  --glass-blur: 20px;
+  --glass-blur-heavy: 40px;
+  --glass-saturation: 180%;
+  --glass-brightness: 1.05;
+
+  /* === SHADOWS === */
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.20);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.28);
+  --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.35);
+  --shadow-glow-primary: 0 0 20px rgba(10, 132, 255, 0.35);
+  --shadow-glow-success: 0 0 16px rgba(48, 209, 88, 0.40);
+  --shadow-glow-danger: 0 0 16px rgba(255, 69, 58, 0.40);
+
+  /* === SPACING === */
+  --space-xs: 4px;
+  --space-sm: 8px;
+  --space-md: 12px;
+  --space-lg: 16px;
+  --space-xl: 24px;
+  --space-2xl: 32px;
+
+  /* === BORDER RADIUS === */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
+  --radius-pill: 999px;
+
+  /* === TYPOGRAPHY === */
+  --font-sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  --text-xs: 11px;
+  --text-sm: 13px;
+  --text-base: 15px;
+  --text-lg: 17px;
+  --text-xl: 20px;
+  --text-2xl: 24px;
+
+  --leading-tight: 1.2;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.7;
+
+  /* === ANIMATION === */
+  --duration-instant: 100ms;
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --duration-slow: 400ms;
+  --duration-slower: 600ms;
+
+  --ease-out: cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+  /* === LEGACY COMPATIBILITY (maps to new tokens) === */
+  --bg: var(--bg-base);
+  --panel: var(--bg-solid);
+  --accent: var(--color-primary);
+  --accent-2: var(--color-success);
+  --text: var(--text-primary);
+  --muted: var(--text-secondary);
+  --danger: var(--color-danger);
+  --ok: var(--color-success);
+}
+
+/* === LIGHT THEME === */
+[data-theme="light"] {
+  --bg-base: #f2f2f7;
+  --bg-primary: rgba(255, 255, 255, 0.72);
+  --bg-secondary: rgba(242, 242, 247, 0.65);
+  --bg-tertiary: rgba(229, 229, 234, 0.55);
+  --bg-elevated: rgba(255, 255, 255, 0.88);
+  --bg-solid: #ffffff;
+  --bg-solid-secondary: #f2f2f7;
+
+  --surface-glass: rgba(0, 0, 0, 0.03);
+  --surface-glass-hover: rgba(0, 0, 0, 0.05);
+  --surface-glass-active: rgba(0, 0, 0, 0.08);
+
+  --text-primary: rgba(0, 0, 0, 0.88);
+  --text-secondary: rgba(0, 0, 0, 0.55);
+  --text-tertiary: rgba(0, 0, 0, 0.35);
+  --text-inverted: rgba(255, 255, 255, 0.92);
+
+  --border-subtle: rgba(0, 0, 0, 0.04);
+  --border-default: rgba(0, 0, 0, 0.08);
+  --border-strong: rgba(0, 0, 0, 0.12);
+  --border-highlight: rgba(255, 255, 255, 0.85);
+
+  /* Light mode element colors (Apple adaptive) */
+  --type-paragraph: #34c759;
+  --type-text: #34c759;
+  --type-narrative: #34c759;
+  --type-table: #007aff;
+  --type-figure: #af52de;
+  --type-image: #af52de;
+  --type-title: #ff9500;
+  --type-header: #32ade6;
+  --type-footer: #32ade6;
+  --type-page-number: #8e8e93;
+  --type-list: #ffcc00;
+  --type-line: #ff9500;
+  --type-code: #ff2d55;
+  --type-formula: #5856d6;
+  --type-default: #8e8e93;
+
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.12);
+  --shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.16);
+  --shadow-glow-primary: 0 0 20px rgba(0, 122, 255, 0.25);
+  --shadow-glow-success: 0 0 16px rgba(52, 199, 89, 0.30);
+  --shadow-glow-danger: 0 0 16px rgba(255, 59, 48, 0.30);
+
+  /* Legacy compatibility */
+  --bg: var(--bg-base);
+  --panel: var(--bg-solid);
+  --text: var(--text-primary);
+  --muted: var(--text-secondary);
+}

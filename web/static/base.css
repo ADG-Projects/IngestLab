@@ -1,0 +1,94 @@
+/* =============================================================================
+   BASE STYLES
+   ============================================================================= */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+}
+
+body {
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: var(--font-sans);
+  font-size: var(--text-base);
+  line-height: var(--leading-normal);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* =============================================================================
+   GLASS UTILITY CLASSES
+   ============================================================================= */
+
+.glass-surface {
+  background: var(--bg-primary);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-lg);
+}
+
+.glass-elevated {
+  background: var(--bg-elevated);
+  backdrop-filter: blur(var(--glass-blur-heavy)) saturate(var(--glass-saturation)) brightness(var(--glass-brightness));
+  -webkit-backdrop-filter: blur(var(--glass-blur-heavy)) saturate(var(--glass-saturation)) brightness(var(--glass-brightness));
+  border: 1px solid var(--border-highlight);
+  box-shadow: var(--shadow-lg);
+}
+
+/* Top highlight edge - signature Liquid Glass effect */
+.glass-highlight {
+  position: relative;
+}
+
+.glass-highlight::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 10%;
+  right: 10%;
+  height: 1px;
+  background: linear-gradient(90deg,
+    transparent,
+    var(--border-highlight) 20%,
+    var(--border-highlight) 80%,
+    transparent
+  );
+  pointer-events: none;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+}
+
+/* Backdrop filter fallback for older browsers */
+@supports not (backdrop-filter: blur(1px)) {
+  .glass-surface {
+    background: var(--bg-solid);
+  }
+  .glass-elevated {
+    background: var(--bg-solid);
+  }
+}
+
+/* =============================================================================
+   UTILITY CLASSES
+   ============================================================================= */
+
+.hidden {
+  display: none !important;
+}
+
+.muted {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.placeholder {
+  color: var(--muted);
+  font-size: 12px;
+}

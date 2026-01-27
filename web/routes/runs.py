@@ -6,6 +6,7 @@ import re
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+import fitz  # PyMuPDF
 from fastapi import APIRouter, HTTPException, Query
 
 from src.extractors.azure_di import (
@@ -167,6 +168,149 @@ def _write_run_metadata(path: Path, run_config: Dict[str, Any]) -> None:
         fh.write("\n")
 
 
+def _extract_figure_from_pdf(
+    pdf_path: Path,
+    page_number: int,
+    coordinates: Dict[str, Any],
+    dpi: int = 150,
+) -> Optional[bytes]:
+    """Extract a figure region from a PDF page as PNG bytes.
+
+    Args:
+        pdf_path: Path to the PDF file
+        page_number: 1-indexed page number
+        coordinates: Dict with 'points' (4 corners) and layout dimensions
+        dpi: Resolution for rendering (default 150)
+
+    Returns:
+        PNG image bytes or None if extraction fails
+    """
+    try:
+        doc = fitz.open(pdf_path)
+        page_idx = page_number - 1
+        if page_idx < 0 or page_idx >= len(doc):
+            logger.warning(f"Page {page_number} out of range for {pdf_path}")
+            return None
+
+        page = doc[page_idx]
+        points = coordinates.get("points", [])
+        if len(points) < 4:
+            logger.warning(f"Invalid coordinates: {coordinates}")
+            return None
+
+        xs = [p[0] for p in points]
+        ys = [p[1] for p in points]
+        x0, y0 = min(xs), min(ys)
+        x1, y1 = max(xs), max(ys)
+
+        clip = fitz.Rect(x0, y0, x1, y1)
+        zoom = dpi / 72.0
+        mat = fitz.Matrix(zoom, zoom)
+        pix = page.get_pixmap(matrix=mat, clip=clip)
+        doc.close()
+        return pix.tobytes("png")
+    except Exception as e:
+        logger.exception(f"Failed to extract figure from PDF: {e}")
+        return None
+
+
+def _process_figures_after_extraction(
+    elements: List[Dict[str, Any]],
+    pdf_path: Path,
+    figures_dir: Path,
+    run_id: Optional[str] = None,
+) -> List[Dict[str, Any]]:
+    """Process figures through vision pipeline after extraction.
+
+    Extracts figure images from PDF using bounding boxes and processes
+    them through the PolicyAsCode vision pipeline if available.
+
+    Args:
+        elements: List of extracted elements
+        pdf_path: Path to the trimmed PDF
+        figures_dir: Directory to save extracted figure images
+        run_id: Optional run identifier
+
+    Returns:
+        Updated elements list with figure_processing added to figure elements
+    """
+    # Check for figures (case-insensitive)
+    figures = [el for el in elements if el.get("type", "").lower() == "figure"]
+    if not figures:
+        return elements
+
+    logger.info(f"Found {len(figures)} figures to process")
+
+    # Try to import the vision processor
+    try:
+        from chunking_pipeline.figure_processor import get_processor
+        processor = get_processor()
+        vision_available = True
+        logger.info("Vision pipeline available for figure processing")
+    except ImportError:
+        processor = None
+        vision_available = False
+        logger.info("Vision pipeline not available - extracting images only")
+
+    # Ensure figures directory exists
+    figures_dir.mkdir(parents=True, exist_ok=True)
+
+    for el in elements:
+        if el.get("type", "").lower() != "figure":
+            continue
+
+        element_id = el.get("element_id", "")
+        md = el.get("metadata", {})
+        page_number = el.get("page_number") or md.get("page_number")
+        coordinates = md.get("coordinates", {})
+
+        if not page_number or not coordinates.get("points"):
+            logger.warning(f"Figure {element_id} missing page/coordinates, skipping")
+            continue
+
+        # Extract figure from PDF
+        png_bytes = _extract_figure_from_pdf(pdf_path, page_number, coordinates)
+        if not png_bytes:
+            logger.warning(f"Failed to extract figure {element_id} from PDF")
+            continue
+
+        # Save extracted image
+        image_path = figures_dir / f"{element_id}.png"
+        image_path.write_bytes(png_bytes)
+
+        # Update element with image filename
+        if "metadata" not in el:
+            el["metadata"] = {}
+        el["metadata"]["figure_image_filename"] = image_path.name
+        logger.debug(f"Extracted figure {element_id} to {image_path}")
+
+        # Process through vision pipeline if available
+        if vision_available and processor:
+            try:
+                ocr_text = el.get("content", "") or el.get("text", "")
+                result = processor.process_and_save(
+                    image_path=image_path,
+                    output_dir=figures_dir,
+                    element_id=element_id,
+                    ocr_text=ocr_text,
+                    run_id=run_id,
+                )
+                el["figure_processing"] = {
+                    "figure_type": result.get("figure_type"),
+                    "confidence": result.get("confidence"),
+                    "processed_content": result.get("processed_content"),
+                    "description": result.get("description"),
+                    "step1_duration_ms": result.get("step1_duration_ms"),
+                    "step2_duration_ms": result.get("step2_duration_ms"),
+                }
+                logger.info(f"Processed figure {element_id}: {result.get('figure_type')}")
+            except Exception as e:
+                logger.error(f"Vision processing failed for {element_id}: {e}")
+                el["figure_processing"] = {"error": str(e)}
+
+    return elements
+
+
 def _run_extraction(metadata: Dict[str, Any]) -> None:
     """Worker function for Azure DI extraction.
 
@@ -248,6 +392,13 @@ def _run_extraction(metadata: Dict[str, Any]) -> None:
             run_config[key] = val.model_dump()
         else:
             run_config[key] = val
+
+    # Process figures: extract images from PDF and run vision pipeline if available
+    figures_dir = elements_path.parent / f"{elements_path.stem.replace('.elements', '')}.figures"
+    slug_with_pages = metadata.get("slug_with_pages")
+    elems = _process_figures_after_extraction(
+        elems, trimmed_path, figures_dir, run_id=slug_with_pages
+    )
 
     # Write outputs
     _write_elements_jsonl(elements_path, elems)

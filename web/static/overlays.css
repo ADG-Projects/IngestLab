@@ -1,0 +1,725 @@
+
+.legend {
+  position: absolute;
+  top: var(--space-md);
+  left: var(--space-md);
+  z-index: 3;
+  background: var(--bg-elevated);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--border-default);
+  padding: var(--space-sm) var(--space-md);
+  border-radius: var(--radius-md);
+  display: grid;
+  gap: var(--space-xs);
+  width: fit-content;
+  box-shadow: var(--shadow-md);
+}
+
+.legend.hidden {
+  display: none;
+}
+
+
+/* =============================================================================
+   ELEMENT HIERARCHY IN DRAWER
+   ============================================================================= */
+
+.element-hierarchy-section {
+  margin: var(--space-lg) 0;
+  border-top: 1px solid var(--border-subtle);
+  padding-top: var(--space-lg);
+}
+
+.element-hierarchy-section .section-title {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: var(--space-md);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.element-hierarchy-tree {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  max-height: 360px;
+  overflow-y: auto;
+  padding-right: var(--space-sm);
+}
+
+.element-card.hierarchy-current {
+  border-color: var(--color-primary);
+  background: var(--surface-glass-active);
+  box-shadow: var(--shadow-sm);
+  margin-left: -4px;
+  /* Pull out slightly to emphasize border */
+  border-left-width: 6px;
+}
+
+.element-card.hierarchy-ancestor {
+  opacity: 0.8;
+}
+
+.element-hierarchy-tree .elements-outline-row {
+  margin-bottom: 4px;
+}
+
+.elements-outline-page.elements-outline-page-embedded {
+  background: var(--surface-glass);
+  border-radius: var(--radius-md);
+  border-color: var(--border-subtle);
+  padding: var(--space-sm);
+}
+
+.elements-outline-page-embedded .elements-outline-page-head {
+  padding: 0 var(--space-xs) var(--space-xs);
+}
+
+.elements-outline-page-embedded .elements-outline-body {
+  padding-bottom: var(--space-xs);
+}
+
+
+.legend .item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.legend .swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  border: 1px solid var(--border-strong);
+}
+
+.box {
+  position: absolute;
+  border: 2px solid var(--accent);
+  background: rgba(107, 188, 255, 0.18);
+  border-radius: 4px;
+  /* allow hover interactions on individual boxes even though host overlay ignores pointer events */
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.box.orig {
+  background: transparent !important;
+  border-style: dashed;
+  border-width: 1px;
+  opacity: 0.7;
+}
+
+.box.best {
+  border-color: var(--accent-2);
+  background: rgba(142, 243, 197, 0.22);
+}
+
+/* Tooltip portal - renders tooltips outside overflow containers */
+#tooltip-portal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  z-index: 100000;
+}
+
+/* Overlay tooltip for boxes (rendered in portal) */
+#tooltip-portal .box-tip {
+  position: fixed;
+  background: var(--bg-elevated);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturation));
+  color: var(--text-primary);
+  border: 1px solid var(--border-highlight);
+  border-radius: var(--radius-md);
+  padding: var(--space-sm) var(--space-md);
+  font-size: var(--text-sm);
+  line-height: 1.25;
+  max-width: 360px;
+  box-shadow: var(--shadow-lg);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--duration-fast) var(--ease-out);
+  white-space: normal;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+}
+
+#tooltip-portal .box-tip .muted {
+  color: var(--muted);
+}
+
+section.right {
+  position: relative;
+  border-left: 1px solid var(--border-default);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* Resize handle for right panel */
+.resize-handle {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  cursor: ew-resize;
+  background: transparent;
+  z-index: 10;
+  transition: background var(--duration-fast);
+}
+
+.resize-handle:hover,
+.resize-handle.dragging {
+  background: var(--accent-primary);
+}
+
+body.resizing-drawer {
+  cursor: ew-resize !important;
+  user-select: none;
+}
+
+.hidden {
+  display: none !important;
+}
+
+.tabs {
+  display: flex;
+  gap: var(--space-xs);
+  padding: var(--space-md) var(--space-md) 0;
+  border-bottom: 1px solid var(--border-subtle);
+  flex-shrink: 0;
+  background: var(--surface-glass);
+}
+
+.tab {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 0;
+  padding: var(--space-sm) var(--space-md);
+  cursor: pointer;
+  border-radius: var(--radius-sm) var(--radius-sm) 0 0;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  transition: all var(--duration-fast) var(--ease-out);
+  position: relative;
+}
+
+.tab:hover:not(.active) {
+  color: var(--text-primary);
+  background: var(--surface-glass-hover);
+}
+
+.tab.active {
+  color: var(--text-primary);
+  background: var(--surface-glass-active);
+  box-shadow: inset 0 -1px 0 var(--border-highlight);
+}
+
+.tab.active::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 10%;
+  right: 10%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border-highlight) 30%, var(--border-highlight) 70%, transparent);
+  border-radius: 0 0 2px 2px;
+}
+
+.pane {
+  display: none;
+}
+
+.pane.active {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.elements {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  flex: 1;
+  min-height: 0;
+}
+
+.elements .row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.types {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.elements-list {
+  display: grid;
+  gap: 6px;
+  margin-top: 6px;
+  flex: 1;
+  overflow: auto;
+  min-height: 0;
+  align-content: flex-start;
+}
+
+.element-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--bg-secondary);
+  backdrop-filter: blur(var(--glass-blur));
+  -webkit-backdrop-filter: blur(var(--glass-blur));
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  padding: var(--space-sm) var(--space-md);
+  cursor: pointer;
+  font-size: var(--text-sm);
+  color: var(--text-primary);
+  transition: all var(--duration-fast) var(--ease-out);
+}
+
+.element-item .meta {
+  color: var(--text-secondary);
+}
+
+.element-item:hover {
+  background: var(--surface-glass-hover);
+  border-color: var(--border-strong);
+  transform: translateX(2px);
+}
+
+.config-card {
+  margin: 12px;
+  background: var(--panel);
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  padding: 10px;
+  flex-shrink: 0;
+}
+
+.config-card .config-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 8px;
+}
+
+.config-card .config-grid .lab {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.chunk-meta {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.chunk-summary {
+  flex-shrink: 0;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  border-radius: 0 !important;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.chunk-summary-row {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.chunk-summary .row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.chunk-summary .row.dual {
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+.chunk-summary .row.dual label {
+  flex: 1;
+  min-width: 180px;
+}
+
+.chunk-summary .row .lab {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.chunk-types {
+  display: grid;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 12px;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.chunk-stats {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  color: var(--muted);
+  font-size: 12px;
+  flex-shrink: 0;
+  padding-top: 6px;
+  border-top: 1px solid var(--border-default);
+}
+
+.chunk-stats>div {
+  display: flex;
+  justify-content: space-between;
+  padding: 2px 0;
+}
+
+.chunk-stats>div .lab {
+  min-width: 140px;
+}
+
+.chunk-stats>div>span:last-child {
+  font-weight: 500;
+  color: var(--text);
+}
+
+/* Pagination headers */
+.chunk-pagination,
+.element-pagination {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  color: var(--muted);
+  font-size: 12px;
+  flex-shrink: 0;
+  padding-bottom: 8px;
+}
+
+.chunk-pagination>div,
+.element-pagination>div {
+  display: flex;
+  justify-content: space-between;
+  padding: 2px 0;
+}
+
+.chunk-pagination>div .lab,
+.element-pagination>div .lab {
+  min-width: 140px;
+  font-weight: 500;
+}
+
+.chunk-pagination>div>span:last-child,
+.element-pagination>div>span:last-child {
+  font-weight: 500;
+  color: var(--text);
+}
+
+/* Collapsible stats */
+.collapsible-stats {
+  transition: opacity .2s ease, max-height .2s ease, margin .2s ease, padding .2s ease;
+  overflow: hidden;
+}
+
+/* =============================================================================
+   TYPE COLORS FOR OVERLAYS - Apple System Colors
+   ============================================================================= */
+
+.box.type-Paragraph {
+  border-color: var(--type-paragraph);
+  background: color-mix(in srgb, var(--type-paragraph) 18%, transparent);
+}
+
+.box.type-Line {
+  border-color: var(--type-line);
+  background: color-mix(in srgb, var(--type-line) 18%, transparent);
+}
+
+.box.type-Table {
+  border-color: var(--type-table);
+  background: color-mix(in srgb, var(--type-table) 20%, transparent);
+}
+
+.box.type-TableChunk {
+  border-color: var(--type-table);
+  background: color-mix(in srgb, var(--type-table) 20%, transparent);
+}
+
+.box.type-Title {
+  border-color: var(--type-title);
+  background: color-mix(in srgb, var(--type-title) 20%, transparent);
+}
+
+.box.type-TitleChunk {
+  border-color: var(--type-title);
+  background: color-mix(in srgb, var(--type-title) 20%, transparent);
+}
+
+.box.type-NarrativeText {
+  border-color: var(--type-narrative);
+  background: color-mix(in srgb, var(--type-narrative) 18%, transparent);
+}
+
+.box.type-Text,
+.box.type-TextChunk,
+.box.type-NarrativeTextChunk,
+.box.type-CompositeElement {
+  border-color: var(--type-text);
+  background: color-mix(in srgb, var(--type-text) 18%, transparent);
+}
+
+/* Alternate colors for consecutive CompositeElement chunks on same page */
+.box.type-CompositeElement.alt-1 {
+  border-color: var(--type-header);
+  background: color-mix(in srgb, var(--type-header) 18%, transparent);
+}
+
+.box.type-CompositeElement.alt-2 {
+  border-color: var(--type-figure);
+  background: color-mix(in srgb, var(--type-figure) 18%, transparent);
+}
+
+.box.type-CompositeElement.alt-3 {
+  border-color: var(--type-title);
+  background: color-mix(in srgb, var(--type-title) 18%, transparent);
+}
+
+.box.type-ListItem {
+  border-color: var(--type-list);
+  background: color-mix(in srgb, var(--type-list) 18%, transparent);
+}
+
+.box.type-ListItemChunk {
+  border-color: var(--type-list);
+  background: color-mix(in srgb, var(--type-list) 18%, transparent);
+}
+
+.box.type-Figure,
+.box.type-Image,
+.box.type-Picture {
+  border-color: var(--type-figure);
+  background: color-mix(in srgb, var(--type-figure) 18%, transparent);
+}
+
+.box.type-FigureChunk,
+.box.type-ImageChunk,
+.box.type-PictureChunk {
+  border-color: var(--type-figure);
+  background: color-mix(in srgb, var(--type-figure) 18%, transparent);
+}
+
+.box.type-Header,
+.box.type-Footer {
+  border-color: var(--type-header);
+  background: color-mix(in srgb, var(--type-header) 18%, transparent);
+}
+
+.box.type-pageHeader {
+  border-color: var(--type-header);
+  background: color-mix(in srgb, var(--type-header) 18%, transparent);
+}
+
+.box.type-pageNumber {
+  border-color: var(--type-page-number);
+  background: color-mix(in srgb, var(--type-page-number) 16%, transparent);
+}
+
+/* Azure Settings Styling */
+.azure-settings {
+  background: var(--surface-glass);
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  padding: 12px;
+  margin-top: 8px;
+}
+
+.azure-settings>.lab {
+  margin-bottom: 12px;
+  color: var(--text);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.azure-options {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.opt-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.opt-group .lab.sm {
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: none;
+  letter-spacing: 0.01em;
+  margin-bottom: 4px;
+}
+
+.opt-group label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.opt-group label:hover {
+  color: var(--accent);
+}
+
+.azure-advanced {
+  margin-top: 12px;
+  border-top: 1px solid var(--border-default);
+  padding-top: 12px;
+}
+
+.azure-advanced summary {
+  font-size: 12px;
+  color: var(--muted);
+  cursor: pointer;
+  margin-bottom: 8px;
+  user-select: none;
+}
+
+.azure-advanced summary:hover {
+  color: var(--text);
+}
+
+.azure-advanced[open] summary {
+  margin-bottom: 12px;
+}
+
+/* Ensure inputs inside labels don't break layout */
+.opt-group input[type="radio"],
+.opt-group input[type="checkbox"] {
+  margin: 0;
+  accent-color: var(--accent);
+}
+
+/* Unstructured Settings Styling (matching Azure) */
+.unstructured-settings {
+  background: var(--surface-glass);
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  padding: 12px;
+  margin-top: 8px;
+  margin-bottom: 8px;
+}
+
+.unstructured-settings>.lab {
+  margin-bottom: 12px;
+  color: var(--text);
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.unstructured-options {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+/* Ensure full width for checkbox row if needed, or keep grid */
+.unstructured-options .checkbox {
+  grid-column: span 1;
+}
+
+/* Adjust chunk-adv to fit inside */
+.chunk-adv {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-default);
+}
+
+/* Reuse adv-grid styling but ensure it fits */
+.adv-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-top: 6px;
+}
+
+/* What's New Modal */
+.whats-new-modal {
+  width: min(600px, calc(100vw - 24px));
+}
+
+.whats-new-body {
+  padding: 16px 20px;
+  overflow-y: auto;
+  max-height: calc(92vh - 60px);
+}
+
+.version-section {
+  margin-bottom: 20px;
+}
+
+.version-section:last-child {
+  margin-bottom: 0;
+}
+
+.version-header {
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0 0 8px 0;
+  color: var(--fg);
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.version-date {
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--muted);
+}
+
+.version-section ul {
+  margin: 0;
+  padding-left: 20px;
+  color: var(--fg-dim);
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.version-section li {
+  margin-bottom: 4px;
+}
+
+.version-section li:last-child {
+  margin-bottom: 0;
+}
+
