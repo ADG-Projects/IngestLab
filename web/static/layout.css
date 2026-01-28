@@ -67,6 +67,89 @@ header .controls {
   font-size: 12px;
 }
 
+/* Review chip in header controls */
+.review-chip {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border-default);
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: filter 0.15s ease, opacity 0.15s ease, border-color 0.15s ease;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  line-height: 1.1;
+  white-space: nowrap;
+}
+
+.review-chip.disabled {
+  opacity: 0.5;
+  cursor: default;
+  color: var(--muted);
+}
+
+.review-chip:not(.disabled):hover {
+  filter: brightness(1.08);
+}
+
+.review-chip.active {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.review-chip-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.review-chip-counts {
+  font-size: 12px;
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.review-chip-line {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.review-chip-good {
+  color: var(--ok);
+}
+
+.review-chip-bad {
+  color: var(--danger);
+}
+
+.review-chip.disabled .review-chip-good,
+.review-chip.disabled .review-chip-bad {
+  color: var(--muted);
+}
+
+.review-chip-sep {
+  color: var(--muted);
+  opacity: 0.9;
+}
+
+.review-chip-line.active .review-chip-label {
+  color: var(--accent);
+}
+
+.review-inline-count {
+  color: var(--muted);
+  font-size: 12px;
+  margin-left: auto;
+}
+
 /* =============================================================================
    SETTINGS RECAP BAR
    ============================================================================= */
