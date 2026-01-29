@@ -26,13 +26,6 @@ document.addEventListener('DOMContentLoaded', () => {
       renderElementsListForCurrentPage(CURRENT_PAGE_BOXES);
     });
   }
-  const langSel = $('settingPrimaryLang');
-  if (langSel) langSel.addEventListener('change', () => {
-    const nextLang = normalizeLangCode(langSel.value) || 'eng';
-    if (CURRENT_DOC_LANGUAGE === nextLang) return;
-    CURRENT_DOC_LANGUAGE = nextLang;
-    applyLanguageDirection();
-  });
   initFeedbackView().catch(err => {
     console.error('Feedback init failed', err);
     showToast(`Feedback init failed: ${err.message}`, 'err');

@@ -33,8 +33,6 @@ let EXTRACTION_RANGE_START = null;
 let HINTED_HIRES = false;
 let RETURN_TO = null;
 let CURRENT_DOC_LANGUAGE = 'eng';
-let SETTINGS_BANNER_PINNED = localStorage.getItem('settings_banner_pinned') === 'true';
-let SETTINGS_BANNER_TIMER = null;
 let FEEDBACK_INDEX = null;
 let FEEDBACK_PROVIDER_FILTER = 'all';
 let FEEDBACK_CHART = null;

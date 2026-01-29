@@ -105,7 +105,6 @@ async function loadExtraction(slug, provider = CURRENT_PROVIDER) {
 
   CURRENT_EXTRACTION_CONFIG = CURRENT_EXTRACTION?.run_config || null;
   CURRENT_CHUNK_SUMMARY = CURRENT_EXTRACTION?.chunk_summary || null;
-  updateExtractionConfigCard();
   updateMainFormatBadge();
   if (CURRENT_EXTRACTION_HAS_CHUNKS) {
     await loadChunksForExtraction(slug, CURRENT_PROVIDER);
@@ -298,7 +297,6 @@ async function refreshExtractions() {
     clearBoxes();
     updateLegend([]);
     clearDrawer();
-    updateExtractionConfigCard();
     renderChunksTab();
     populateTypeSelectors();
     renderElementsListForCurrentPage(CURRENT_PAGE_BOXES);
