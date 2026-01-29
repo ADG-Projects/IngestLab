@@ -93,15 +93,15 @@
         </div>
       </div>
       <div class="controls">
-        <label class="run-picker">
-          <span class="lab">Run</span>
-          <select id="runSelect"></select>
+        <label class="extraction-picker">
+          <span class="lab">Extraction</span>
+          <select id="extractionSelect"></select>
           <span id="mainFormatBadge" class="format-badge" style="display:none;"></span>
         </label>
         <button id="reviewSummaryChip" class="review-chip disabled" type="button" title="Click Elements or Chunks to focus reviews"></button>
-        <button id="openRunModal" class="btn">New Run Provider</button>
-        <button id="openChunkerModal" class="btn">New Run Chunker</button>
-        <button id="deleteRunBtn" class="btn" title="Delete current run">Delete run</button>
+        <button id="openExtractionModal" class="btn">New Extraction</button>
+        <button id="openChunkerModal" class="btn">New Chunker</button>
+        <button id="deleteExtractionBtn" class="btn" title="Delete current extraction">Delete Extraction</button>
         <button id="themeToggle" class="btn btn-icon" type="button" title="Toggle dark/light theme" aria-label="Toggle theme">
           <svg id="themeIconSun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <circle cx="12" cy="12" r="5"/>
@@ -263,7 +263,7 @@
         </div>
         <div class="card stat-card" id="feedbackCardLatest">
           <div class="stat-label">Latest</div>
-          <div class="stat-sub" id="feedbackLatestRun">-</div>
+          <div class="stat-sub" id="feedbackLatestExtraction">-</div>
           <div class="stat-sub muted" id="feedbackLatestUpdated">-</div>
         </div>
         <div class="card stat-card" id="feedbackCardProviders">
@@ -295,12 +295,12 @@
         <canvas id="feedbackScoreChart" aria-label="Feedback score chart"></canvas>
       </div>
 
-      <div class="card feedback-runs-card">
+      <div class="card feedback-extractions-card">
         <div class="card-title-row">
-          <div class="card-title">Runs with feedback</div>
+          <div class="card-title">Extractions with feedback</div>
           <input id="feedbackSearch" placeholder="Filter by slug or PDF" />
         </div>
-        <div id="feedbackRuns" class="feedback-runs"></div>
+        <div id="feedbackExtractions" class="feedback-extractions"></div>
       </div>
 
       <div class="card feedback-analysis-card">
@@ -333,7 +333,7 @@
         <div id="imagesStats" class="images-stats card"></div>
         <div class="images-content">
           <div id="imagesFigureList" class="figure-list">
-            <div class="empty-state">Select a run to view figures</div>
+            <div class="empty-state">Select an extraction to view figures</div>
           </div>
           <div id="imagesFigureDetails" class="figure-details hidden"></div>
         </div>
@@ -386,33 +386,33 @@
 
     <div id="toast" class="toast"></div>
 
-    <!-- New Run Provider Modal -->
-    <div id="runModal" class="modal hidden">
-      <div class="modal-backdrop" id="runModalBackdrop"></div>
+    <!-- New Extraction Modal -->
+    <div id="extractionModal" class="modal hidden">
+      <div class="modal-backdrop" id="extractionModalBackdrop"></div>
       <div class="modal-content card">
         <div class="modal-header">
-          <div class="modal-title">New Run Provider</div>
-          <button id="closeRunModal" class="btn">Close</button>
+          <div class="modal-title">New Extraction</div>
+          <button id="closeExtractionModal" class="btn">Close</button>
         </div>
-        <div class="run-modal-body">
-          <div class="run-preview" id="runPreviewPane">
-            <div class="run-preview-controls">
-              <span id="runFormatBadge" class="format-badge" style="display:none;"></span>
-              <button id="runPrev" class="btn">◀</button>
-              <span>Page <span id="runPageNum">-</span> / <span id="runPageCount">-</span></span>
-              <button id="runNext" class="btn">▶</button>
+        <div class="extraction-modal-body">
+          <div class="extraction-preview" id="extractionPreviewPane">
+            <div class="extraction-preview-controls">
+              <span id="extractionFormatBadge" class="format-badge" style="display:none;"></span>
+              <button id="extractionPrev" class="btn">◀</button>
+              <span>Page <span id="extractionPageNum">-</span> / <span id="extractionPageCount">-</span></span>
+              <button id="extractionNext" class="btn">▶</button>
               <span class="sep"></span>
               <button id="addPageBtn" class="btn">Add page</button>
               <button id="markStartBtn" class="btn">Mark start</button>
               <button id="markEndBtn" class="btn">Mark end</button>
               <span id="rangeHint" class="muted"></span>
             </div>
-            <div class="run-canvas-wrap">
-              <canvas id="runPdfCanvas"></canvas>
-              <div id="runPreviewMessage" class="preview-message" style="display:none;"></div>
+            <div class="extraction-canvas-wrap">
+              <canvas id="extractionPdfCanvas"></canvas>
+              <div id="extractionPreviewMessage" class="preview-message" style="display:none;"></div>
             </div>
           </div>
-          <div class="run-grid" id="runFormGrid">
+          <div class="extraction-grid" id="extractionFormGrid">
             <div class="pdf-lang-row">
               <label class="pdf-picker">
                 <div class="lab">PDF <span class="info" tabindex="0">i</span><div class="tip">Pick a source PDF from <code>res/</code>. Use Delete to remove the selected file from the server.</div></div>
@@ -422,7 +422,7 @@
                 </div>
               </label>
               <label class="lang-picker azure-hidden">
-                <div class="lab">UI primary language <span class="info" tabindex="0">i</span><div class="tip">Affects preview direction only. Azure runs rely on built-in language detection; Unstructured also forwards OCR hints.</div></div>
+                <div class="lab">UI primary language <span class="info" tabindex="0">i</span><div class="tip">Affects preview direction only. Azure extractions rely on built-in language detection; Unstructured also forwards OCR hints.</div></div>
                 <select id="docLanguage">
                   <option value="eng" selected>English (LTR)</option>
                   <option value="ara">Arabic (RTL)</option>
@@ -439,7 +439,7 @@
             </div>
             <div class="upload-row">
               <label>
-                <div class="lab">Upload PDF <span class="info" tabindex="0">i</span><div class="tip">Choose a file and it uploads immediately to the server's <code>PDF_DIR</code> (Fly volume mount) so future runs can reuse it.</div></div>
+                <div class="lab">Upload PDF <span class="info" tabindex="0">i</span><div class="tip">Choose a file and it uploads immediately to the server's <code>PDF_DIR</code> (Fly volume mount) so future extractions can reuse it.</div></div>
                 <input id="pdfUploadInput" type="file" accept=".pdf,.docx,.xlsx,.pptx,.jpg,.jpeg,.png,.bmp,.tiff,.tif,.heif" />
               </label>
               <button id="pdfUploadBtn" class="btn" type="button" style="display:none;">Upload</button>
@@ -477,7 +477,7 @@
               </div>
             </div>
             <label>
-              <div class="lab">Variant tag (optional) <span class="info" tabindex="0">i</span><div class="tip">Optional label appended to the run slug for side‑by‑side comparisons (e.g., <code>hires-2k</code>).</div></div>
+              <div class="lab">Variant tag (optional) <span class="info" tabindex="0">i</span><div class="tip">Optional label appended to the extraction slug for side‑by‑side comparisons (e.g., <code>hires-2k</code>).</div></div>
               <input id="variantTag" placeholder="e.g. hi-res-tuned" />
             </label>
             <div id="azureSettings" class="azure-settings hidden">
@@ -525,38 +525,38 @@
                 </label>
               </details>
             </div>
-            <div class="run-actions">
-              <button id="cancelRunBtn" class="btn btn-secondary" type="button">Cancel</button>
-              <button id="runBtn" class="btn">Run</button>
-              <span id="runStatus" class="muted"></span>
+            <div class="extraction-actions">
+              <button id="cancelExtractionBtn" class="btn btn-secondary" type="button">Cancel</button>
+              <button id="extractionBtn" class="btn">Extract</button>
+              <span id="extractionStatus" class="muted"></span>
             </div>
           </div>
         </div>
-        <div class="run-progress" id="runProgressPane">
-          <div class="run-progress-inner">
-            <div class="run-spinner" aria-hidden="true"></div>
-            <div class="run-progress-text" id="runProgressTitle">Running…</div>
-            <div class="run-progress-status muted" id="runProgressStatus"></div>
-            <div class="run-progress-subtitle muted" id="runProgressHint"></div>
-            <pre id="runProgressLogs" class="run-progress-logs"></pre>
+        <div class="extraction-progress" id="extractionProgressPane">
+          <div class="extraction-progress-inner">
+            <div class="extraction-spinner" aria-hidden="true"></div>
+            <div class="extraction-progress-text" id="extractionProgressTitle">Extracting…</div>
+            <div class="extraction-progress-status muted" id="extractionProgressStatus"></div>
+            <div class="extraction-progress-subtitle muted" id="extractionProgressHint"></div>
+            <pre id="extractionProgressLogs" class="extraction-progress-logs"></pre>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- New Run Chunker Modal -->
+    <!-- Chunker Modal -->
     <div id="chunkerModal" class="modal hidden">
       <div class="modal-backdrop" id="chunkerModalBackdrop"></div>
       <div class="modal-content card chunker-modal">
         <div class="modal-header">
-          <div class="modal-title">New Run Chunker</div>
+          <div class="modal-title">Chunk Extraction</div>
           <button id="closeChunkerModal" class="btn">Close</button>
         </div>
         <div class="chunker-modal-body">
           <div class="chunker-form">
-            <label class="source-run-picker">
-              <div class="lab">Source Run <span class="info" tabindex="0">i</span><div class="tip">Select an existing run with elements to chunk.</div></div>
-              <select id="chunkerSourceRun"></select>
+            <label class="source-extraction-picker">
+              <div class="lab">Source Extraction <span class="info" tabindex="0">i</span><div class="tip">Select an existing extraction with elements to chunk.</div></div>
+              <select id="chunkerSourceExtraction"></select>
             </label>
             <div class="chunker-description card">
               <div class="lab">How this chunker works</div>
@@ -783,13 +783,13 @@
     <script src="/app-images-upload.js?v=20250127b" defer></script>
     <script src="/app-images-history.js?v=20250126" defer></script>
     <script src="/app-images.js?v=20250126" defer></script>
-    <!-- Runs modules (dependencies for app-runs.js) -->
+    <!-- Runs modules (dependencies for app-extractions.js) -->
     <script src="/app-pdf.js?v=20250126" defer></script>
-    <script src="/app-run-jobs.js?v=20250126" defer></script>
-    <script src="/app-run-preview.js?v=20250126" defer></script>
-    <script src="/app-run-form.js?v=20250126" defer></script>
+    <script src="/app-extraction-jobs.js?v=20250126" defer></script>
+    <script src="/app-extraction-preview.js?v=20250126" defer></script>
+    <script src="/app-extraction-form.js?v=20250126" defer></script>
     <script src="/app-modal.js?v=20250126" defer></script>
-    <script src="/app-runs.js?v=20250126" defer></script>
+    <script src="/app-extractions.js?v=20250126" defer></script>
     <script src="/app.js?v=20251201" defer></script>
   </body>
   </html>

@@ -1,6 +1,6 @@
 /**
- * Run preview helpers and page range utilities
- * Extracted from app-runs.js for modularity
+ * Extraction preview helpers and page range utilities
+ * Extracted from app-extractions.js for modularity
  */
 
 async function ensurePdfjsReady(maxMs = 5000) {
@@ -11,13 +11,13 @@ async function ensurePdfjsReady(maxMs = 5000) {
   }
 }
 
-async function loadRunPreviewForSelectedPdf() {
+async function loadExtractionPreviewForSelectedPdf() {
   const name = $('pdfSelect')?.value;
   if (!name) return;
 
-  const canvas = $('runPdfCanvas');
-  const previewMsg = $('runPreviewMessage');
-  const formatBadge = $('runFormatBadge');
+  const canvas = $('extractionPdfCanvas');
+  const previewMsg = $('extractionPreviewMessage');
+  const formatBadge = $('extractionFormatBadge');
 
   // Check if this is a non-PDF file (Office doc or image)
   const ext = name.toLowerCase().substring(name.lastIndexOf('.'));
@@ -52,9 +52,9 @@ async function loadRunPreviewForSelectedPdf() {
 
   // For images, show the image directly
   if (isImage) {
-    RUN_PREVIEW_DOC = null;
-    RUN_PREVIEW_COUNT = 1;
-    RUN_PREVIEW_PAGE = 1;
+    EXTRACTION_PREVIEW_DOC = null;
+    EXTRACTION_PREVIEW_COUNT = 1;
+    EXTRACTION_PREVIEW_PAGE = 1;
     if (canvas) {
       const ctx = canvas.getContext('2d');
       const img = new Image();
@@ -67,8 +67,8 @@ async function loadRunPreviewForSelectedPdf() {
       };
       img.src = `/res_pdf/${encodeURIComponent(name)}`;
     }
-    $('runPageNum').textContent = '1';
-    $('runPageCount').textContent = '1';
+    $('extractionPageNum').textContent = '1';
+    $('extractionPageCount').textContent = '1';
     return;
   }
 
@@ -83,11 +83,11 @@ async function loadRunPreviewForSelectedPdf() {
         await ensurePdfjsReady();
         const url = `/api/converted-pdf/${encodeURIComponent(name)}`;
         const task = window['pdfjsLib'].getDocument(url);
-        RUN_PREVIEW_DOC = await task.promise;
-        RUN_PREVIEW_COUNT = RUN_PREVIEW_DOC.numPages;
-        RUN_PREVIEW_PAGE = 1;
-        $('runPageCount').textContent = RUN_PREVIEW_COUNT;
-        await renderRunPreviewPage();
+        EXTRACTION_PREVIEW_DOC = await task.promise;
+        EXTRACTION_PREVIEW_COUNT = EXTRACTION_PREVIEW_DOC.numPages;
+        EXTRACTION_PREVIEW_PAGE = 1;
+        $('extractionPageCount').textContent = EXTRACTION_PREVIEW_COUNT;
+        await renderExtractionPreviewPage();
         return;
       }
     } catch (e) {
@@ -95,15 +95,15 @@ async function loadRunPreviewForSelectedPdf() {
     }
 
     // No converted PDF - show placeholder message
-    RUN_PREVIEW_DOC = null;
-    RUN_PREVIEW_COUNT = 0;
-    RUN_PREVIEW_PAGE = 1;
+    EXTRACTION_PREVIEW_DOC = null;
+    EXTRACTION_PREVIEW_COUNT = 0;
+    EXTRACTION_PREVIEW_PAGE = 1;
     if (canvas) {
       const ctx = canvas.getContext('2d');
       ctx.clearRect(0, 0, canvas.width, canvas.height);
     }
-    $('runPageNum').textContent = '-';
-    $('runPageCount').textContent = '-';
+    $('extractionPageNum').textContent = '-';
+    $('extractionPageCount').textContent = '-';
     return;
   }
 
@@ -112,37 +112,37 @@ async function loadRunPreviewForSelectedPdf() {
     await ensurePdfjsReady();
     const url = `/res_pdf/${encodeURIComponent(name)}`;
     const task = window['pdfjsLib'].getDocument(url);
-    RUN_PREVIEW_DOC = await task.promise;
-    RUN_PREVIEW_COUNT = RUN_PREVIEW_DOC.numPages;
-    RUN_PREVIEW_PAGE = 1;
-    $('runPageCount').textContent = RUN_PREVIEW_COUNT;
-    await renderRunPreviewPage();
+    EXTRACTION_PREVIEW_DOC = await task.promise;
+    EXTRACTION_PREVIEW_COUNT = EXTRACTION_PREVIEW_DOC.numPages;
+    EXTRACTION_PREVIEW_PAGE = 1;
+    $('extractionPageCount').textContent = EXTRACTION_PREVIEW_COUNT;
+    await renderExtractionPreviewPage();
   } catch (e) {
-    RUN_PREVIEW_DOC = null;
-    RUN_PREVIEW_COUNT = 0;
-    RUN_PREVIEW_PAGE = 1;
+    EXTRACTION_PREVIEW_DOC = null;
+    EXTRACTION_PREVIEW_COUNT = 0;
+    EXTRACTION_PREVIEW_PAGE = 1;
     if (canvas) { const ctx = canvas.getContext('2d'); ctx && ctx.clearRect(0,0,canvas.width,canvas.height); }
-    const numEl = $('runPageNum'); const cntEl = $('runPageCount');
+    const numEl = $('extractionPageNum'); const cntEl = $('extractionPageCount');
     if (numEl) numEl.textContent = '-'; if (cntEl) cntEl.textContent = '-';
   }
 }
 
-async function renderRunPreviewPage() {
-  if (!RUN_PREVIEW_DOC) return;
-  const page = await RUN_PREVIEW_DOC.getPage(RUN_PREVIEW_PAGE);
-  const canvas = $('runPdfCanvas');
+async function renderExtractionPreviewPage() {
+  if (!EXTRACTION_PREVIEW_DOC) return;
+  const page = await EXTRACTION_PREVIEW_DOC.getPage(EXTRACTION_PREVIEW_PAGE);
+  const canvas = $('extractionPdfCanvas');
   const ctx = canvas.getContext('2d');
   const viewport = page.getViewport({ scale: 0.8 });
   canvas.width = viewport.width;
   canvas.height = viewport.height;
-  $('runPageNum').textContent = RUN_PREVIEW_PAGE;
+  $('extractionPageNum').textContent = EXTRACTION_PREVIEW_PAGE;
   await page.render({ canvasContext: ctx, viewport }).promise;
 }
 
 function updateRangeHint() {
   const el = $('rangeHint');
   if (!el) return;
-  if (RUN_RANGE_START != null) el.textContent = `range start: ${RUN_RANGE_START}`; else el.textContent = '';
+  if (EXTRACTION_RANGE_START != null) el.textContent = `range start: ${EXTRACTION_RANGE_START}`; else el.textContent = '';
 }
 
 function parsePagesString(s) {
@@ -189,8 +189,8 @@ function addRangeToInput(a,b) {
 
 // Window exports
 window.ensurePdfjsReady = ensurePdfjsReady;
-window.loadRunPreviewForSelectedPdf = loadRunPreviewForSelectedPdf;
-window.renderRunPreviewPage = renderRunPreviewPage;
+window.loadExtractionPreviewForSelectedPdf = loadExtractionPreviewForSelectedPdf;
+window.renderExtractionPreviewPage = renderExtractionPreviewPage;
 window.updateRangeHint = updateRangeHint;
 window.parsePagesString = parsePagesString;
 window.encodePagesSet = encodePagesSet;

@@ -3,10 +3,10 @@
 Local playground for document ingestion experiments. It now supports the open-source Unstructured chunker, the hosted Unstructured Partition API (elements-only), and Azure Document Intelligence (Layout) so you can compare layout/ocr quality side by side.
 
 > **Note:** Unstructured providers (Local and Partition API) are deprecated.
-> Use Azure Document Intelligence for new runs. Legacy Unstructured runs remain viewable.
+> Use Azure Document Intelligence for new extractions. Legacy Unstructured extractions remain viewable.
 
 Two helper scripts exist today:
-- `process_unstructured.py`: interactive full-document runs against Unstructured.
+- `process_unstructured.py`: interactive full-document extractions using Unstructured.
 - `scripts/preview_unstructured_pages.py`: fast page slicing + gold-table matching for targeted QA (Unstructured).
 - `python -m chunking_pipeline.azure_pipeline`: run Azure Document Intelligence (`--provider document_intelligence`) straight from the CLI.
 - Azure Document Intelligence exports paragraph roles as element types (e.g., `pageHeader`, `pageNumber`, `title`) so the UI type filters mirror the service categorization.
@@ -29,7 +29,7 @@ npm install
 
 ### Unstructured Partition (API) credentials (Legacy)
 
-> **Deprecated:** This section is for legacy reference only. Use Azure Document Intelligence for new runs.
+> **Deprecated:** This section is for legacy reference only. Use Azure Document Intelligence for new extractions.
 
 Set the hosted Partition API base URL and key (elements-only provider) in your environment or `.env`:
 
@@ -43,7 +43,7 @@ The Partition provider uses the official SDK client, fetches coordinates, and em
 
 ## Process a PDF (Legacy)
 
-> **Deprecated:** This script uses the Unstructured provider, which is deprecated. Use Azure Document Intelligence for new runs.
+> **Deprecated:** This script uses the Unstructured provider, which is deprecated. Use Azure Document Intelligence for new extractions.
 
 ```bash
 uv run python process_unstructured.py
@@ -59,7 +59,7 @@ Each JSON document includes the source path, timestamp, optional page limit, ele
 
 ## Preview specific pages & compare to gold tables (Legacy)
 
-> **Deprecated:** This script uses the Unstructured provider, which is deprecated. Use Azure Document Intelligence for new runs.
+> **Deprecated:** This script uses the Unstructured provider, which is deprecated. Use Azure Document Intelligence for new extractions.
 
 When you just need a few pages (or want to evaluate table extraction quality), use the preview helper:
 
@@ -84,18 +84,18 @@ What it does:
 
 Use `--input-jsonl` when you want to re-evaluate matches from a previously saved JSONL without reprocessing the PDF, and `--trimmed-out` if you want to keep the sliced PDF for debugging.
 
-## Azure runs (Document Intelligence)
+## Azure extractions (Document Intelligence)
 
 Set the Azure credentials before running either via CLI or the UI. You can drop them into a local `.env` (see `.env.example`) and they will be auto-loaded by the app and the CLI helpers. The standard env var names are:
 - `AZURE_DOCUMENTINTELLIGENCE_ENDPOINT` / `AZURE_DOCUMENTINTELLIGENCE_KEY` (PolicyAsCode standard)
 
 Legacy aliases are also supported for backward compatibility: `AZURE_FT_ENDPOINT`/`AZURE_FT_KEY`, `DOCUMENTINTELLIGENCE_ENDPOINT`/`DOCUMENTINTELLIGENCE_API_KEY`.
 
-When Azure language detection is enabled (e.g., including `languages` in the features), detected locales are captured in `run_config` (persisted from the pipeline output) so reloading a run flips previews to RTL automatically for Arabic-heavy documents.
+When Azure language detection is enabled (e.g., including `languages` in the features), detected locales are captured in `run_config` (persisted from the pipeline output) so reloading an extraction flips previews to RTL automatically for Arabic-heavy documents.
 When Azure returns markdown (e.g., `output_content_format=markdown`), the Inspect drawers render the formatted markdown directly and fall back to plain text only when no richer content is present; table HTML still prefers `text_as_html` for accurate column order.
 
-Document Intelligence runs target `api-version=2024-11-30` (v4.1); older service versions are not supported.
-Supported DI `features`: `languages`, `barcodes`, `keyValuePairs`, `ocrHighResolution`, `styleFont`, `formulas`, and `queryFields`. Figure images belong to the `outputs` parameter (use `--outputs figures`); passing `figures` via `features` will be rejected by the service. When `figures` is requested, cropped figure PNGs are saved next to the run as `<run>.figures/<figure-id>.png` and surface in the UI the same way Unstructured image payloads do.
+Document Intelligence extractions target `api-version=2024-11-30` (v4.1); older service versions are not supported.
+Supported DI `features`: `languages`, `barcodes`, `keyValuePairs`, `ocrHighResolution`, `styleFont`, `formulas`, and `queryFields`. Figure images belong to the `outputs` parameter (use `--outputs figures`); passing `figures` via `features` will be rejected by the service. When `figures` is requested, cropped figure PNGs are saved next to the extraction as `<extraction>.figures/<figure-id>.png` and surface in the UI the same way Unstructured image payloads do.
 
 CLI example (Document Intelligence layout):
 ```bash
@@ -113,7 +113,7 @@ uv run python -m chunking_pipeline.azure_pipeline \
   --api-version 2024-11-30
 ```
 
-Outputs for Azure runs live under `outputs/azure/document_intelligence/` with the same filename suffix pattern used by Unstructured. Reviews are stored per-provider (e.g., `outputs/azure/document_intelligence/reviews/<slug>.reviews.json`). If you ever see Azure `.tables.jsonl` files that are empty, rerun the slice: the helper now uses the SDK's `as_dict` output and scales polygons to PDF points so overlays render correctly.
+Outputs for Azure extractions live under `outputs/azure/document_intelligence/` with the same filename suffix pattern used by Unstructured. Reviews are stored per-provider (e.g., `outputs/azure/document_intelligence/reviews/<slug>.reviews.json`). If you ever see Azure `.tables.jsonl` files that are empty, rerun the slice: the helper now uses the SDK's `as_dict` output and scales polygons to PDF points so overlays render correctly.
 
 ## Next ideas
 
@@ -122,10 +122,10 @@ Outputs for Azure runs live under `outputs/azure/document_intelligence/` with th
 ## Release history
 
 - **v6.0.0 (2026-01-27)** – **Images Tab & Vision Pipeline**: New top-level Images tab for exploring PDF figures and standalone image uploads. Two-stage vision pipeline with SAM3 segmentation preview + Mermaid extraction. Cytoscape graph visualization with fullscreen mode. Upload history management. Lightbox for zoomable previews. Azure DI OCR text extraction for improved Mermaid labeling. LLM reasoning trace display. Frontend refactored into modular CSS/JS.
-- **v5.0.3 (2025-12-02)** – Fix: Custom chunker now works on legacy runs by extracting elements from .chunks.jsonl files.
-- **v5.0.2 (2025-12-02)** – Fix: Element bounding boxes now display for legacy chunks-only runs (pre-v5.0). Element type filtering works on legacy runs without .elements.jsonl files.
-- **v5.0.1 (2025-12-02)** – Fix: Legacy runs (pre-v5.0) now discovered correctly by scanning both .elements.jsonl and .chunks.jsonl files. Added backwards-compatible provider aliases (azure-di, unstructured, unstructured-partition).
-- **v5.0 (2025-12-01)** – Custom chunker improvements: section headings inside Table/Figure boxes stay attached to container (captions stay with figures), consecutive headings merge into single section, paragraphs inside tables filtered, tables/figures included in parent sections. UI: element drawer hierarchy context, resizable panels, centered PDF viewer, smart parameter banner, alternating chunk overlay colors, and run persistence across reloads.
+- **v5.0.3 (2025-12-02)** – Fix: Custom chunker now works on legacy extractions by extracting elements from .chunks.jsonl files.
+- **v5.0.2 (2025-12-02)** – Fix: Element bounding boxes now display for legacy chunks-only extractions (pre-v5.0). Element type filtering works on legacy extractions without .elements.jsonl files.
+- **v5.0.1 (2025-12-02)** – Fix: Legacy extractions (pre-v5.0) now discovered correctly by scanning both .elements.jsonl and .chunks.jsonl files. Added backwards-compatible provider aliases (azure-di, unstructured, unstructured-partition).
+- **v5.0 (2025-12-01)** – Custom chunker improvements: section headings inside Table/Figure boxes stay attached to container (captions stay with figures), consecutive headings merge into single section, paragraphs inside tables filtered, tables/figures included in parent sections. UI: element drawer hierarchy context, resizable panels, centered PDF viewer, smart parameter banner, alternating chunk overlay colors, and extraction persistence across reloads.
 - **v4.4 (2025-11-28)** – Apple Liquid Glass UI redesign with frosted glass effects, dark/light theme toggle, Apple system color palette, smooth spring animations, and enhanced button/card styling.
 - **v4.3 (2025-11-27)** – Figure elements in Azure DI outline view, direct page jump input, What's New modal, RTL table fix, fixed PDF legend positioning, and Azure DI as default provider.
 - **v4.2 (2025-11-26)** – Enhanced feedback analysis with provider-level comparisons, smoothed scoring, multi-dimensional insights (per-element suggestions, issue taxonomies, review-gap callouts), and improved JSON/HTML exports that include LLM analysis payloads.
@@ -136,28 +136,28 @@ Outputs for Azure runs live under `outputs/azure/document_intelligence/` with th
 - **v4.1 (2025-11-26)** – Azure Document Intelligence can now return cropped figure PNGs (`--outputs figures`) with drawer previews, and the UI simplifies Azure settings by only showing model id (API version is fixed to 2024-11-30).
   - Verification steps:
     1. Run an Azure DI slice with figures enabled: `uv run python -m chunking_pipeline.azure_pipeline --provider document_intelligence --input res/sample.pdf --pages 1-1 --outputs figures --output outputs/azure/document_intelligence/sample.pages1.figures.jsonl --trimmed-out outputs/azure/document_intelligence/sample.pages1.pdf --model-id prebuilt-layout --api-version 2024-11-30`.
-    2. Start the UI (`uv run uvicorn main:app --host 127.0.0.1 --port 8765`), load the run, open Elements → Figure entries, and confirm PNG previews render with overlays on the right page.
-    3. Open the New Run modal for Azure providers and confirm the Advanced accordion only asks for model id/locale (no API version field); the settings recap hides API version for non-Azure runs.
-- **v4.0 (2025-11-25)** – Added the Unstructured Partition (hosted) provider for elements-only runs in the UI/API and switched the Docker base image to ECR Public to avoid Docker Hub rate limits.
+    2. Start the UI (`uv run uvicorn main:app --host 127.0.0.1 --port 8765`), load the extraction, open Elements → Figure entries, and confirm PNG previews render with overlays on the right page.
+    3. Open the New Extraction modal for Azure providers and confirm the Advanced accordion only asks for model id/locale (no API version field); the settings recap hides API version for non-Azure extractions.
+- **v4.0 (2025-11-25)** – Added the Unstructured Partition (hosted) provider for elements-only extractions in the UI/API and switched the Docker base image to ECR Public to avoid Docker Hub rate limits.
   - Verification steps:
-    1. `uv run uvicorn main:app --host 127.0.0.1 --port 8765`, start a New Run with provider `Unstructured Partition (API)`, and confirm the UI processes elements-only (chunks tab hidden) while overlays render from returned elements.
-    2. Inspect the generated artifacts under `outputs/unstructured/partition_api/` to confirm the run JSON and elements JSONL are stored without chunk outputs.
+    1. `uv run uvicorn main:app --host 127.0.0.1 --port 8765`, start a New Extraction with provider `Unstructured Partition (API)`, and confirm the UI processes elements-only (chunks tab hidden) while overlays render from returned elements.
+    2. Inspect the generated artifacts under `outputs/unstructured/partition_api/` to confirm the extraction JSON and elements JSONL are stored without chunk outputs.
     3. `docker build -t chunking-tests:4.0 .` and verify the base image pulls from ECR Public without Docker Hub rate limit warnings.
 - **v3.2 (2025-11-25)** – Bundled markdown/DOMPurify assets locally with a favicon, persisted Azure detected-language metadata for RTL-aware reloads, and fixed Azure tooltip positioning.
   - Verification steps:
-    1. `uv run uvicorn main:app --host 127.0.0.1 --port 8765`, load an Azure run with markdown drawers and verify markdown still renders via the bundled assets and favicon shows in the tab.
-    2. Reload an Azure run that includes `detected_languages` and confirm the UI flips to RTL when Arabic is present; inspect the run JSON to see the persisted detection fields.
+    1. `uv run uvicorn main:app --host 127.0.0.1 --port 8765`, load an Azure extraction with markdown drawers and verify markdown still renders via the bundled assets and favicon shows in the tab.
+    2. Reload an Azure extraction that includes `detected_languages` and confirm the UI flips to RTL when Arabic is present; inspect the extraction JSON to see the persisted detection fields.
     3. Hover tooltips on Azure overlays and confirm the tooltip aligns with the box (no off-by-one drift).
 - **v3.1 (2025-11-25)** – Azure Inspect outline now treats paragraphs as containers for lines/words, keeps table/header/section parents consistent, and defaults nested children to collapsed so opening a parent only reveals one level at a time.
   - Verification steps:
-    1. `uv run uvicorn main:app --host 127.0.0.1 --port 8765`, load an Azure Document Intelligence run (e.g., `V3-0_Reviewed.pages1-8`), switch Elements to Outline, and confirm paragraphs nest lines while tables and headers preserve their children lists.
+    1. `uv run uvicorn main:app --host 127.0.0.1 --port 8765`, load an Azure Document Intelligence extraction (e.g., `V3-0_Reviewed.pages1-8`), switch Elements to Outline, and confirm paragraphs nest lines while tables and headers preserve their children lists.
     2. Expand a parent (table/paragraph/header) and verify only its direct children show; deeper descendants stay collapsed until manually toggled, and per-node expansion state persists while navigating pages.
 
 - **v3.0 (2025-11-24)** – Azure providers now render markdown in drawers, honor detected languages for RTL, expose outline grouping and Document Intelligence paragraph roles, and overlays stay aligned after switching to chunk-only artifacts (Metrics/tables pipeline removed).
   - Verification steps:
-    1. `uv run uvicorn main:app --host 127.0.0.1 --port 8765`, load an Azure run, and confirm Inspect overlays line up with trimmed PDFs while pageHeader/pageNumber/title types appear in filters and the Elements outline toggle groups items per page.
+    1. `uv run uvicorn main:app --host 127.0.0.1 --port 8765`, load an Azure extraction, and confirm Inspect overlays line up with trimmed PDFs while pageHeader/pageNumber/title types appear in filters and the Elements outline toggle groups items per page.
     2. Open chunk/element drawers with markdown payloads to verify sanitized rendering and fallback to plain text where markdown is absent; check an Arabic-heavy document flips drawers and previews to RTL based on detected languages.
-    3. Start a new run (any provider) via the UI and confirm outputs are trimmed PDFs, chunk JSONL, and run metadata only, with no Metrics tab or matches/table artifacts.
+    3. Start a new extraction (any provider) via the UI and confirm outputs are trimmed PDFs, chunk JSONL, and extraction metadata only, with no Metrics tab or matches/table artifacts.
 
 - **v2.1 (2025-11-18)** – Persist actual Unstructured chunking defaults (max_characters, new_after_n_chars, overlap, overlap_all, include_orig_elements, combine_text_under_n_chars, multipage_sections) in `run_config` so the header recap mirrors the values the chunker actually used, and keep drawer table previews in their original chunker column order while cell text alignment still follows the document direction.
   - Verification steps:
@@ -178,8 +178,8 @@ Outputs for Azure runs live under `outputs/azure/document_intelligence/` with th
 
 Spin up a small local UI to inspect PDFs, table matching, and chunker performance without juggling multiple files. The server reads `PDF_DIR` to find a writable location for PDFs (defaults to `res/` locally). When deployed to Fly.io with a volume mounted at `/data`, set `PDF_DIR=/data/res` to persist uploads.
 
-The UI assets are now composed from targeted modules (`app-state.js`, `app-ui.js`, `app-reviews.js`, `app-overlays.js`, `app-metrics.js`, `app-elements.js`, `app-chunks.js`, `app-runs.js`, and a thin `app.js` entry) so each concern (state, overlays, reviews, element/chunk panels, run wiring) can evolve independently while `index.html` pulls them in sequentially.
-When you start a run, the “New Run” modal collapses into a compact Running state: the form and preview hide, a small status block shows the current PDF name plus a hint that the window will close on completion, and the header “New Run” button switches to `Running…` while the request is in flight. Parameters are still captured in the backend `form_snapshot` and reflected in the Settings Recap bar once the run completes.
+The UI assets are now composed from targeted modules (`app-state.js`, `app-ui.js`, `app-reviews.js`, `app-overlays.js`, `app-metrics.js`, `app-elements.js`, `app-chunks.js`, `app-extractions.js`, and a thin `app.js` entry) so each concern (state, overlays, reviews, element/chunk panels, extraction wiring) can evolve independently while `index.html` pulls them in sequentially.
+When you start an extraction, the "New Extraction" modal collapses into a compact Extracting state: the form and preview hide, a small status block shows the current PDF name plus a hint that the window will close on completion, and the header "New Extraction" button switches to `Extracting…` while the request is in flight. Parameters are still captured in the backend `form_snapshot` and reflected in the Settings Recap bar once the extraction completes.
 
 Quickstart:
 
@@ -192,9 +192,9 @@ uv run uvicorn main:app --host 127.0.0.1 --port 8765
 
 What you get:
 - Inspect view that keeps the PDF visible with overlay toggles and tabs for Chunks and Elements; the Metrics/table visuals are retired in favor of chunk-first inspection.
-- Provider-aware runs: pick Unstructured (local), Unstructured Partition (API, elements-only), or Azure Document Intelligence (Layout) in the New Run modal. Azure runs hide chunking controls and expose model id, features, locale, string index type, content format, and query fields. Outputs live under `outputs/azure/...`. Azure Document Intelligence runs are elements-only in the UI (the Chunks tab is hidden).
+- Provider-aware extractions: pick Unstructured (local), Unstructured Partition (API, elements-only), or Azure Document Intelligence (Layout) in the New Extraction modal. Azure extractions hide chunking controls and expose model id, features, locale, string index type, content format, and query fields. Outputs live under `outputs/azure/...`. Azure Document Intelligence extractions are elements-only in the UI (the Chunks tab is hidden).
 - Feedback view: a new top-level tab that aggregates all reviews across providers, shows good/bad counts, per-provider charts, lets you jump back into Inspect, and can ship every review to an OpenAI model for provider-level summaries or cross-provider comparisons. Export everything as JSON or an HTML report that mirrors the on-screen cards/charts and embeds the latest LLM analysis.
-- A compact single-line settings recap with rich tooltips for each parameter; the New Run modal mirrors the same tooltips so behavior is clear where you edit values.
+- A compact single-line settings recap with rich tooltips for each parameter; the New Extraction modal mirrors the same tooltips so behavior is clear where you edit values.
 - Overlay UX: hover for ID/type/page/tooltips; colors are fixed per element type; chunk overlays honor Type/Review filters and redraw immediately; Azure polygons stay scaled to PDF points; the Elements outline groups Azure pageHeader/pageNumber/Tables/Paragraphs/Lines by page order with breadcrumbs in drawers.
 - Reviews: leave Good/Bad ratings with optional notes for any chunk or element, filter by rating, and use the header chip to jump into scored items.
 - Inspect → Chunks: browse chunk summary + list; selecting a chunk jumps to its page, shows its overlays, and expands its source elements; cards size to the amount of text.

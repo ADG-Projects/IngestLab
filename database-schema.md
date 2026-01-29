@@ -1,9 +1,9 @@
 # Data Notes
 
 The project does not persist to a database yet. Instead, artifacts are written to `outputs/`:
-- `outputs/unstructured/` — Unstructured runs (**deprecated**).
+- `outputs/unstructured/` — Unstructured extractions (**deprecated**).
 - `outputs/unstructured/partition_api/` — Unstructured Partition (hosted API) runs (**deprecated**; elements-only; no local chunking).
-- `outputs/azure/document_intelligence/` — Azure runs (Document Intelligence Layout). API endpoints accept an optional `provider` query parameter to resolve the correct directory.
+- `outputs/azure/document_intelligence/` — Azure extractions (Document Intelligence Layout). API endpoints accept an optional `provider` query parameter to resolve the correct directory.
 - When Document Intelligence is invoked with `outputs=figures`, cropped figure PNGs are saved alongside the chunk JSONL as `<chunk_stem>.figures/<figure-id>.png`; element metadata references those files so the UI can preview them just like Unstructured image payloads.
 - Azure Document Intelligence runs are elements-only in the UI; the Chunks tab stays hidden even if chunk-style JSONL artifacts are present.
 - Custom chunker keeps section headings that fall inside Table/Figure bounding boxes attached to the container chunk so captions stay with their figure/table instead of starting new section chunks, and merges consecutive sectionHeading/title elements into a single section to avoid heading-only chunks when multiple headings stack without body content between them.
@@ -13,18 +13,18 @@ The project does not persist to a database yet. Instead, artifacts are written t
 Source PDFs are read from a configurable directory:
 
 - `PDF_DIR` environment variable points to where PDFs live. Locally it defaults to `res/`. In Fly deployments with a volume mounted at `/data`, use `PDF_DIR=/data/res` so uploads persist across deploys.
-  - New UI runs now also record a compact "Running" state in the frontend only: while `/api/run` is processing, the New Run modal hides its fields and the header button reflects the in-flight status, but the persisted `run_config.form_snapshot` continues to store the full parameter set as before.
+  - New UI runs now also record a compact "Running" state in the frontend only: while `/api/run` is processing, the New Extraction modal hides its fields and the header button reflects the in-flight status, but the persisted `run_config.form_snapshot` continues to store the full parameter set as before.
 - `/api/run` enqueues work instead of blocking: the response contains a job descriptor (`id`, `status`, `slug`, `pdf`, `pages`, command preview, stdout/stderr tails). The UI polls `/api/run-jobs/{id}` until the chunker reports `succeeded` or `failed`, and job logs stay cached in memory until the server restarts.
 
 ## Version history
 
 - **v6.0.0 (2026-01-27)** – Images Tab & Vision Pipeline: New top-level Images tab for exploring PDF figures and standalone image uploads. Two-stage vision pipeline with SAM3 segmentation preview + Mermaid extraction. Cytoscape graph visualization with fullscreen mode. Upload history management. Lightbox for zoomable previews. Azure DI OCR text extraction for improved Mermaid labeling. LLM reasoning trace display. Frontend refactored into modular CSS/JS for maintainability.
-- **v5.0 (2025-12-01)** – Custom chunker improvements: section headings inside Table/Figure boxes stay attached to container, consecutive headings merge, paragraphs inside tables filtered, tables/figures included in parent sections. UI: element drawer hierarchy, resizable panels, centered PDF viewer, smart parameter banner, alternating chunk overlay colors, run persistence across reloads.
+- **v5.0 (2025-12-01)** – Custom chunker improvements: section headings inside Table/Figure boxes stay attached to container, consecutive headings merge, paragraphs inside tables filtered, tables/figures included in parent sections. UI: element drawer hierarchy, resizable panels, centered PDF viewer, smart parameter banner, alternating chunk overlay colors, extraction persistence across reloads.
 - **v4.4 (2025-11-28)** – Apple Liquid Glass UI redesign with frosted glass effects, dark/light theme toggle, Apple system color palette, smooth spring animations.
 - **v4.3 (2025-11-27)** – Figure elements in Azure DI outline view, direct page jump input, What's New modal, RTL table fix, fixed PDF legend, Azure DI as default provider.
 - **v4.2 (2025-11-26)** – Enhanced feedback analysis with provider-level comparisons, smoothed scoring formulas, multi-dimensional insights, and improved JSON/HTML exports with LLM analysis payloads.
-- **v4.1 (2025-11-26)** – Azure Document Intelligence figure crops stored alongside run artifacts; Azure settings recap hides API version for non-Azure runs.
-- **v4.0 (2025-11-25)** – Added Unstructured Partition (hosted) provider for elements-only runs; Docker base image to ECR Public.
+- **v4.1 (2025-11-26)** – Azure Document Intelligence figure crops stored alongside extraction artifacts; Azure settings recap hides API version for non-Azure extractions.
+- **v4.0 (2025-11-25)** – Added Unstructured Partition (hosted) provider for elements-only extractions; Docker base image to ECR Public.
 - **v3.2 (2025-11-25)** – Bundled markdown/DOMPurify locally, stored Azure detected-language metadata for RTL-aware reloads.
 - **v3.0 (2025-11-24)** – Azure markdown rendering, RTL support, paragraph roles, outline grouping; chunk-only artifacts.
 - **v2.1 (2025-11-18)** – Persist chunking defaults in `run_config` for UI recap bars.
@@ -49,10 +49,10 @@ Source PDFs are read from a configurable directory:
 
 2. **Run config metadata** (`outputs/<provider>/<doc>.pages<range>.run.json`)
    - `strategy`, `chunking`, `infer_table_structure`
-   - `provider`: `unstructured/local`, `unstructured/partition`, or `azure/document_intelligence`. Azure runs also record `model_id`, `features`, `locale`, `string_index_type`, `output_content_format`, and `query_fields` when supplied.
-   - Language hints mirrored from the UI: `primary_language` (`eng` or `ara`), `ocr_languages`, `languages`, and `detect_language_per_element`. Azure runs also persist `detected_languages` and `detected_primary_language` from the pipeline when detection is enabled, so reloads can auto-toggle RTL.
+   - `provider`: `unstructured/local`, `unstructured/partition`, or `azure/document_intelligence`. Azure extractions also record `model_id`, `features`, `locale`, `string_index_type`, `output_content_format`, and `query_fields` when supplied.
+   - Language hints mirrored from the UI: `primary_language` (`eng` or `ara`), `ocr_languages`, `languages`, and `detect_language_per_element`. Azure extractions also persist `detected_languages` and `detected_primary_language` from the pipeline when detection is enabled, so reloads can auto-toggle RTL.
    - `chunk_params`: the effective parameters supplied to the chunker. Keys may include `max_characters`, `new_after_n_chars`, `combine_text_under_n_chars`, `overlap`, `include_orig_elements`, `overlap_all`, `multipage_sections`. This object is always populated (even when users rely on defaults), so the UI header can display the actual values used instead of `-`.
-   - `form_snapshot` (UI-only): raw values entered in the New Run modal, including convenience fields like `max_tokens` and the original `pdf`, `pages`, and optional `tag`.
+   - `form_snapshot` (UI-only): raw values entered in the New Extraction modal, including convenience fields like `max_tokens` and the original `pdf`, `pages`, and optional `tag`.
 
 ## Web UI consumption
 
@@ -61,11 +61,11 @@ The local web UI (served by `main.py`) consumes:
 - Trimmed PDFs (`<doc>.pages<range>.pdf`) for page rendering.
 - Run metadata JSON for the settings recap bar and language direction hints.
 
-The static UI client now assembles behavior from modular scripts (`app-state.js`, `app-ui.js`, `app-reviews.js`, `app-overlays.js`, `app-metrics.js`, `app-elements.js`, `app-chunks.js`, `app-runs.js`, and the entry `app.js`) so state, overlays, reviews, elements, chunks, and run wiring stay focused.
+The static UI client now assembles behavior from modular scripts (`app-state.js`, `app-ui.js`, `app-reviews.js`, `app-overlays.js`, `app-metrics.js`, `app-elements.js`, `app-chunks.js`, `app-extractions.js`, and the entry `app.js`) so state, overlays, reviews, elements, chunks, and extraction wiring stay focused.
 
 ## Review storage
 
-Reviewer feedback stays on disk alongside run artifacts:
+Reviewer feedback stays on disk alongside extraction artifacts:
 
 - `outputs/unstructured/reviews/<slug>.reviews.json` — JSON object persisted per UI slug.
   - `slug`: matches the run slug (e.g., `V3_0_EN_4.pages4-6`).

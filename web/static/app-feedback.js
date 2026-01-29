@@ -39,14 +39,14 @@ function feedbackProviderParam(provider) {
 function renderFeedbackCards(data) {
   const overall = data?.aggregate?.overall || { good: 0, bad: 0, total: 0 };
   const providers = data?.aggregate?.providers || {};
-  const noteCount = (data?.runs || []).reduce((acc, run) => acc + (run.note_count || 0), 0);
-  const latest = [...(data?.runs || [])].sort((a, b) => (b.last_updated || '').localeCompare(a.last_updated || ''))[0];
+  const noteCount = (data?.extractions || []).reduce((acc, extraction) => acc + (extraction.note_count || 0), 0);
+  const latest = [...(data?.extractions || [])].sort((a, b) => (b.last_updated || '').localeCompare(a.last_updated || ''))[0];
   $('feedbackOverallGood').textContent = formatNumber(overall.good);
   $('feedbackOverallBad').textContent = formatNumber(overall.bad);
   $('feedbackOverallTotal').textContent = formatNumber(overall.total);
   $('feedbackOverallScoreValue').textContent = formatScore(overall.score, overall.confidence);
   $('feedbackNoteCount').textContent = `${formatNumber(noteCount)} notes`;
-  $('feedbackLatestRun').textContent = latest ? `${latest.slug} (${latest.provider})` : '-';
+  $('feedbackLatestExtraction').textContent = latest ? `${latest.slug} (${latest.provider})` : '-';
   $('feedbackLatestUpdated').textContent = latest ? formatDate(latest.last_updated) : '-';
   const breakdown = Object.entries(providers)
     .map(([prov, stats]) => `${prov}: ${formatNumber(stats.good)} / ${formatNumber(stats.bad)} (${formatNumber(stats.total)})`)
@@ -144,12 +144,12 @@ function renderFeedbackScoreChart(data) {
   });
 }
 
-function renderFeedbackRuns(runs, query = '') {
-  const host = $('feedbackRuns');
+function renderFeedbackExtractions(extractions, query = '') {
+  const host = $('feedbackExtractions');
   if (!host) return;
   const q = (query || '').toLowerCase();
   host.innerHTML = '';
-  const filtered = (runs || []).filter((r) => {
+  const filtered = (extractions || []).filter((r) => {
     if (!q) return true;
     return (
       (r.slug || '').toLowerCase().includes(q) ||
@@ -161,32 +161,32 @@ function renderFeedbackRuns(runs, query = '') {
     host.innerHTML = '<div class="muted">No feedback found.</div>';
     return;
   }
-  filtered.forEach((run) => {
+  filtered.forEach((extraction) => {
     const item = document.createElement('div');
-    item.className = 'feedback-run';
-    const summary = run.summary || { overall: { good: 0, bad: 0, total: 0 } };
-    const items = Array.isArray(run.items) ? run.items : [];
+    item.className = 'feedback-extraction';
+    const summary = extraction.summary || { overall: { good: 0, bad: 0, total: 0 } };
+    const items = Array.isArray(extraction.items) ? extraction.items : [];
     const notes = items.filter((n) => n && n.note).slice(0, 3);
     item.innerHTML = `
-      <div class="slug">${run.slug}</div>
+      <div class="slug">${extraction.slug}</div>
       <div class="meta">
-        <span class="pill">${run.provider}</span>
-        ${run.pages ? `<span class="pill">pages ${run.pages}</span>` : ''}
-        ${run.tag ? `<span class="pill">tag: ${run.tag}</span>` : ''}
-        ${run.pdf ? `<span class="pill">pdf: ${run.pdf}</span>` : ''}
+        <span class="pill">${extraction.provider}</span>
+        ${extraction.pages ? `<span class="pill">pages ${extraction.pages}</span>` : ''}
+        ${extraction.tag ? `<span class="pill">tag: ${extraction.tag}</span>` : ''}
+        ${extraction.pdf ? `<span class="pill">pdf: ${extraction.pdf}</span>` : ''}
       </div>
       <div class="counts">
         <span class="stat-good">Good ${formatNumber(summary.overall.good)}</span>
         <span class="stat-bad">Bad ${formatNumber(summary.overall.bad)}</span>
-        <span class="pill">${formatNumber(run.note_count || 0)} notes</span>
-        <span class="pill">${formatDate(run.last_updated)}</span>
+        <span class="pill">${formatNumber(extraction.note_count || 0)} notes</span>
+        <span class="pill">${formatDate(extraction.last_updated)}</span>
       </div>
       <div class="notes">
         ${notes.map((n) => `<div class="note"><strong>${n.kind || ''} ${n.rating || ''}</strong> — ${(n.note || '').slice(0, 280)}</div>`).join('')}
         ${notes.length === 0 ? '<div class="muted">No notes yet.</div>' : ''}
       </div>
       <div class="actions">
-        <button class="btn btn-secondary feedback-inspect-btn" data-slug="${run.slug}" data-provider="${run.provider}">Inspect</button>
+        <button class="btn btn-secondary feedback-inspect-btn" data-slug="${extraction.slug}" data-provider="${extraction.provider}">Inspect</button>
       </div>
     `;
     host.appendChild(item);
@@ -204,7 +204,7 @@ async function refreshFeedbackIndex(provider = FEEDBACK_PROVIDER_FILTER) {
     renderFeedbackCards(data);
     renderFeedbackChart(data);
     renderFeedbackScoreChart(data);
-    renderFeedbackRuns(data.runs || [], $('feedbackSearch')?.value || '');
+    renderFeedbackExtractions(data.extractions || [], $('feedbackSearch')?.value || '');
     if (status) status.textContent = '';
   } catch (e) {
     if (status) status.textContent = `Load failed: ${e.message}`;
@@ -284,7 +284,7 @@ function downloadBlob(data, filename, type = 'application/json') {
 }
 
 function buildFeedbackExportPayload() {
-  const base = FEEDBACK_INDEX || { runs: [] };
+  const base = FEEDBACK_INDEX || { extractions: [] };
   const scope = FEEDBACK_PROVIDER_FILTER || 'all';
   const analysis = FEEDBACK_ANALYSIS
     ? {
@@ -319,7 +319,7 @@ function chartToDataUrl(chart) {
 }
 
 function downloadFeedbackHtml() {
-  const data = FEEDBACK_INDEX || { runs: [] };
+  const data = FEEDBACK_INDEX || { extractions: [] };
   const overall = data.aggregate?.overall || { good: 0, bad: 0, total: 0 };
   const providers = data.aggregate?.providers || {};
   const overallScore = formatScore(overall.score, overall.confidence);
@@ -327,9 +327,9 @@ function downloadFeedbackHtml() {
     .map(([k, v]) => `${k}: ${v.good}/${v.bad} (${v.total}) · score ${formatScore(v.score, v.confidence)}`)
     .join(' · ');
   const scoreNote = 'Scores use smoothed good rate: (good+3)/(good+bad+6) scaled to 0-100. Confidence is based on feedback volume.';
-  const latest = [...(data.runs || [])].sort((a, b) => (b.last_updated || '').localeCompare(a.last_updated || ''))[0];
-  const noteCount = (data.notes && Array.isArray(data.notes) ? data.notes.length : (data.runs || []).reduce((acc, run) => {
-    const items = Array.isArray(run.items) ? run.items : [];
+  const latest = [...(data.extractions || [])].sort((a, b) => (b.last_updated || '').localeCompare(a.last_updated || ''))[0];
+  const noteCount = (data.notes && Array.isArray(data.notes) ? data.notes.length : (data.extractions || []).reduce((acc, extraction) => {
+    const items = Array.isArray(extraction.items) ? extraction.items : [];
     return acc + items.filter((n) => n && n.note).length;
   }, 0)) || 0;
   const scopeMap = {
@@ -343,16 +343,16 @@ function downloadFeedbackHtml() {
   const chartImage = chartToDataUrl(FEEDBACK_CHART);
   const scoreChartImage = chartToDataUrl(FEEDBACK_SCORE_CHART);
   const analysisHtml = formatAnalysisHtml(FEEDBACK_ANALYSIS);
-  const runCards =
-    (data.runs || [])
-      .map((run) => {
-        const summary = run.summary?.overall || { good: 0, bad: 0, total: 0 };
-        const notes = (run.items || []).filter((n) => n && n.note).slice(0, 4);
+  const extractionCards =
+    (data.extractions || [])
+      .map((extraction) => {
+        const summary = extraction.summary?.overall || { good: 0, bad: 0, total: 0 };
+        const notes = (extraction.items || []).filter((n) => n && n.note).slice(0, 4);
         const pills = [
-          run.provider ? `<span class="pill">${escapeHtml(run.provider)}</span>` : '',
-          run.pages ? `<span class="pill">pages ${escapeHtml(run.pages)}</span>` : '',
-          run.tag ? `<span class="pill">tag ${escapeHtml(run.tag)}</span>` : '',
-          run.pdf ? `<span class="pill">pdf ${escapeHtml(run.pdf)}</span>` : '',
+          extraction.provider ? `<span class="pill">${escapeHtml(extraction.provider)}</span>` : '',
+          extraction.pages ? `<span class="pill">pages ${escapeHtml(extraction.pages)}</span>` : '',
+          extraction.tag ? `<span class="pill">tag ${escapeHtml(extraction.tag)}</span>` : '',
+          extraction.pdf ? `<span class="pill">pdf ${escapeHtml(extraction.pdf)}</span>` : '',
         ]
           .filter(Boolean)
           .join('');
@@ -368,21 +368,21 @@ function downloadFeedbackHtml() {
         return `
           <div class="run-card">
             <div class="run-head">
-              <div class="slug">${escapeHtml(run.slug || '')}</div>
+              <div class="slug">${escapeHtml(extraction.slug || '')}</div>
               <div class="run-meta">${pills}</div>
             </div>
             <div class="run-counts">
               <span class="stat-good">Good ${formatNumber(summary.good)}</span>
               <span class="stat-bad">Bad ${formatNumber(summary.bad)}</span>
-              <span class="pill">${formatNumber(run.note_count || 0)} notes</span>
-              <span class="pill">${formatDate(run.last_updated)}</span>
+              <span class="pill">${formatNumber(extraction.note_count || 0)} notes</span>
+              <span class="pill">${formatDate(extraction.last_updated)}</span>
             </div>
-            <div class="run-sub">${escapeHtml(run.pdf_file || '')}</div>
+            <div class="run-sub">${escapeHtml(extraction.pdf_file || '')}</div>
             <div class="notes-block">${noteHtml}</div>
           </div>
         `;
       })
-      .join('') || '<div class="muted">No runs with feedback yet.</div>';
+      .join('') || '<div class="muted">No extractions with feedback yet.</div>';
   const styles = `
     :root {
       --bg: #0e0f12;
@@ -415,13 +415,13 @@ function downloadFeedbackHtml() {
     .chart-card { display: flex; flex-direction: column; gap: 8px; width: 100%; }
     .chart-card img { width: 100%; border-radius: 8px; border: 1px solid var(--border); background: #0f1014; }
     .chart-fallback { color: var(--muted); font-style: italic; }
-    .runs-card { display: flex; flex-direction: column; gap: 10px; }
-    .run-card { border: 1px solid var(--border); border-radius: 10px; padding: 10px; background: #1b1d23; display: flex; flex-direction: column; gap: 6px; }
-    .run-head { display: flex; flex-direction: column; gap: 6px; }
-    .run-head .slug { font-weight: 700; font-size: 15px; }
-    .run-meta { display: flex; gap: 8px; flex-wrap: wrap; }
-    .run-counts { display: flex; gap: 8px; align-items: center; font-size: 13px; flex-wrap: wrap; }
-    .run-sub { color: var(--muted); font-size: 12px; }
+    .extractions-card { display: flex; flex-direction: column; gap: 10px; }
+    .extraction-card { border: 1px solid var(--border); border-radius: 10px; padding: 10px; background: #1b1d23; display: flex; flex-direction: column; gap: 6px; }
+    .extraction-head { display: flex; flex-direction: column; gap: 6px; }
+    .extraction-head .slug { font-weight: 700; font-size: 15px; }
+    .extraction-meta { display: flex; gap: 8px; flex-wrap: wrap; }
+    .extraction-counts { display: flex; gap: 8px; align-items: center; font-size: 13px; flex-wrap: wrap; }
+    .extraction-sub { color: var(--muted); font-size: 12px; }
     .notes-block { background: #16181d; border: 1px solid var(--border); border-radius: 8px; padding: 8px; font-size: 12px; color: var(--text); }
     .note { padding-bottom: 6px; margin-bottom: 6px; border-bottom: 1px solid #1f2229; }
     .note:last-child { border-bottom: 0; margin-bottom: 0; padding-bottom: 0; }
@@ -443,7 +443,7 @@ function downloadFeedbackHtml() {
             <div>
               <div class="eyebrow">Chunking Visualizer</div>
               <h1>Feedback Report</h1>
-              <div class="muted">Generated ${escapeHtml(new Date().toLocaleString())} · ${formatNumber((data.runs || []).length)} runs · ${formatNumber(noteCount)} notes</div>
+              <div class="muted">Generated ${escapeHtml(new Date().toLocaleString())} · ${formatNumber((data.extractions || []).length)} extractions · ${formatNumber(noteCount)} notes</div>
             </div>
             <div class="pill">Scope: ${escapeHtml(scopeLabel)}</div>
           </div>
@@ -477,9 +477,9 @@ function downloadFeedbackHtml() {
             </div>
           </div>
 
-          <div class="card runs-card">
-            <div class="stat-label">Runs with feedback</div>
-            ${runCards}
+          <div class="card extractions-card">
+            <div class="stat-label">Extractions with feedback</div>
+            ${extractionCards}
           </div>
 
           <div class="card analysis-card">
@@ -495,7 +495,7 @@ function downloadFeedbackHtml() {
   downloadBlob(html, 'feedback.html', 'text/html');
 }
 
-async function jumpToRunFromFeedback(slug, provider) {
+async function jumpToExtractionFromFeedback(slug, provider) {
   if (!slug) return;
   const providerKey = (provider || 'unstructured/local').trim() || 'unstructured/local';
   try {
@@ -508,9 +508,9 @@ async function jumpToRunFromFeedback(slug, provider) {
       sel.dispatchEvent(new Event('change'));
     }
     switchView('inspect');
-    await loadRun(slug, providerKey);
+    await loadExtraction(slug, providerKey);
   } catch (e) {
-    showToast(`Failed to open run: ${e.message}`, 'err', 2500);
+    showToast(`Failed to open extraction: ${e.message}`, 'err', 2500);
   }
 }
 
@@ -525,7 +525,7 @@ function wireFeedbackEvents() {
   const searchInput = $('feedbackSearch');
   if (searchInput) {
     searchInput.addEventListener('input', () => {
-      renderFeedbackRuns(FEEDBACK_INDEX?.runs || [], searchInput.value);
+      renderFeedbackExtractions(FEEDBACK_INDEX?.extractions || [], searchInput.value);
     });
   }
   const analyzeBtn = $('feedbackAnalyzeBtn');
@@ -552,7 +552,7 @@ function wireFeedbackEvents() {
     runsHost.addEventListener('click', (ev) => {
       const btn = ev.target.closest('.feedback-inspect-btn');
       if (btn && btn.dataset.slug) {
-        jumpToRunFromFeedback(btn.dataset.slug, btn.dataset.provider);
+        jumpToExtractionFromFeedback(btn.dataset.slug, btn.dataset.provider);
       }
     });
   }

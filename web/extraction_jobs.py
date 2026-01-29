@@ -17,7 +17,7 @@ from typing import Any, Callable, Dict, List, Optional
 
 from .config import DEFAULT_PROVIDER, relative_to_root
 
-logger = logging.getLogger("chunking.run_jobs")
+logger = logging.getLogger("chunking.extraction_jobs")
 
 
 def _tail_text(value: Optional[str], limit: int = 8000) -> Optional[str]:
@@ -30,7 +30,7 @@ def _tail_text(value: Optional[str], limit: int = 8000) -> Optional[str]:
 
 
 @dataclass
-class RunJob:
+class ExtractionJob:
     """A queued or running extraction job.
 
     Jobs can be either command-based (subprocess) or callable-based (Python function).
@@ -68,15 +68,15 @@ class RunJob:
         }
 
 
-class RunJobManager:
+class ExtractionJobManager:
     def __init__(self) -> None:
-        self.jobs: Dict[str, RunJob] = {}
-        self.queue: Queue[RunJob] = Queue()
+        self.jobs: Dict[str, ExtractionJob] = {}
+        self.queue: Queue[ExtractionJob] = Queue()
         self.lock = threading.Lock()
         worker = threading.Thread(target=self._worker, name="chunk-runner", daemon=True)
         worker.start()
         self.worker = worker
-        logger.info("RunJobManager initialized")
+        logger.info("ExtractionJobManager initialized")
 
     def _worker(self) -> None:
         while True:
@@ -95,9 +95,9 @@ class RunJobManager:
         *,
         command: List[str],
         metadata: Dict[str, Any],
-    ) -> RunJob:
+    ) -> ExtractionJob:
         job_id = uuid.uuid4().hex
-        job = RunJob(
+        job = ExtractionJob(
             id=job_id,
             command=list(command),
             metadata=dict(metadata),
@@ -133,10 +133,10 @@ class RunJobManager:
             metadata: Job metadata (passed to callable and used for finalization)
 
         Returns:
-            The queued RunJob
+            The queued ExtractionJob
         """
         job_id = uuid.uuid4().hex
-        job = RunJob(
+        job = ExtractionJob(
             id=job_id,
             callable_fn=callable_fn,
             metadata=dict(metadata),
@@ -158,11 +158,11 @@ class RunJobManager:
         )
         return job
 
-    def _execute(self, job: RunJob) -> None:
+    def _execute(self, job: ExtractionJob) -> None:
         job.status = "running"
         job.started_at = time.time()
         logger.info(
-            "Starting chunking job %s slug=%s callable=%s command=%s",
+            "Starting extraction job %s slug=%s callable=%s command=%s",
             job.id,
             job.metadata.get("slug_with_pages"),
             job.callable_fn is not None,
@@ -181,7 +181,7 @@ class RunJobManager:
             job.finished_at = time.time()
             logger.error("Job %s has neither command nor callable", job.id)
 
-    def _execute_callable(self, job: RunJob) -> None:
+    def _execute_callable(self, job: ExtractionJob) -> None:
         """Execute a callable-based job."""
         # Capture stdout/stderr from the callable
         old_stdout, old_stderr = sys.stdout, sys.stderr
@@ -212,7 +212,7 @@ class RunJobManager:
         finally:
             sys.stdout, sys.stderr = old_stdout, old_stderr
 
-    def _execute_command(self, job: RunJob) -> None:
+    def _execute_command(self, job: ExtractionJob) -> None:
         """Execute a command-based job via subprocess."""
         proc = subprocess.run(job.command, capture_output=True, text=True)
         job.finished_at = time.time()
@@ -220,7 +220,7 @@ class RunJobManager:
         job.stderr_tail = _tail_text(proc.stderr)
         if proc.returncode != 0:
             job.status = "failed"
-            job.error = f"Run failed with exit code {proc.returncode}"
+            job.error = f"Extraction failed with exit code {proc.returncode}"
             logger.error(
                 "Command job %s failed (exit=%s) slug=%s stderr_tail=%s",
                 job.id,
@@ -231,7 +231,7 @@ class RunJobManager:
             return
         self._finalize_success(job)
 
-    def _finalize_success(self, job: RunJob) -> None:
+    def _finalize_success(self, job: ExtractionJob) -> None:
         slug_with_pages = job.metadata.get("slug_with_pages")
         page_tag = job.metadata.get("pages_tag")
         safe_tag = job.metadata.get("safe_tag")
@@ -249,25 +249,25 @@ class RunJobManager:
                         if isinstance(loaded, dict):
                             pipeline_meta = loaded
             except Exception as exc:  # pragma: no cover - best-effort
-                logger.warning("Failed to read run metadata for job %s: %s", job.id, exc)
+                logger.warning("Failed to read extraction metadata for job %s: %s", job.id, exc)
 
-        run_cfg: Dict[str, Any] = {}
+        extraction_cfg: Dict[str, Any] = {}
         if isinstance(pipeline_meta, dict):
-            run_cfg.update(pipeline_meta)
+            extraction_cfg.update(pipeline_meta)
 
         form_snapshot = job.metadata.get("form_snapshot") or {}
         if not isinstance(form_snapshot, dict):
             form_snapshot = {}
-        existing_snapshot = run_cfg.get("form_snapshot")
+        existing_snapshot = extraction_cfg.get("form_snapshot")
         if not isinstance(existing_snapshot, dict):
             existing_snapshot = {}
-        run_cfg["form_snapshot"] = {**existing_snapshot, **form_snapshot}
+        extraction_cfg["form_snapshot"] = {**existing_snapshot, **form_snapshot}
 
         def set_default(key: str, value: Any) -> None:
             if value is None:
                 return
-            if key not in run_cfg or run_cfg[key] is None:
-                run_cfg[key] = value
+            if key not in extraction_cfg or extraction_cfg[key] is None:
+                extraction_cfg[key] = value
 
         set_default("pdf", job.metadata.get("pdf_name"))
         set_default("pages", job.metadata.get("pages"))
@@ -276,17 +276,17 @@ class RunJobManager:
         if safe_tag:
             set_default("tag", safe_tag)
         if raw_tag:
-            run_cfg.setdefault("variant_tag", raw_tag)
+            extraction_cfg.setdefault("variant_tag", raw_tag)
         set_default("primary_language", primary_lang)
         if meta_path_raw:
             try:
                 meta_path = Path(meta_path_raw)
                 meta_path.parent.mkdir(parents=True, exist_ok=True)
                 with meta_path.open("w", encoding="utf-8") as fh:
-                    json.dump(run_cfg, fh, ensure_ascii=False, indent=2)
+                    json.dump(extraction_cfg, fh, ensure_ascii=False, indent=2)
                     fh.write("\n")
             except Exception as exc:  # pragma: no cover - best-effort
-                logger.warning("Failed to write run metadata for job %s: %s", job.id, exc)
+                logger.warning("Failed to write extraction metadata for job %s: %s", job.id, exc)
 
         def _relpath(value: Optional[str]) -> Optional[str]:
             if not value:
@@ -302,10 +302,10 @@ class RunJobManager:
             "page_tag": page_tag,
             "pdf_file": _relpath(job.metadata.get("trimmed_path")),
             "chunks_file": _relpath(job.metadata.get("chunk_path")),
-            "run_config": run_cfg,
+            "extraction_config": extraction_cfg,
         }
         job.status = "succeeded"
-        logger.info("Chunking job %s succeeded slug=%s", job.id, slug_with_pages)
+        logger.info("Extraction job %s succeeded slug=%s", job.id, slug_with_pages)
 
     def list_jobs(self) -> List[Dict[str, Any]]:
         with self.lock:
@@ -317,4 +317,4 @@ class RunJobManager:
             return job.to_dict() if job else None
 
 
-RUN_JOB_MANAGER = RunJobManager()
+EXTRACTION_JOB_MANAGER = ExtractionJobManager()

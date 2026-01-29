@@ -397,44 +397,44 @@
   color: var(--muted);
 }
 
-.run-grid {
+.extraction-grid {
   display: grid;
   gap: 8px;
 }
 
-.run-grid label {
+.extraction-grid label {
   display: grid;
   gap: 4px;
 }
 
-.run-grid .pdf-lang-row {
+.extraction-grid .pdf-lang-row {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
   align-items: flex-end;
 }
 
-.run-grid .pdf-lang-row label {
+.extraction-grid .pdf-lang-row label {
   flex: 1 1 260px;
 }
 
-.run-grid label.pdf-picker {
+.extraction-grid label.pdf-picker {
   min-width: 300px;
 }
 
-.run-grid label.lang-picker {
+.extraction-grid label.lang-picker {
   flex: 0 1 220px;
   min-width: 200px;
 }
 
-.run-grid label.checkbox {
+.extraction-grid label.checkbox {
   display: inline-flex;
   align-items: center;
   gap: 8px;
 }
 
-.run-grid input,
-.run-grid select {
+.extraction-grid input,
+.extraction-grid select {
   background: var(--panel);
   color: var(--text);
   border: 1px solid var(--border-default);
@@ -442,7 +442,7 @@
   border-radius: 6px;
 }
 
-.run-grid .lab {
+.extraction-grid .lab {
   color: var(--muted);
   font-size: 12px;
 }
@@ -457,13 +457,13 @@
   flex: 1;
 }
 
-.run-grid input[type="file"] {
+.extraction-grid input[type="file"] {
   padding: 0;
   border: 0;
   background: transparent;
 }
 
-.run-grid input[type="file"]::file-selector-button {
+.extraction-grid input[type="file"]::file-selector-button {
   background: var(--panel);
   color: var(--text);
   border: 1px solid var(--border-default);
@@ -472,7 +472,7 @@
   cursor: pointer;
 }
 
-.run-grid input[type="file"]::-webkit-file-upload-button {
+.extraction-grid input[type="file"]::-webkit-file-upload-button {
   background: var(--panel);
   color: var(--text);
   border: 1px solid var(--border-default);
@@ -492,7 +492,7 @@
   margin-top: 6px;
 }
 
-.run-actions {
+.extraction-actions {
   display: flex;
   align-items: center;
   gap: 8px;

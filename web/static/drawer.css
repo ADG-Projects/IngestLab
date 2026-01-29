@@ -180,7 +180,7 @@
   max-height: 320px;
 }
 
-.feedback-runs-card {
+.feedback-extractions-card {
   background: var(--panel);
   border: 1px solid var(--border-default);
   border-radius: 10px;
@@ -190,13 +190,13 @@
   gap: 10px;
 }
 
-.feedback-runs {
+.feedback-extractions {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 10px;
 }
 
-.feedback-run {
+.feedback-extraction {
   border: 1px solid var(--border-default);
   border-radius: 10px;
   padding: 10px;
@@ -206,11 +206,11 @@
   gap: 6px;
 }
 
-.feedback-run .slug {
+.feedback-extraction .slug {
   font-weight: 600;
 }
 
-.feedback-run .meta {
+.feedback-extraction .meta {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
@@ -218,7 +218,7 @@
   font-size: 12px;
 }
 
-.feedback-run .counts {
+.feedback-extraction .counts {
   display: flex;
   gap: 8px;
   font-size: 13px;
@@ -233,7 +233,7 @@
   color: var(--muted);
 }
 
-.feedback-run .notes {
+.feedback-extraction .notes {
   background: var(--bg-tertiary);
   border: 1px solid var(--border-default);
   border-radius: 8px;
@@ -244,19 +244,19 @@
   overflow: auto;
 }
 
-.feedback-run .notes .note {
+.feedback-extraction .notes .note {
   margin-bottom: 6px;
   padding-bottom: 6px;
   border-bottom: 1px solid var(--border-subtle);
 }
 
-.feedback-run .notes .note:last-child {
+.feedback-extraction .notes .note:last-child {
   margin-bottom: 0;
   padding-bottom: 0;
   border-bottom: 0;
 }
 
-.feedback-run .actions {
+.feedback-extraction .actions {
   display: flex;
   gap: 8px;
   flex-wrap: wrap;
@@ -284,7 +284,7 @@
   overflow: auto;
 }
 
-.feedback-runs-card input {
+.feedback-extractions-card input {
   max-width: 360px;
 }
 /* When the drawer is open, hide right-panel stats/content but keep Inspect tabs visible */
@@ -632,7 +632,7 @@ body.drawer-open #right-metrics {
 .metric .label,
 .mini-metric .label,
 .setting-label,
-.run-grid .lab {
+.extraction-grid .lab {
   position: relative;
   display: inline-flex;
   align-items: center;
@@ -676,7 +676,7 @@ body.drawer-open #right-metrics {
 .metric .label:hover .tip,
 .mini-metric .label:hover .tip,
 .setting-label:hover .tip,
-.run-grid .lab:hover .tip,
+.extraction-grid .lab:hover .tip,
 .info:focus+.tip,
 .settings-recap .setting-item:hover .tip,
 .settings-recap .setting-item:focus-within .tip {
@@ -764,7 +764,7 @@ body.drawer-open #right-metrics {
   pointer-events: auto;
 }
 
-.run-grid .lab .tip {
+.extraction-grid .lab .tip {
   pointer-events: none !important;
   left: 0;
   right: auto;

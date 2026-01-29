@@ -1,6 +1,6 @@
 /**
- * Run form wiring and validation
- * Extracted from app-runs.js for modularity
+ * Extraction form wiring and validation
+ * Extracted from app-extractions.js for modularity
  */
 
 // Cached supported formats from API
@@ -58,7 +58,7 @@ function getFileType(filename) {
   return null;
 }
 
-function wireRunForm() {
+function wireExtractionForm() {
   // Fetch supported formats from API (non-blocking)
   fetchSupportedFormats().catch(e => console.warn('Could not fetch supported formats:', e));
 
@@ -141,7 +141,7 @@ function wireRunForm() {
         uploadInput.value = '';
         await loadPdfs(data?.name || null);
         try {
-          await loadRunPreviewForSelectedPdf();
+          await loadExtractionPreviewForSelectedPdf();
         } catch (err) {
           console.error('Failed to refresh preview after upload', err);
         }
@@ -161,8 +161,8 @@ function wireRunForm() {
     setUploadingState(false);
   }
 
-  $('runBtn').addEventListener('click', async () => {
-    const status = $('runStatus');
+  $('extractionBtn').addEventListener('click', async () => {
+    const status = $('extractionStatus');
     status.textContent = '';
     const provider = (providerSel ? providerSel.value : 'unstructured/local') || 'unstructured/local';
     const isAzure = provider.startsWith('azure');
@@ -293,45 +293,45 @@ function wireRunForm() {
       if (status) status.textContent = 'Queued…';
       const tagInput = $('variantTag');
       if (tagInput) tagInput.value = '';
-      await pollRunJob(jobId);
+      await pollExtractionJob(jobId);
     } catch (e) {
       status.textContent = `Failed: ${e.message}`;
     } finally {
       if (!jobId) {
-        setRunInProgress(false);
+        setExtractionInProgress(false);
       }
     }
   });
 
-  const cancelBtn = $('cancelRunBtn');
+  const cancelBtn = $('cancelExtractionBtn');
   if (cancelBtn) {
     cancelBtn.addEventListener('click', () => {
-      const status = $('runStatus');
+      const status = $('extractionStatus');
       if (status) status.textContent = '';
-      closeRunModal();
+      closeExtractionModal();
     });
   }
 
   const pdfSel = $('pdfSelect');
   if (pdfSel) {
     pdfSel.addEventListener('change', async () => {
-      await loadRunPreviewForSelectedPdf();
+      await loadExtractionPreviewForSelectedPdf();
     });
   }
-  const prev = $('runPrev');
-  const next = $('runNext');
+  const prev = $('extractionPrev');
+  const next = $('extractionNext');
   const addPageBtn = $('addPageBtn');
   const markStartBtn = $('markStartBtn');
   const markEndBtn = $('markEndBtn');
-  if (prev) prev.addEventListener('click', async () => { if (!RUN_PREVIEW_DOC) return; RUN_PREVIEW_PAGE = Math.max(1, RUN_PREVIEW_PAGE - 1); await renderRunPreviewPage(); });
-  if (next) next.addEventListener('click', async () => { if (!RUN_PREVIEW_DOC) return; RUN_PREVIEW_PAGE = Math.min(RUN_PREVIEW_COUNT, RUN_PREVIEW_PAGE + 1); await renderRunPreviewPage(); });
-  if (addPageBtn) addPageBtn.addEventListener('click', () => { addPageToInput(RUN_PREVIEW_PAGE); });
-  if (markStartBtn) markStartBtn.addEventListener('click', () => { RUN_RANGE_START = RUN_PREVIEW_PAGE; updateRangeHint(); });
-  if (markEndBtn) markEndBtn.addEventListener('click', () => { if (RUN_RANGE_START != null) { const a = Math.min(RUN_RANGE_START, RUN_PREVIEW_PAGE); const b = Math.max(RUN_RANGE_START, RUN_PREVIEW_PAGE); addRangeToInput(a, b); RUN_RANGE_START = null; updateRangeHint(); } });
+  if (prev) prev.addEventListener('click', async () => { if (!EXTRACTION_PREVIEW_DOC) return; EXTRACTION_PREVIEW_PAGE = Math.max(1, EXTRACTION_PREVIEW_PAGE - 1); await renderExtractionPreviewPage(); });
+  if (next) next.addEventListener('click', async () => { if (!EXTRACTION_PREVIEW_DOC) return; EXTRACTION_PREVIEW_PAGE = Math.min(EXTRACTION_PREVIEW_COUNT, EXTRACTION_PREVIEW_PAGE + 1); await renderExtractionPreviewPage(); });
+  if (addPageBtn) addPageBtn.addEventListener('click', () => { addPageToInput(EXTRACTION_PREVIEW_PAGE); });
+  if (markStartBtn) markStartBtn.addEventListener('click', () => { EXTRACTION_RANGE_START = EXTRACTION_PREVIEW_PAGE; updateRangeHint(); });
+  if (markEndBtn) markEndBtn.addEventListener('click', () => { if (EXTRACTION_RANGE_START != null) { const a = Math.min(EXTRACTION_RANGE_START, EXTRACTION_PREVIEW_PAGE); const b = Math.max(EXTRACTION_RANGE_START, EXTRACTION_PREVIEW_PAGE); addRangeToInput(a, b); EXTRACTION_RANGE_START = null; updateRangeHint(); } });
 }
 
 // Window exports
-window.wireRunForm = wireRunForm;
+window.wireExtractionForm = wireExtractionForm;
 window.fetchSupportedFormats = fetchSupportedFormats;
 window.isSupportedFile = isSupportedFile;
 window.getFileType = getFileType;

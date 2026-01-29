@@ -1,9 +1,9 @@
 /**
- * Runs orchestration - main logic, init, view switching
- * Dependencies: app-pdf.js, app-run-jobs.js, app-run-preview.js, app-run-form.js, app-modal.js
+ * Extractions orchestration - main logic, init, view switching
+ * Dependencies: app-pdf.js, app-extraction-jobs.js, app-extraction-preview.js, app-extraction-form.js, app-modal.js
  */
 
-const LAST_RUN_KEY = 'chunking-visualizer-last-run';
+const LAST_EXTRACTION_KEY = 'chunking-visualizer-last-extraction';
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // Legacy provider name aliases (pre-v5.0 compatibility)
@@ -17,12 +17,12 @@ function resolveProvider(provider) {
   return PROVIDER_ALIASES[provider] || provider;
 }
 
-function runKey(slug, provider = CURRENT_PROVIDER || 'unstructured/local') {
+function extractionKey(slug, provider = CURRENT_PROVIDER || 'unstructured/local') {
   const prov = (provider || 'unstructured/local').trim() || 'unstructured/local';
   return `${prov}:::${slug || ''}`;
 }
 
-function parseRunKey(key) {
+function parseExtractionKey(key) {
   const raw = key || '';
   const sep = raw.indexOf(':::');
   if (sep === -1) return { slug: raw, provider: CURRENT_PROVIDER || 'unstructured/local' };
@@ -73,7 +73,7 @@ function updateMainFormatBadge() {
   badge.style.display = 'inline-block';
 }
 
-async function loadRun(slug, provider = CURRENT_PROVIDER) {
+async function loadExtraction(slug, provider = CURRENT_PROVIDER) {
   const providerKey = (provider || CURRENT_PROVIDER || 'unstructured/local').trim() || 'unstructured/local';
   CURRENT_SLUG = slug;
   CURRENT_PROVIDER = providerKey;
@@ -128,7 +128,7 @@ async function loadRun(slug, provider = CURRENT_PROVIDER) {
 
 async function init() {
   await loadPdfs();
-  wireRunForm();
+  wireExtractionForm();
   setupInspectTabs();
   wireModal();
   wireChunkerModal();
@@ -148,10 +148,10 @@ async function init() {
       await new Promise(r => setTimeout(r, 50));
     }
   })();
-  await refreshRuns();
+  await refreshExtractions();
   await loadPdfs();
   await ensurePdfjsReady();
-  await loadRunPreviewForSelectedPdf();
+  await loadExtractionPreviewForSelectedPdf();
   $('prevPage').addEventListener('click', async () => {
     if (!PDF_DOC) return;
     const n = Math.max(1, CURRENT_PAGE - 1);
@@ -246,15 +246,15 @@ async function init() {
   switchView('inspect', true);
 }
 
-async function refreshRuns() {
-  const runs = await fetchJSON('/api/runs');
-  RUNS_CACHE = runs;
-  const sel = $('runSelect');
+async function refreshExtractions() {
+  const extractions = await fetchJSON('/api/extractions');
+  EXTRACTIONS_CACHE = extractions;
+  const sel = $('extractionSelect');
   sel.innerHTML = '';
-  for (const r of runs) {
+  for (const r of extractions) {
     const opt = document.createElement('option');
     const prov = r.provider || 'unstructured/local';
-    opt.value = runKey(r.slug, prov);
+    opt.value = extractionKey(r.slug, prov);
     opt.dataset.slug = r.slug;
     opt.dataset.provider = prov;
     const tag = r.page_range ? ` · pages ${r.page_range}` : '';
@@ -262,32 +262,32 @@ async function refreshRuns() {
     opt.textContent = `${r.slug}${providerLabel}${tag}`;
     sel.appendChild(opt);
   }
-  if (runs.length) {
-    // Try to restore last run from localStorage
-    const lastRunKey = localStorage.getItem(LAST_RUN_KEY);
-    let chosenRun = null;
-    if (lastRunKey) {
-      const { slug, provider } = parseRunKey(lastRunKey);
-      chosenRun = runs.find(
+  if (extractions.length) {
+    // Try to restore last extraction from localStorage
+    const lastExtractionKey = localStorage.getItem(LAST_EXTRACTION_KEY);
+    let chosenExtraction = null;
+    if (lastExtractionKey) {
+      const { slug, provider } = parseExtractionKey(lastExtractionKey);
+      chosenExtraction = extractions.find(
         (r) => r.slug === slug && (r.provider || 'unstructured/local') === provider,
       );
     }
-    // Fall back to existing selection or first run
-    if (!chosenRun) {
-      const existing = runs.find(
+    // Fall back to existing selection or first extraction
+    if (!chosenExtraction) {
+      const existing = extractions.find(
         (r) => r.slug === CURRENT_SLUG && (r.provider || 'unstructured/local') === (CURRENT_PROVIDER || 'unstructured/local'),
       );
-      chosenRun = existing || runs[0];
+      chosenExtraction = existing || extractions[0];
     }
-    CURRENT_SLUG = chosenRun.slug;
-    CURRENT_PROVIDER = chosenRun.provider || 'unstructured/local';
-    sel.value = runKey(CURRENT_SLUG, CURRENT_PROVIDER);
-    await loadRun(CURRENT_SLUG, CURRENT_PROVIDER);
+    CURRENT_SLUG = chosenExtraction.slug;
+    CURRENT_PROVIDER = chosenExtraction.provider || 'unstructured/local';
+    sel.value = extractionKey(CURRENT_SLUG, CURRENT_PROVIDER);
+    await loadExtraction(CURRENT_SLUG, CURRENT_PROVIDER);
   } else {
     CURRENT_SLUG = null;
-    CURRENT_RUN = null;
-    CURRENT_RUN_CONFIG = null;
-    CURRENT_RUN_HAS_CHUNKS = false;
+    CURRENT_EXTRACTION = null;
+    CURRENT_EXTRACTION_CONFIG = null;
+    CURRENT_EXTRACTION_HAS_CHUNKS = false;
     ELEMENT_TYPES = [];
     CHUNK_TYPES = [];
     CURRENT_CHUNKS = null;
@@ -305,15 +305,15 @@ async function refreshRuns() {
     updateReviewSummaryChip();
   }
   sel.onchange = async () => {
-    const { slug, provider } = parseRunKey(sel.value);
+    const { slug, provider } = parseExtractionKey(sel.value);
     CURRENT_SLUG = slug;
     CURRENT_PROVIDER = provider || 'unstructured/local';
-    const selected = (RUNS_CACHE || []).find(
+    const selected = (EXTRACTIONS_CACHE || []).find(
       (r) => r.slug === CURRENT_SLUG && (r.provider || 'unstructured/local') === CURRENT_PROVIDER,
     );
     if (selected && selected.provider) CURRENT_PROVIDER = selected.provider;
-    localStorage.setItem(LAST_RUN_KEY, sel.value);
-    await loadRun(CURRENT_SLUG, CURRENT_PROVIDER);
+    localStorage.setItem(LAST_EXTRACTION_KEY, sel.value);
+    await loadExtraction(CURRENT_SLUG, CURRENT_PROVIDER);
   };
 }
 
@@ -501,12 +501,12 @@ function switchView(view, skipRedraw = false) {
 
 // Window exports
 window.resolveProvider = resolveProvider;
-window.runKey = runKey;
-window.parseRunKey = parseRunKey;
+window.extractionKey = extractionKey;
+window.parseExtractionKey = parseExtractionKey;
 window.providerSupportsChunks = providerSupportsChunks;
-window.loadRun = loadRun;
+window.loadExtraction = loadExtraction;
 window.init = init;
-window.refreshRuns = refreshRuns;
+window.refreshExtractions = refreshExtractions;
 window.loadPdfs = loadPdfs;
 window.setChunksTabVisible = setChunksTabVisible;
 window.setupInspectTabs = setupInspectTabs;

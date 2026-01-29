@@ -15,14 +15,14 @@
 - [x] 2026-01-24 Add image lightbox for zoomable previews with keyboard navigation.
 - [x] 2025-01-23 Add two-stage figure pipeline with SAM3 segmentation preview and separate mermaid extraction.
 - [x] 2025-01-22 Release v5.0.4 (Fix Pydantic serialization for chunker and extraction pipelines).
-- [x] 2025-12-02 Release v5.0.3 (Fix custom chunker to work on legacy runs).
+- [x] 2025-12-02 Release v5.0.3 (Fix custom chunker to work on legacy extractions).
 - [x] 2025-12-02 Fix chunker endpoint to extract elements from legacy .chunks.jsonl files when no .elements.jsonl exists.
-- [x] 2025-12-02 Release v5.0.2 (Fix element bounding boxes for legacy chunks-only runs).
+- [x] 2025-12-02 Release v5.0.2 (Fix element bounding boxes for legacy chunks-only extractions).
 - [x] 2025-12-02 Fix element/box endpoints to extract bounding boxes from legacy .chunks.jsonl files when no .elements.jsonl exists.
-- [x] 2025-12-02 Release v5.0.1 (Fix legacy runs discovery, add backwards-compatible provider aliases).
-- [x] 2025-12-02 Fix legacy runs (pre-v5.0) not discovered by scanning both .elements.jsonl and .chunks.jsonl files.
+- [x] 2025-12-02 Release v5.0.1 (Fix legacy extractions discovery, add backwards-compatible provider aliases).
+- [x] 2025-12-02 Fix legacy extractions (pre-v5.0) not discovered by scanning both .elements.jsonl and .chunks.jsonl files.
 - [x] 2025-12-02 Add backwards-compatible provider aliases (azure-di, unstructured, unstructured-partition) for localStorage and API compatibility.
-- [x] 2025-12-01 Release v5.0 (Custom chunker improvements, element drawer hierarchy, resizable panels, smart parameter banner, run persistence).
+- [x] 2025-12-01 Release v5.0 (Custom chunker improvements, element drawer hierarchy, resizable panels, smart parameter banner, extraction persistence).
 - [x] 2025-12-01 Keep section headings that fall inside figure/table bounding boxes attached to the container chunk so figure captions stay with the figure chunk, and merge consecutive section headings into a single section chunk so intermediate header-only chunks go away.
 - [x] 2025-12-01 Add element drawer hierarchy context mirroring the outline view so ancestors/children stay visible while reviewing.
 - [x] 2025-12-01 Add resizable right panel and chunk details drawer.
@@ -43,15 +43,15 @@
 - [x] 2025-11-26 Add Feedback view with provider-wide review exports, LLM analysis endpoints, and JSON/HTML downloads plus charted summaries.
 - [x] 2025-11-26 Release v4.1 (Azure DI figures plus simplified Azure settings recap/modal).
 - [x] 2025-11-26 Add Azure DI figure crops (`--outputs figures`) with saved PNGs and UI previews matching Unstructured images.
-- [x] 2025-11-26 Render extracted image previews in element details for Unstructured runs when image payloads are present.
+- [x] 2025-11-26 Render extracted image previews in element details for Unstructured extractions when image payloads are present.
 - [x] 2025-11-25 Release v4.0 (Unstructured Partition API provider + Docker base swap to ECR Public).
-- [x] 2025-11-25 Add Unstructured Partition (API) provider (elements-only runs via UI/API).
+- [x] 2025-11-25 Add Unstructured Partition (API) provider (elements-only extractions via UI/API).
 - [x] 2025-11-25 Release v3.2 (bundled markdown/DOMPurify assets + favicon, persisted Azure detected-language metadata with RTL flips, and aligned Azure tooltips).
-- [x] 2025-11-25 Persist Azure detected languages into run metadata so reloading runs auto-flips between English and Arabic previews.
+- [x] 2025-11-25 Persist Azure detected languages into extraction metadata so reloading runs auto-flips between English and Arabic previews.
 - [x] 2025-11-25 Collapse Azure element outline by default and allow paragraph/line nesting so parents only expand one level at a time.
 - [x] 2025-11-25 Collapse Azure element outline by default and allow paragraph/line nesting so parents only expand one level at a time.
 - [x] 2025-11-24 Release v3.0 (Azure markdown/RTL + outline/roles, chunk-only artifacts after removing Metrics/tables pipeline).
-- [x] 2025-11-24 Remove table metrics/matches pipeline and Metrics view; runs now emit only trimmed PDFs, chunks JSONL, and run metadata.
+- [x] 2025-11-24 Remove table metrics/matches pipeline and Metrics view; runs now emit only trimmed PDFs, chunks JSONL, and extraction metadata.
 - [x] 2025-11-24 Render markdown from Azure providers in chunk/element drawers (sanitized, falls back to text/html tables).
 - [x] 2025-11-24 Capture Azure detected languages in run_config and flip the UI to RTL when detection reports Arabic-heavy documents.
 - [x] 2025-11-24 Add Azure element outline toggle in the UI with per-type grouping and drawer breadcrumbs.
@@ -61,26 +61,26 @@
 - [x] 2025-11-18 Release v2.1 (persist chunking defaults in `run_config` and ship drawer table previews that keep the chunker column order while still aligning RTL cell text per document direction).
 - [x] 2025-11-18 Keep drawer table previews in the chunker column order while aligning RTL cell text per document direction.
 - [x] 2025-11-18 Persist chunking defaults in `run_config` so the UI header shows actual parameter values instead of "-".
-- [x] 2025-11-18 Queue `/api/run` chunking jobs, stream stderr/stdout tails in the New Run modal, and expose status endpoints so Railway runs no longer hit “failed to fetch” timeouts.
+- [x] 2025-11-18 Queue `/api/run` chunking jobs, stream stderr/stdout tails in the New Extraction modal, and expose status endpoints so Railway runs no longer hit “failed to fetch” timeouts.
 - [x] 2025-11-18 Auto-condense chunk/element drawers based on preview scroll, fade drawer chips/mini-metrics to reclaim space, and reset drawer state whenever new content is opened.
-- [x] 2025-11-18 Collapse New Run modal inputs into a compact “Running…” view (with header button feedback) while runs are in progress so the dialog focuses on status instead of parameters.
+- [x] 2025-11-18 Collapse New Extraction modal inputs into a compact “Running…” view (with header button feedback) while runs are in progress so the dialog focuses on status instead of parameters.
 - [x] 2025-11-17 Release v2.0 (chunk/element review workflows plus modular frontend scripts).
 - [x] 2025-11-17 Size chunk cards by their text and keep chunk overlays synced with the type/review filters.
-- [x] 2025-11-17 Refactor Chunking Visualizer frontend into modular scripts (app-state/ui/overlays/metrics/elements/chunks/reviews/runs) and a small entry loader so each concern stays focused.
+- [x] 2025-11-17 Refactor Chunking Visualizer frontend into modular scripts (app-state/ui/overlays/metrics/elements/chunks/reviews/extractions) and a small entry loader so each concern stays focused.
 - [x] 2025-11-17 Respect element review filters in overlays and keep the element list grid from stretching cards by aligning content to the top.
 - [x] 2025-11-17 Add chunk/element reviews (Good/Bad buttons, optional notes, filters, and header summary chip backed by the reviews API/files).
 - [x] 2025-11-17 Release v1.1 (chunk overlay/drawer polish plus metrics highlight cleanup).
 - [x] 2025-11-17 Fix Inspect chunk overlays so closing an element drilled down from a chunk restores the same chunk context and re-draws its overlay on the PDF.
 - [x] 2025-11-15 Add Dockerfile with hi_res-ready libraries and document the Docker/Railway workflow so deployments no longer hit libGL errors.
 - [x] 2025-11-14 Install `unstructured-inference` by default so hi_res layout is always available on supported platforms; document builder caveats for required system libs.
-- [x] 2025-11-14 Remove the header Re-Run/cleanup controls (UI + API) and rename the Delete button to “Delete run” so the toolbar only exposes new-run + delete actions.
+- [x] 2025-11-14 Remove the header Re-Run/cleanup controls (UI + API) and rename the Delete button to “Delete extraction” so the toolbar only exposes new-run + delete actions.
 - [x] 2025-11-14 Default empty Pages to full document (UI + API): leaving Pages blank now processes `1-<num_pages>` automatically; tooltip/placeholder updated and README documents the behavior.
 - [x] 2025-11-14 Add delete for uploaded PDFs (UI button + API `DELETE /api/pdfs/{name}`) and guard preview when a file is removed.
 - [x] 2025-11-14 Add Primary Language toggle (English vs Arabic), wire OCR defaults, and right-align previews for Arabic documents.
 - [x] 2025-11-13 Auto-upload PDFs on file selection and store them on Fly volume via `PDF_DIR`; removed separate Upload button and fixed file chooser/tooltip and checkbox UI quirks.
 - [x] 2025-11-13 Enable Fly volume-backed PDF uploads: server honors `PDF_DIR`, Fly config mounts `/data`, UI uploads instantly without a button, and docs cover the flow.
-- [x] 2025-11-13 Compact single-line settings recap with rich tooltips; add matching tooltips to the New Run modal.
-- [x] 2025-11-13 Persist the New Run modal snapshot (PDF/pages/tag plus chunk flags like max_tokens) into matches.json so the recap bar always reflects every parameter.
+- [x] 2025-11-13 Compact single-line settings recap with rich tooltips; add matching tooltips to the New Extraction modal.
+- [x] 2025-11-13 Persist the New Extraction modal snapshot (PDF/pages/tag plus chunk flags like max_tokens) into matches.json so the recap bar always reflects every parameter.
 - [x] 2025-11-13 Derive per-row table chunk boxes (server + UI) so multi-chunk tables highlight distinct slices instead of overlapping.
 - [x] 2025-11-13 Add overlay tooltips (hover shows ID/type/page and chunk length) and switch overlay colors to fixed per-type CSS classes.
 - [x] 2025-11-13 Elements list shows per-type colors and inline text preview; display original element IDs instead of internal stable IDs.
@@ -93,8 +93,8 @@
 - [x] 2025-11-12 Add Elements tab with type filters and per-page box overlays; add quick toolbar (Show boxes + Type) above the PDF; add toast notifications for run/errors.
 - [x] 2025-11-12 Support clone re-runs with variant tag to compare strategies on same slice; colorize per-chunk overlays for multi-chunk tables across pages.
 - [x] 2025-11-12 Surface chunk-by-title outputs in UI: record run config/summary, add Chunks tab with summary + chunk list, and expose chunk metadata via new API endpoints.
-- [x] 2025-11-12 Refactor UI: header run picker + New Run modal, tabbed right panel (Overview with metrics/chart, Tables with cards) for clearer separation and future element types.
-- [x] 2025-11-12 Add on-demand Unstructured runs from the UI (PDF selection, page ranges via true PDF slicing, strategy toggle, infer-table checkbox, optional by-title chunking with advanced params).
+- [x] 2025-11-12 Refactor UI: header run picker + New Extraction modal, tabbed right panel (Overview with metrics/chart, Tables with cards) for clearer separation and future element types.
+- [x] 2025-11-12 Add on-demand Unstructured extractions from the UI (PDF selection, page ranges via true PDF slicing, strategy toggle, infer-table checkbox, optional by-title chunking with advanced params).
 - [x] 2025-11-12 Add FastAPI endpoints for new runs (`GET /api/pdfs`, `POST /api/run`) and wire to preview script via `uv run`.
 - [x] 2025-11-12 Replace global highlight toggle with per-table buttons (Highlight all / Highlight best) for clearer intent.
 - [x] 2025-11-12 Add per-chunk contribution display in Details (coverage, cohesion impact, solo-F1 vs table F1) and tags on chips.

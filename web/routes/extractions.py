@@ -27,15 +27,15 @@ from ..config import (
     safe_pages_tag,
 )
 from ..file_utils import get_file_type
-from ..run_jobs import RUN_JOB_MANAGER
+from ..extraction_jobs import EXTRACTION_JOB_MANAGER
 from .elements import clear_index_cache
 from .reviews import review_file_path
 
 router = APIRouter()
-logger = logging.getLogger("chunking.routes.runs")
+logger = logging.getLogger("chunking.routes.extractions")
 
 
-def _parse_slug_from_run_file(path: Path, suffix: str) -> Tuple[str, Optional[str]]:
+def _parse_slug_from_extraction_file(path: Path, suffix: str) -> Tuple[str, Optional[str]]:
     """Parse slug and page range from an elements or chunks file path."""
     stem = path.name[: -len(suffix)] if path.name.endswith(suffix) else path.stem
     m = re.match(r"^(?P<slug>.+?)\.pages(?P<range>[0-9_\-,]+)$", stem)
@@ -44,53 +44,53 @@ def _parse_slug_from_run_file(path: Path, suffix: str) -> Tuple[str, Optional[st
     return f"{m.group('slug')}.pages{m.group('range')}", m.group("range")
 
 
-def discover_runs(provider: Optional[str] = None) -> List[Dict[str, Any]]:
-    runs: List[Dict[str, Any]] = []
+def discover_extractions(provider: Optional[str] = None) -> List[Dict[str, Any]]:
+    extractions: List[Dict[str, Any]] = []
     provider_keys = [provider] if provider else list(PROVIDERS.keys())
     for prov in provider_keys:
         out_dir = get_out_dir(prov)
         if not out_dir.exists():
             continue
 
-        # Collect runs from both elements files (v5.0+) and chunks files (legacy)
+        # Collect extractions from both elements files (v5.0+) and chunks files (legacy)
         seen_stems: set = set()
-        run_files: List[Tuple[Path, bool]] = []  # (path, is_elements)
+        extraction_files: List[Tuple[Path, bool]] = []  # (path, is_elements)
 
         # Primary: elements files (v5.0+)
         for ef in out_dir.glob("*.elements.jsonl"):
             base_stem = ef.name[: -len(".elements.jsonl")]
             seen_stems.add(base_stem)
-            run_files.append((ef, True))
+            extraction_files.append((ef, True))
 
         # Fallback: chunks files without corresponding elements (pre-v5.0 legacy)
         for cf in out_dir.glob("*.chunks.jsonl"):
             base_stem = cf.name[: -len(".chunks.jsonl")]
             if base_stem not in seen_stems:
-                run_files.append((cf, False))
+                extraction_files.append((cf, False))
 
         # Sort by mtime, newest first
-        run_files.sort(key=lambda x: x[0].stat().st_mtime, reverse=True)
+        extraction_files.sort(key=lambda x: x[0].stat().st_mtime, reverse=True)
 
-        for run_file, is_elements in run_files:
+        for extraction_file, is_elements in extraction_files:
             if is_elements:
                 suffix = ".elements.jsonl"
             else:
                 suffix = ".chunks.jsonl"
-            base_stem = run_file.name[: -len(suffix)]
-            ui_slug, page_tag = _parse_slug_from_run_file(run_file, suffix)
+            base_stem = extraction_file.name[: -len(suffix)]
+            ui_slug, page_tag = _parse_slug_from_extraction_file(extraction_file, suffix)
             pdf_path = out_dir / f"{base_stem}.pdf"
-            meta_path = out_dir / f"{base_stem}.run.json"
+            meta_path = out_dir / f"{base_stem}.extraction.json"
             elements_path = out_dir / f"{base_stem}.elements.jsonl"
             chunks_path = out_dir / f"{base_stem}.chunks.jsonl"
             page_range = (page_tag or "").replace("_", ",") or None
-            run_config: Dict[str, Any] = {}
+            extraction_config: Dict[str, Any] = {}
             if meta_path.exists():
                 try:
                     with meta_path.open("r", encoding="utf-8") as fh:
-                        run_config = json.load(fh)
+                        extraction_config = json.load(fh)
                 except json.JSONDecodeError:
-                    run_config = {}
-            runs.append(
+                    extraction_config = {}
+            extractions.append(
                 {
                     "slug": ui_slug,
                     "provider": prov,
@@ -98,42 +98,42 @@ def discover_runs(provider: Optional[str] = None) -> List[Dict[str, Any]]:
                     "page_range": page_range,
                     "elements_file": relative_to_root(elements_path) if elements_path.exists() else None,
                     "chunks_file": relative_to_root(chunks_path) if chunks_path.exists() else None,
-                    "run_config": run_config or None,
+                    "extraction_config": extraction_config or None,
                 }
             )
 
-    return runs
+    return extractions
 
 
-@router.get("/api/run-jobs")
-def api_run_jobs() -> Dict[str, Any]:
-    return {"jobs": RUN_JOB_MANAGER.list_jobs()}
+@router.get("/api/extraction-jobs")
+def api_extraction_jobs() -> Dict[str, Any]:
+    return {"jobs": EXTRACTION_JOB_MANAGER.list_jobs()}
 
 
-@router.get("/api/run-jobs/{job_id}")
-def api_run_job_detail(job_id: str) -> Dict[str, Any]:
-    job = RUN_JOB_MANAGER.get_job(job_id)
+@router.get("/api/extraction-jobs/{job_id}")
+def api_extraction_job_detail(job_id: str) -> Dict[str, Any]:
+    job = EXTRACTION_JOB_MANAGER.get_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
     return job
 
 
-@router.get("/api/runs")
-def api_runs(provider: Optional[str] = Query(default=None)) -> List[Dict[str, Any]]:
-    return discover_runs(provider=provider)
+@router.get("/api/extractions")
+def api_extractions(provider: Optional[str] = Query(default=None)) -> List[Dict[str, Any]]:
+    return discover_extractions(provider=provider)
 
 
-@router.delete("/api/run/{slug}")
-def api_delete_run(slug: str, provider: str = Query(default=DEFAULT_PROVIDER)) -> Dict[str, Any]:
+@router.delete("/api/extraction/{slug}")
+def api_delete_extraction(slug: str, provider: str = Query(default=DEFAULT_PROVIDER)) -> Dict[str, Any]:
     out_dir = get_out_dir(provider)
     removed: List[str] = []
-    patterns = [f"{slug}.elements.jsonl", f"{slug}.chunks.jsonl", f"{slug}.pdf", f"{slug}.run.json"]
+    patterns = [f"{slug}.elements.jsonl", f"{slug}.chunks.jsonl", f"{slug}.pdf", f"{slug}.extraction.json"]
     if ".pages" in slug:
         base, _, rest = slug.partition(".pages")
         patterns.append(f"{base}.pages{rest}.elements.jsonl")
         patterns.append(f"{base}.pages{rest}.chunks.jsonl")
         patterns.append(f"{base}.pages{rest}.pdf")
-        patterns.append(f"{base}.pages{rest}.run.json")
+        patterns.append(f"{base}.pages{rest}.extraction.json")
     for globpat in patterns:
         for p in out_dir.glob(globpat):
             if p.exists():
@@ -150,8 +150,8 @@ def api_delete_run(slug: str, provider: str = Query(default=DEFAULT_PROVIDER)) -
     return {"status": "ok", "removed": removed}
 
 
-# Providers that support creating new runs (Unstructured is sunsetted)
-RUNNABLE_PROVIDERS = {"azure/document_intelligence"}
+# Providers that support creating new extractions (Unstructured is sunsetted)
+EXTRACTABLE_PROVIDERS = {"azure/document_intelligence"}
 
 
 def _write_elements_jsonl(path: Path, elements: List[Dict[str, Any]]) -> None:
@@ -162,11 +162,11 @@ def _write_elements_jsonl(path: Path, elements: List[Dict[str, Any]]) -> None:
             fh.write(json.dumps(el, ensure_ascii=False) + "\n")
 
 
-def _write_run_metadata(path: Path, run_config: Dict[str, Any]) -> None:
-    """Write run configuration metadata to JSON file."""
+def _write_extraction_metadata(path: Path, extraction_config: Dict[str, Any]) -> None:
+    """Write extraction configuration metadata to JSON file."""
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as fh:
-        json.dump(run_config, fh, ensure_ascii=False, indent=2)
+        json.dump(extraction_config, fh, ensure_ascii=False, indent=2)
         fh.write("\n")
 
 
@@ -326,7 +326,7 @@ def _process_figures_after_extraction(
     return elements
 
 
-def _run_extraction(metadata: Dict[str, Any]) -> None:
+def _execute_extraction(metadata: Dict[str, Any]) -> None:
     """Worker function for Azure DI extraction.
 
     Called by the job manager with metadata containing all extraction parameters.
@@ -406,8 +406,8 @@ def _run_extraction(metadata: Dict[str, Any]) -> None:
     # Convert elements to dict format for JSONL
     elems = [el.to_dict() for el in result.elements]
 
-    # Build run configuration metadata
-    run_config: Dict[str, Any] = {
+    # Build extraction configuration metadata
+    extraction_config: Dict[str, Any] = {
         "provider": "azure/document_intelligence",
         "input": str(input_file),
         "file_type": file_type,
@@ -417,27 +417,27 @@ def _run_extraction(metadata: Dict[str, Any]) -> None:
         "features": config.features or [],
     }
     if config.outputs:
-        run_config["outputs"] = config.outputs
+        extraction_config["outputs"] = config.outputs
     if config.locale:
-        run_config["locale"] = config.locale
+        extraction_config["locale"] = config.locale
     if metadata.get("primary_language"):
-        run_config["primary_language"] = metadata["primary_language"]
+        extraction_config["primary_language"] = metadata["primary_language"]
     if metadata.get("ocr_languages"):
-        run_config["ocr_languages"] = metadata["ocr_languages"]
+        extraction_config["ocr_languages"] = metadata["ocr_languages"]
     if metadata.get("languages"):
-        run_config["languages"] = metadata["languages"]
+        extraction_config["languages"] = metadata["languages"]
 
     # Merge extraction metadata (detected languages, element count, etc.)
     # Serialize Pydantic models (like DetectedLanguage) to dicts for JSON compatibility
     for key, val in result.metadata.items():
         if isinstance(val, list):
-            run_config[key] = [
+            extraction_config[key] = [
                 item.model_dump() if hasattr(item, "model_dump") else item for item in val
             ]
         elif hasattr(val, "model_dump"):
-            run_config[key] = val.model_dump()
+            extraction_config[key] = val.model_dump()
         else:
-            run_config[key] = val
+            extraction_config[key] = val
 
     # Process figures: extract images from PDF and run vision pipeline if available
     # Only process if we have a PDF (trimmed_path exists)
@@ -450,20 +450,20 @@ def _run_extraction(metadata: Dict[str, Any]) -> None:
 
     # Write outputs
     _write_elements_jsonl(elements_path, elems)
-    _write_run_metadata(meta_path, run_config)
+    _write_extraction_metadata(meta_path, extraction_config)
 
     logger.info(f"Extraction complete: {len(elems)} elements written to {elements_path}")
 
 
-@router.post("/api/run")
-def api_run(payload: Dict[str, Any]) -> Dict[str, Any]:
+@router.post("/api/extraction")
+def api_extraction(payload: Dict[str, Any]) -> Dict[str, Any]:
     provider = str(payload.get("provider") or DEFAULT_PROVIDER).strip() or DEFAULT_PROVIDER
     if provider not in PROVIDERS:
         raise HTTPException(status_code=400, detail=f"Unknown provider: {provider}")
-    if provider not in RUNNABLE_PROVIDERS:
+    if provider not in EXTRACTABLE_PROVIDERS:
         raise HTTPException(
             status_code=400,
-            detail=f"Provider '{provider}' is no longer supported for new runs. "
+            detail=f"Provider '{provider}' is no longer supported for new extractions. "
             "Use 'azure/document_intelligence' instead.",
         )
     out_dir = get_out_dir(provider)
@@ -575,14 +575,14 @@ def api_run(payload: Dict[str, Any]) -> Dict[str, Any]:
         # Images: single page
         pages = "1"
 
-    logger.info("Received run request provider=%s doc=%s type=%s pages=%s", provider, doc_name, file_type, pages)
+    logger.info("Received extraction request provider=%s doc=%s type=%s pages=%s", provider, doc_name, file_type, pages)
 
     slug = input_file.stem
     raw_tag = str(payload.get("tag") or "").strip()
     safe_tag = None
     if raw_tag:
         safe_tag = re.sub(r"[^A-Za-z0-9_\\-]+", "-", raw_tag)[:40].strip("-")
-    run_slug = f"{slug}__{safe_tag}" if safe_tag else slug
+    extraction_slug = f"{slug}__{safe_tag}" if safe_tag else slug
     pages_tag = safe_pages_tag(pages)
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -609,33 +609,33 @@ def api_run(payload: Dict[str, Any]) -> Dict[str, Any]:
         return (
             out_dir / f"{slug_val}.{pages_tag}.pdf",
             out_dir / f"{slug_val}.{pages_tag}.elements.jsonl",
-            out_dir / f"{slug_val}.{pages_tag}.run.json",
+            out_dir / f"{slug_val}.{pages_tag}.extraction.json",
         )
 
-    trimmed_out, elements_out, meta_out = build_paths(run_slug)
+    trimmed_out, elements_out, meta_out = build_paths(extraction_slug)
 
     if trimmed_out.exists() or elements_out.exists():
         n = 2
-        base_variant = run_slug
+        base_variant = extraction_slug
         while True:
             candidate = f"{base_variant}__r{n}"
             p_out, e_out, m_out = build_paths(candidate)
             if not (e_out.exists() or p_out.exists()):
-                run_slug = candidate
+                extraction_slug = candidate
                 trimmed_out, elements_out, meta_out = p_out, e_out, m_out
                 break
             n += 1
 
     logger.info(
-        "Submitting run slug=%s provider=%s",
-        f"{run_slug}.{pages_tag}",
+        "Submitting extraction slug=%s provider=%s",
+        f"{extraction_slug}.{pages_tag}",
         provider,
     )
 
     # Build job metadata with all extraction parameters
     job_metadata = {
         # Job tracking fields
-        "slug_with_pages": f"{run_slug}.{pages_tag}",
+        "slug_with_pages": f"{extraction_slug}.{pages_tag}",
         "pages_tag": pages_tag,
         "doc_name": doc_name,
         "file_type": file_type,
@@ -649,7 +649,7 @@ def api_run(payload: Dict[str, Any]) -> Dict[str, Any]:
         "trimmed_path": str(trimmed_out),
         "elements_path": str(elements_out),
         "meta_path": str(meta_out),
-        # Extraction parameters for _run_extraction()
+        # Extraction parameters for _execute_extraction()
         "model_id": azure_model_id,
         "features": normalized_features or None,
         "outputs": normalized_outputs or None,
@@ -658,15 +658,15 @@ def api_run(payload: Dict[str, Any]) -> Dict[str, Any]:
         "ocr_languages": ocr_languages,
         "languages": languages,
     }
-    job = RUN_JOB_MANAGER.enqueue_callable(callable_fn=_run_extraction, metadata=job_metadata)
+    job = EXTRACTION_JOB_MANAGER.enqueue_callable(callable_fn=_execute_extraction, metadata=job_metadata)
     job_data = job.to_dict()
     logger.info(
-        "Run queued job_id=%s slug=%s provider=%s",
+        "Extraction queued job_id=%s slug=%s provider=%s",
         job_data.get("id"),
         job_metadata["slug_with_pages"],
         provider,
     )
-    run_stub = {
+    extraction_stub = {
         "slug": job_metadata["slug_with_pages"],
         "provider": provider,
         "file_type": file_type,
@@ -674,6 +674,6 @@ def api_run(payload: Dict[str, Any]) -> Dict[str, Any]:
         "pdf_file": relative_to_root(trimmed_out) if trimmed_out.exists() else None,
         "elements_file": relative_to_root(elements_out) if elements_out.exists() else None,
         "chunks_file": None,  # Chunks created separately by chunker
-        "run_config": job_metadata.get("form_snapshot"),
+        "extraction_config": job_metadata.get("form_snapshot"),
     }
-    return {"status": "queued", "job": job_data, "run": run_stub}
+    return {"status": "queued", "job": job_data, "extraction": extraction_stub}

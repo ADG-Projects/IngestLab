@@ -1,49 +1,49 @@
 /**
- * Modal management (run modal, chunker modal)
- * Extracted from app-runs.js for modularity
+ * Modal management (extraction modal, chunker modal)
+ * Extracted from app-extractions.js for modularity
  */
 
 function wireModal() {
-  const openBtn = $('openRunModal');
-  const deleteBtn = $('deleteRunBtn');
-  const closeBtn = $('closeRunModal');
-  const backdrop = $('runModalBackdrop');
-  const modal = $('runModal');
+  const openBtn = $('openExtractionModal');
+  const deleteBtn = $('deleteExtractionBtn');
+  const closeBtn = $('closeExtractionModal');
+  const backdrop = $('extractionModalBackdrop');
+  const modal = $('extractionModal');
   openBtn.addEventListener('click', () => {
     const s = $('pdfSelect');
     if (s) s.disabled = false;
     modal.classList.remove('hidden');
-    modal.classList.remove('running');
-    const status = $('runStatus');
+    modal.classList.remove('extracting');
+    const status = $('extractionStatus');
     if (status) status.textContent = '';
   });
   if (deleteBtn) {
     deleteBtn.addEventListener('click', async () => {
       if (!CURRENT_SLUG) return;
-      const ok = confirm(`Delete run: ${CURRENT_SLUG}? This removes its matches, tables JSONL, and trimmed PDF.`);
+      const ok = confirm(`Delete extraction: ${CURRENT_SLUG}? This removes its matches, tables JSONL, and trimmed PDF.`);
       if (!ok) return;
       try {
-        const r = await fetch(withProvider(`/api/run/${encodeURIComponent(CURRENT_SLUG)}`, CURRENT_PROVIDER), { method: 'DELETE' });
+        const r = await fetch(withProvider(`/api/extraction/${encodeURIComponent(CURRENT_SLUG)}`, CURRENT_PROVIDER), { method: 'DELETE' });
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        await refreshRuns();
-        showToast('Run deleted', 'ok', 2000);
+        await refreshExtractions();
+        showToast('Extraction deleted', 'ok', 2000);
       } catch (e) {
-        showToast(`Failed to delete run: ${e.message}`, 'err');
+        showToast(`Failed to delete extraction: ${e.message}`, 'err');
       }
     });
   }
-  const close = () => { $('runStatus').textContent = ''; modal.classList.add('hidden'); };
+  const close = () => { $('extractionStatus').textContent = ''; modal.classList.add('hidden'); };
   closeBtn.addEventListener('click', close);
   backdrop.addEventListener('click', close);
 }
 
-function closeRunModal() {
-  const modal = $('runModal');
+function closeExtractionModal() {
+  const modal = $('extractionModal');
   if (modal) {
-    const status = $('runStatus');
+    const status = $('extractionStatus');
     if (status) status.textContent = '';
     modal.classList.add('hidden');
-    modal.classList.remove('running');
+    modal.classList.remove('extracting');
   }
 }
 
@@ -54,12 +54,12 @@ function wireChunkerModal() {
   const modal = $('chunkerModal');
   const runBtn = $('runChunkerBtn');
   const status = $('chunkerStatus');
-  const sourceSelect = $('chunkerSourceRun');
+  const sourceSelect = $('chunkerSourceExtraction');
 
   if (!openBtn || !modal) return;
 
   openBtn.addEventListener('click', async () => {
-    // Populate source run dropdown from existing runs
+    // Populate source extraction dropdown from existing extractions
     if (sourceSelect) {
       sourceSelect.innerHTML = '';
       let preselectValue = null;
@@ -67,12 +67,12 @@ function wireChunkerModal() {
         preselectValue = JSON.stringify({ slug: CURRENT_SLUG, provider: CURRENT_PROVIDER || 'unstructured/local' });
       }
       try {
-        const runs = await fetchJSON('/api/runs');
-        if (runs && runs.length > 0) {
-          runs.forEach(run => {
+        const extractions = await fetchJSON('/api/extractions');
+        if (extractions && extractions.length > 0) {
+          extractions.forEach(extraction => {
             const opt = document.createElement('option');
-            opt.value = JSON.stringify({ slug: run.slug, provider: run.provider });
-            opt.textContent = `${run.slug} (${run.provider})`;
+            opt.value = JSON.stringify({ slug: extraction.slug, provider: extraction.provider });
+            opt.textContent = `${extraction.slug} (${extraction.provider})`;
             sourceSelect.appendChild(opt);
           });
           if (preselectValue) {
@@ -82,14 +82,14 @@ function wireChunkerModal() {
         } else {
           const opt = document.createElement('option');
           opt.value = '';
-          opt.textContent = 'No runs available';
+          opt.textContent = 'No extractions available';
           sourceSelect.appendChild(opt);
         }
       } catch (e) {
-        console.error('Failed to load runs for chunker:', e);
+        console.error('Failed to load extractions for chunker:', e);
         const opt = document.createElement('option');
         opt.value = '';
-        opt.textContent = 'Error loading runs';
+        opt.textContent = 'Error loading extractions';
         sourceSelect.appendChild(opt);
       }
     }
@@ -107,7 +107,7 @@ function wireChunkerModal() {
   if (runBtn) {
     runBtn.addEventListener('click', async () => {
       if (!sourceSelect || !sourceSelect.value) {
-        if (status) status.textContent = 'Please select a source run';
+        if (status) status.textContent = 'Please select a source extraction';
         return;
       }
 
@@ -115,7 +115,7 @@ function wireChunkerModal() {
       try {
         sourceData = JSON.parse(sourceSelect.value);
       } catch {
-        if (status) status.textContent = 'Invalid source run selection';
+        if (status) status.textContent = 'Invalid source extraction selection';
         return;
       }
 
@@ -148,8 +148,8 @@ function wireChunkerModal() {
           switchInspectTab('chunks', true);
           SHOW_ELEMENT_OVERLAYS = false;
           SHOW_CHUNK_OVERLAYS = true;
-          await refreshRuns();
-          await loadRun(sourceData.slug, sourceData.provider);
+          await refreshExtractions();
+          await loadExtraction(sourceData.slug, sourceData.provider);
           await renderPage(CURRENT_PAGE); // force PDF+overlay refresh so new chunk boxes appear immediately
           // Ensure we leave element overlays and immediately draw chunk overlays
           if (typeof clearBoxes === 'function') clearBoxes();
@@ -189,6 +189,6 @@ function closeChunkerModal() {
 
 // Window exports
 window.wireModal = wireModal;
-window.closeRunModal = closeRunModal;
+window.closeExtractionModal = closeExtractionModal;
 window.wireChunkerModal = wireChunkerModal;
 window.closeChunkerModal = closeChunkerModal;
