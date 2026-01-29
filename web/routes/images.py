@@ -1167,6 +1167,7 @@ def api_figure_detail(
             "figure_type": sam3_result.get("figure_type"),
             "confidence": sam3_result.get("confidence"),
             "classification_duration_ms": sam3_result.get("classification_duration_ms"),
+            "direction_duration_ms": sam3_result.get("direction_duration_ms"),
             "sam3_duration_ms": sam3_result.get("sam3_duration_ms"),
         }
     elif proc_result:

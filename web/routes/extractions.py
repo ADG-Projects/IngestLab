@@ -205,6 +205,25 @@ def _extract_figure_from_pdf(
         x0, y0 = min(xs), min(ys)
         x1, y1 = max(xs), max(ys)
 
+        # Handle PixelSpace coordinate system (used for images converted to PDF)
+        # Azure DI returns coordinates in pixels, but fitz creates PDFs in points
+        # (at 72 DPI). High-DPI images (e.g., Retina screenshots at 144 DPI) result
+        # in a PDF that's half the pixel dimensions. We need to scale coordinates.
+        coord_system = coordinates.get("system", "")
+        layout_width = coordinates.get("layout_width")
+        layout_height = coordinates.get("layout_height")
+
+        if coord_system == "PixelSpace" and layout_width and layout_height:
+            # Scale coordinates from pixel space to PDF point space
+            scale_x = page.rect.width / layout_width
+            scale_y = page.rect.height / layout_height
+            x0, y0 = x0 * scale_x, y0 * scale_y
+            x1, y1 = x1 * scale_x, y1 * scale_y
+            logger.debug(
+                f"Scaled PixelSpace coords: scale=({scale_x:.3f}, {scale_y:.3f}), "
+                f"rect=({x0:.1f}, {y0:.1f}, {x1:.1f}, {y1:.1f})"
+            )
+
         clip = fitz.Rect(x0, y0, x1, y1)
         zoom = dpi / 72.0
         mat = fitz.Matrix(zoom, zoom)
@@ -320,7 +339,7 @@ def _process_figures_after_extraction(
         el["metadata"]["figure_image_filename"] = image_path.name
         logger.debug(f"Extracted figure {element_id} to {image_path}")
 
-        # Process through vision pipeline if available
+        # Process through vision pipeline if available (two-step: segment then mermaid)
         if vision_available and processor:
             try:
                 ocr_text = el.get("content", "") or el.get("text", "")
@@ -330,7 +349,9 @@ def _process_figures_after_extraction(
                     logger.debug(
                         f"Extracted {len(text_positions)} text positions for {element_id}"
                     )
-                result = processor.process_and_save(
+
+                # Step 1: SAM3 segmentation (creates .sam3.json + .annotated.png)
+                sam3_result = processor.segment_and_save(
                     image_path=image_path,
                     output_dir=figures_dir,
                     element_id=element_id,
@@ -338,6 +359,17 @@ def _process_figures_after_extraction(
                     run_id=run_id,
                     text_positions=text_positions if text_positions else None,
                 )
+
+                # Step 2: Mermaid extraction (creates .json)
+                result = processor.extract_mermaid_and_save(
+                    image_path=image_path,
+                    output_dir=figures_dir,
+                    element_id=element_id,
+                    ocr_text=ocr_text,
+                    run_id=run_id,
+                    text_positions=text_positions if text_positions else None,
+                )
+
                 el["figure_processing"] = {
                     "figure_type": result.get("figure_type"),
                     "confidence": result.get("confidence"),

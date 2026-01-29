@@ -226,6 +226,7 @@ function renderFigurePipelineView(figure) {
     : processing.step1_duration_ms
       ? `${processing.step1_duration_ms}ms`
       : '-';
+  const directionTime = sam3.direction_duration_ms ? `${sam3.direction_duration_ms}ms` : '-';
   const sam3Time = sam3.sam3_duration_ms ? `${sam3.sam3_duration_ms}ms` : '-';
   const extractionTime = processing.step2_duration_ms ? `${processing.step2_duration_ms}ms` : '-';
 
@@ -250,16 +251,31 @@ function renderFigurePipelineView(figure) {
             <div class="step-result">
               <span class="type-badge type-${figureType}">${figureType}</span>
               <span class="confidence-label">Confidence: ${confidence}</span>
-              ${sam3.direction ? `<span class="direction-label">Direction: ${sam3.direction}</span>` : ''}
             </div>
           ` : '<span class="no-data">Not yet classified</span>'}
         </div>
       </div>
 
       ${figureType === 'flowchart' ? `
+      <div class="pipeline-step step-direction ${sam3.direction ? 'step-complete' : 'step-pending'}">
+        <div class="step-header">
+          <span class="step-number">${sam3.direction ? '✓' : '2'}</span>
+          <span class="step-title">Direction Detection</span>
+          <span class="step-time">${directionTime}</span>
+        </div>
+        <div class="step-content">
+          ${sam3.direction ? `
+            <div class="step-result">
+              <span class="direction-badge">${sam3.direction}</span>
+              <span class="direction-label">${sam3.direction === 'LR' ? 'Left to Right' : sam3.direction === 'RL' ? 'Right to Left' : sam3.direction === 'TB' ? 'Top to Bottom' : 'Bottom to Top'}</span>
+            </div>
+          ` : '<span class="no-data">Direction not detected</span>'}
+        </div>
+      </div>
+
       <div class="pipeline-step step-segmentation ${segmentationDone ? 'step-complete' : 'step-pending'}" id="step-segmentation">
         <div class="step-header">
-          <span class="step-number">${segmentationDone ? '✓' : '2'}</span>
+          <span class="step-number">${segmentationDone ? '✓' : '3'}</span>
           <span class="step-title">SAM3 Segmentation</span>
           <span class="step-time">${sam3Time}</span>
           ${!segmentationDone ? `
@@ -286,7 +302,7 @@ function renderFigurePipelineView(figure) {
 
       <div class="pipeline-step step-mermaid ${extractionDone ? 'step-complete' : 'step-pending'}" id="step-mermaid">
         <div class="step-header">
-          <span class="step-number">${extractionDone ? '✓' : '3'}</span>
+          <span class="step-number">${extractionDone ? '✓' : '4'}</span>
           <span class="step-title">Mermaid Extraction</span>
           <span class="step-time">${extractionTime}</span>
           ${segmentationDone && !extractionDone ? `

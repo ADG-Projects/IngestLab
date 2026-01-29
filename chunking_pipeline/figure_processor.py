@@ -209,6 +209,8 @@ class FigureProcessorWrapper:
         classification = processor.classify_figure(image_path, ocr_text=ocr_text)
 
         shape_positions = None
+        annotated_path = None
+        direction = None
         processing_image_path = image_path
 
         if classification.figure_type in PolicyFigureProcessor.FLOWCHART_TYPES:
@@ -232,7 +234,7 @@ class FigureProcessorWrapper:
                 )
 
                 if annotated_path and shape_positions:
-                    processing_image_path = annotated_path
+                    processing_image_path = Path(annotated_path)
                     logger.info(
                         f"SAM3 annotations prepared: {len(shape_positions)} shapes"
                     )
@@ -262,7 +264,17 @@ class FigureProcessorWrapper:
             run_id=run_id,
             force_type=classification.figure_type,
         )
-        return result.model_dump()
+        result_dict = result.model_dump()
+
+        # Include SAM3 data for downstream use (annotated image, shape colors)
+        if shape_positions:
+            result_dict["_sam3_data"] = {
+                "annotated_path": str(annotated_path) if annotated_path else None,
+                "shape_positions": shape_positions,
+                "direction": direction,
+            }
+
+        return result_dict
 
     def format_understanding(self, result: dict[str, Any]) -> str:
         """Format figure processing result for display.
@@ -487,6 +499,7 @@ class FigureProcessorWrapper:
 
         # Detect flow direction
         direction = "LR"
+        direction_start = time.perf_counter()
         try:
             from src.prompts.figure_direction_prompt import detect_direction
 
@@ -495,8 +508,10 @@ class FigureProcessorWrapper:
             logger.debug(f"Detected flow direction: {direction}")
         except Exception as e:
             logger.warning(f"Direction detection failed, using default LR: {e}")
+        direction_duration = int((time.perf_counter() - direction_start) * 1000)
 
         result["direction"] = direction
+        result["direction_duration_ms"] = direction_duration
 
         # Run SAM3 segmentation
         sam3_start = time.perf_counter()
@@ -593,6 +608,7 @@ class FigureProcessorWrapper:
             "reasoning": result.get("reasoning"),
             "direction": result.get("direction"),
             "classification_duration_ms": result.get("classification_duration_ms"),
+            "direction_duration_ms": result.get("direction_duration_ms"),
             "sam3_duration_ms": result.get("sam3_duration_ms"),
             "shape_positions": result.get("shape_positions"),
             "annotated_image": f"{element_id}.annotated.png" if result.get("annotated_path") else None,
@@ -813,15 +829,57 @@ class FigureProcessorWrapper:
             image_path, ocr_text, run_id=run_id, text_positions=text_positions
         )
 
+        # Extract internal SAM3 data before saving (not part of public result)
+        sam3_data_from_result = result.pop("_sam3_data", None)
+
         # Save JSON results
         json_path = output_dir / f"{element_id}.json"
         with json_path.open("w", encoding="utf-8") as fh:
             json.dump(result, fh, ensure_ascii=False, indent=2)
             fh.write("\n")
 
+        # Create SAM3-compatible JSON for flowcharts (API expects shape_positions format)
+        sam3_path = None
+        annotated_dst = None
+
+        if result.get("figure_type") == "flowchart" and sam3_data_from_result:
+            # Use the actual SAM3 data (with colors) from process_figure
+            shape_positions = sam3_data_from_result.get("shape_positions", [])
+            sam3_data = {
+                "version": "1.0",
+                "stage": "complete",
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+                "element_id": element_id,
+                "figure_type": result.get("figure_type"),
+                "confidence": result.get("confidence"),
+                "direction": sam3_data_from_result.get("direction"),
+                "step1_duration_ms": result.get("step1_duration_ms"),
+                "step2_duration_ms": result.get("step2_duration_ms"),
+                "shape_positions": shape_positions,
+            }
+            sam3_path = output_dir / f"{element_id}.sam3.json"
+            with sam3_path.open("w", encoding="utf-8") as fh:
+                json.dump(sam3_data, fh, ensure_ascii=False, indent=2)
+                fh.write("\n")
+            logger.debug(
+                f"Created SAM3 JSON for {element_id}: "
+                f"{len(shape_positions)} shapes"
+            )
+
+            # Copy annotated image if available (API expects {element_id}.annotated.png)
+            annotated_src = sam3_data_from_result.get("annotated_path")
+            if annotated_src:
+                annotated_src_path = Path(annotated_src)
+                if annotated_src_path.exists():
+                    annotated_dst = output_dir / f"{element_id}.annotated.png"
+                    shutil.copy2(annotated_src_path, annotated_dst)
+                    logger.debug(f"Copied annotated image to {annotated_dst}")
+
         result["output_paths"] = {
             "json": str(json_path),
             "original": str(image_path),
+            "sam3_json": str(sam3_path) if sam3_path else None,
+            "annotated": str(annotated_dst) if annotated_dst else None,
         }
 
         logger.debug(f"Figure {element_id} processed: type={result.get('figure_type')}")
