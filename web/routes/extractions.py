@@ -216,6 +216,40 @@ def _extract_figure_from_pdf(
         return None
 
 
+def _convert_image_to_pdf(image_path: Path, out_dir: Path, slug_with_pages: str) -> Path:
+    """Convert an image to a single-page PDF for viewing in the UI.
+
+    Args:
+        image_path: Path to the source image file
+        out_dir: Output directory for the PDF
+        slug_with_pages: Base name for the output file (e.g., "myimage.pages_1")
+
+    Returns:
+        Path to the created PDF file
+    """
+    pdf_path = out_dir / f"{slug_with_pages}.pdf"
+
+    # Open source image
+    img_doc = fitz.open(str(image_path))
+
+    # Create new PDF document
+    pdf_doc = fitz.open()
+
+    # Get image dimensions from first page (fitz treats images as single-page docs)
+    img_rect = img_doc[0].rect
+
+    # Create page with image dimensions
+    page = pdf_doc.new_page(width=img_rect.width, height=img_rect.height)
+    page.insert_image(img_rect, filename=str(image_path))
+
+    pdf_doc.save(str(pdf_path))
+    pdf_doc.close()
+    img_doc.close()
+
+    logger.info(f"Converted image to PDF: {pdf_path}")
+    return pdf_path
+
+
 def _process_figures_after_extraction(
     elements: List[Dict[str, Any]],
     pdf_path: Path,
@@ -391,14 +425,16 @@ def _execute_extraction(metadata: Dict[str, Any]) -> None:
         pages_for_config = "all"
 
     elif file_type == "image":
-        # Images: Process directly, no PDF conversion
+        # Images: Process directly, then convert to PDF for UI viewing
         logger.info(f"Processing image: {input_file.name}")
         extract_options = AzureDIExtractOptions(figures_output_dir=figures_output_dir)
         result = extractor.extract(str(input_file), options=extract_options)
         # Images are single-page
         pages_for_config = "1"
-        # No PDF artifact for images
-        trimmed_path = None
+        # Convert image to PDF for UI viewing
+        slug_with_pages = metadata.get("slug_with_pages", "image")
+        out_dir = elements_path.parent
+        trimmed_path = _convert_image_to_pdf(input_file, out_dir, slug_with_pages)
 
     else:
         raise ValueError(f"Unsupported file type: {file_type} for {input_file}")
