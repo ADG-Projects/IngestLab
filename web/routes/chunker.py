@@ -19,7 +19,7 @@ from src.extractors.custom_chunker import (
 from src.models.elements import Element
 
 from ..config import DEFAULT_PROVIDER, PROVIDERS, get_out_dir
-from ..run_jobs import RUN_JOB_MANAGER
+from ..extraction_jobs import EXTRACTION_JOB_MANAGER
 
 logger = logging.getLogger("chunking.routes.chunker")
 router = APIRouter()
