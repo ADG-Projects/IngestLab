@@ -372,6 +372,10 @@
    CONFIRMATION MODAL
    ============================================================================= */
 
+#confirmModal {
+  z-index: 40000; /* Above other modals (30000) */
+}
+
 .confirm-modal {
   max-width: 420px;
 }
