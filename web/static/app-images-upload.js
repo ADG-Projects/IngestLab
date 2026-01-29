@@ -8,10 +8,16 @@
           runUploadDescriptionGeneration, runUploadSegmentation, runUploadMermaidExtraction,
           refreshUploadDetails, CURRENT_UPLOAD_ID, CURRENT_UPLOAD_DATA_URI */
 
+// Guard to prevent duplicate event listener registration
+let _uploadWired = false;
+
 /**
  * Wire up the image upload form.
  */
 function wireImageUpload() {
+  if (_uploadWired) return;  // Prevent duplicate wiring
+  _uploadWired = true;
+
   const form = $('imageUploadForm');
   const input = $('imageUploadInput');
   const dropZone = $('imageUploadZone');

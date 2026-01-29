@@ -15,6 +15,9 @@ window.IMAGES_STATS = null;
 window.CURRENT_UPLOAD_ID = null;
 window.CURRENT_UPLOAD_DATA_URI = null;
 
+// Guard to prevent duplicate event listener registration
+let _imagesTabInitialized = false;
+
 /**
  * Initialize the Images tab when it becomes active.
  */
@@ -29,6 +32,9 @@ function initImagesTab() {
  * Wire up mode tab switching (PDF Figures vs Upload).
  */
 function wireImagesModeTabs() {
+  if (_imagesTabInitialized) return;  // Prevent duplicate wiring
+  _imagesTabInitialized = true;
+
   const tabs = document.querySelectorAll('#imagesView .images-mode-tabs .mode-tab');
   tabs.forEach((tab) => {
     tab.addEventListener('click', () => {
