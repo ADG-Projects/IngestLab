@@ -164,6 +164,7 @@ async function runUploadClassification(uploadId) {
 
     // Refresh UI to show completion immediately
     refreshUploadDetails(uploadId);
+    loadUploadHistory();
 
     return data;
   } catch (err) {
@@ -206,6 +207,7 @@ async function runUploadDirectionDetection(uploadId) {
 
     // Refresh UI to show completion immediately
     refreshUploadDetails(uploadId);
+    loadUploadHistory();
 
     return data;
   } catch (err) {
@@ -247,6 +249,7 @@ async function runUploadDescriptionGeneration(uploadId) {
     window.CURRENT_UPLOAD_DESCRIPTION = data;
 
     refreshUploadDetails(uploadId);
+    loadUploadHistory();
     return data;
   } catch (err) {
     console.error('Description generation failed:', err);
@@ -288,6 +291,7 @@ async function runUploadSegmentation(uploadId) {
     const data = await res.json();
     showToast(`SAM3 complete: ${data.shape_count} shapes detected`, 'success');
     refreshUploadDetails(uploadId);
+    loadUploadHistory();
   } catch (err) {
     console.error('Segmentation failed:', err);
     showToast(`Segmentation failed: ${err.message}`, 'error');
@@ -331,6 +335,7 @@ async function runUploadMermaidExtraction(uploadId) {
 
     showToast('Mermaid extraction complete', 'success');
     refreshUploadDetails(uploadId);
+    loadUploadHistory();
   } catch (err) {
     console.error('Mermaid extraction failed:', err);
     showToast(`Extraction failed: ${err.message}`, 'error');

@@ -43,9 +43,11 @@ function renderUploadHistory(uploads) {
       const isActive = upload.upload_id === window.CURRENT_UPLOAD_ID;
       const stageBadge = upload.stages?.extracted
         ? 'complete'
-        : upload.stages?.segmented
-          ? 'segmented'
-          : 'uploaded';
+        : upload.stages?.described
+          ? 'complete'
+          : upload.stages?.segmented
+            ? 'segmented'
+            : 'uploaded';
       const stageLabel = stageBadge === 'complete' ? 'Complete' : stageBadge === 'segmented' ? 'Segmented' : 'Uploaded';
       const typeLabel = upload.figure_type || 'unknown';
       const confidence = upload.confidence != null ? `${Math.round(upload.confidence * 100)}%` : '';
