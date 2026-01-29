@@ -508,7 +508,18 @@ function switchView(view, skipRedraw = false) {
     SHOW_ELEMENT_OVERLAYS = (INSPECT_TAB === 'elements');
   }
   if (CURRENT_VIEW === 'inspect' && !skipRedraw) {
-    redrawOverlaysForCurrentContext();
+    // Always re-render PDF when switching to inspect view to ensure correct sizing
+    // The PDF may have been rendered while the container was hidden (resulting in 0 dimensions)
+    if (typeof PDF_DOC !== 'undefined' && PDF_DOC) {
+      // Use setTimeout to ensure layout has fully reflowed after unhiding
+      // This is more reliable than requestAnimationFrame for flexbox layouts
+      setTimeout(() => {
+        SCALE_IS_MANUAL = false;
+        renderPage(CURRENT_PAGE);
+      }, 50);
+    } else {
+      redrawOverlaysForCurrentContext();
+    }
   }
   if (CURRENT_VIEW === 'images' && typeof onImagesTabActivated === 'function') {
     onImagesTabActivated();

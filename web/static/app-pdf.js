@@ -19,8 +19,12 @@ async function renderPage(num) {
   const rotation = page.rotate || 0;
   const container = $('pdfContainer');
   const containerHeight = Math.max(0, (container?.clientHeight || 0) - 24);
+  const containerWidth = Math.max(0, (container?.clientWidth || 0) - 24);
   const baseViewport = page.getViewport({ scale: 1, rotation });
-  const scaleToFit = containerHeight / baseViewport.height;
+  // Choose fit-to-width or fit-to-height based on which keeps the document fully visible
+  const scaleToFitHeight = containerHeight / baseViewport.height;
+  const scaleToFitWidth = containerWidth / baseViewport.width;
+  const scaleToFit = Math.min(scaleToFitWidth, scaleToFitHeight);
   if (!SCALE_IS_MANUAL) {
     SCALE = scaleToFit;
     const zoomInput = $('zoom');

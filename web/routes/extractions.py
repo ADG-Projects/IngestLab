@@ -248,24 +248,32 @@ def _convert_image_to_pdf(image_path: Path, out_dir: Path, slug_with_pages: str)
     """
     pdf_path = out_dir / f"{slug_with_pages}.pdf"
 
-    # Open source image
+    # Open source image to get dimensions (in pixels)
     img_doc = fitz.open(str(image_path))
-
-    # Create new PDF document
-    pdf_doc = fitz.open()
-
-    # Get image dimensions from first page (fitz treats images as single-page docs)
     img_rect = img_doc[0].rect
+    img_width = img_rect.width
+    img_height = img_rect.height
 
-    # Create page with image dimensions
-    page = pdf_doc.new_page(width=img_rect.width, height=img_rect.height)
-    page.insert_image(img_rect, filename=str(image_path))
+    # Scale to fit within reasonable page bounds (max 792 points = 11 inches)
+    # This ensures the viewer's fit-to-height produces a comfortable zoom level
+    # PyMuPDF reports image dimensions in pixels, but PDF uses points (1/72 inch)
+    # Without scaling, a 2000x3000 pixel image would create a 28"x42" page
+    MAX_DIMENSION = 792.0
+    scale = min(MAX_DIMENSION / img_width, MAX_DIMENSION / img_height, 1.0)
+
+    page_width = img_width * scale
+    page_height = img_height * scale
+
+    # Create PDF with scaled dimensions
+    pdf_doc = fitz.open()
+    page = pdf_doc.new_page(width=page_width, height=page_height)
+    page.insert_image(fitz.Rect(0, 0, page_width, page_height), filename=str(image_path))
 
     pdf_doc.save(str(pdf_path))
     pdf_doc.close()
     img_doc.close()
 
-    logger.info(f"Converted image to PDF: {pdf_path}")
+    logger.info(f"Converted image to PDF: {pdf_path} ({page_width:.0f}x{page_height:.0f} pts)")
     return pdf_path
 
 
