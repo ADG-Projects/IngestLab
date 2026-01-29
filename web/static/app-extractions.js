@@ -417,7 +417,7 @@ function setupInspectTabs() {
           let okCount = 0, failCount = 0;
           for (const rr of runs) {
             try {
-              const dr = await fetch(withProvider(`/api/run/${encodeURIComponent(rr.slug)}`, rr.provider || CURRENT_PROVIDER), { method: 'DELETE' });
+              const dr = await fetch(withProvider(`/api/extraction/${encodeURIComponent(rr.slug)}`, rr.provider || CURRENT_PROVIDER), { method: 'DELETE' });
               if (!dr.ok) failCount++; else okCount++;
             } catch (_) {
               failCount++;

@@ -285,7 +285,7 @@ function wireExtractionForm() {
     setExtractionInProgress(true, { pdf: payload.pdf });
     let jobId = null;
     try {
-      const r = await fetch('/api/run', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+      const r = await fetch('/api/extraction', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
       const data = await r.json();
       if (!r.ok) throw new Error(data?.detail || `HTTP ${r.status}`);
       jobId = data?.job?.id || null;
