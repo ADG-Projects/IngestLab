@@ -41,12 +41,12 @@ function updateMainFormatBadge() {
   if (!badge) return;
 
   // Get file type and name from run config (check multiple possible locations)
-  const fileType = CURRENT_RUN_CONFIG?.file_type;
+  const fileType = CURRENT_EXTRACTION_CONFIG?.file_type;
   // Try form_snapshot.pdf first, then extract from input path
-  let pdfName = CURRENT_RUN_CONFIG?.form_snapshot?.pdf || '';
-  if (!pdfName && CURRENT_RUN_CONFIG?.input) {
+  let pdfName = CURRENT_EXTRACTION_CONFIG?.form_snapshot?.pdf || '';
+  if (!pdfName && CURRENT_EXTRACTION_CONFIG?.input) {
     // Extract filename from full path
-    const input = CURRENT_RUN_CONFIG.input;
+    const input = CURRENT_EXTRACTION_CONFIG.input;
     pdfName = input.substring(input.lastIndexOf('/') + 1);
   }
 
@@ -77,17 +77,17 @@ async function loadExtraction(slug, provider = CURRENT_PROVIDER) {
   const providerKey = (provider || CURRENT_PROVIDER || 'unstructured/local').trim() || 'unstructured/local';
   CURRENT_SLUG = slug;
   CURRENT_PROVIDER = providerKey;
-  CURRENT_RUN = (RUNS_CACHE || []).find(
+  CURRENT_EXTRACTION = (EXTRACTIONS_CACHE || []).find(
     (r) => r.slug === slug && (r.provider || 'unstructured/local') === providerKey,
-  ) || (RUNS_CACHE || []).find((r) => r.slug === slug) || null;
-  CURRENT_PROVIDER = (CURRENT_RUN && CURRENT_RUN.provider) || CURRENT_PROVIDER || 'unstructured/local';
+  ) || (EXTRACTIONS_CACHE || []).find((r) => r.slug === slug) || null;
+  CURRENT_PROVIDER = (CURRENT_EXTRACTION && CURRENT_EXTRACTION.provider) || CURRENT_PROVIDER || 'unstructured/local';
   setChunksTabVisible(providerSupportsChunks(CURRENT_PROVIDER));
   const providerSel = $('providerSelect');
   if (providerSel) {
     providerSel.value = CURRENT_PROVIDER;
     providerSel.dispatchEvent(new Event('change'));
   }
-  CURRENT_RUN_HAS_CHUNKS = providerSupportsChunks(CURRENT_PROVIDER) && Boolean(CURRENT_RUN && CURRENT_RUN.chunks_file);
+  CURRENT_EXTRACTION_HAS_CHUNKS = providerSupportsChunks(CURRENT_PROVIDER) && Boolean(CURRENT_EXTRACTION && CURRENT_EXTRACTION.chunks_file);
   CURRENT_CHUNK_LOOKUP = {};
   CURRENT_CHUNK_TYPE_FILTER = 'All';
   CURRENT_CHUNK_REVIEW_FILTER = 'All';
@@ -103,12 +103,12 @@ async function loadExtraction(slug, provider = CURRENT_PROVIDER) {
   $('pageCount').textContent = PAGE_COUNT;
   await renderPage(CURRENT_PAGE);
 
-  CURRENT_RUN_CONFIG = CURRENT_RUN?.run_config || null;
-  CURRENT_CHUNK_SUMMARY = CURRENT_RUN?.chunk_summary || null;
-  updateRunConfigCard();
+  CURRENT_EXTRACTION_CONFIG = CURRENT_EXTRACTION?.run_config || null;
+  CURRENT_CHUNK_SUMMARY = CURRENT_EXTRACTION?.chunk_summary || null;
+  updateExtractionConfigCard();
   updateMainFormatBadge();
-  if (CURRENT_RUN_HAS_CHUNKS) {
-    await loadChunksForRun(slug, CURRENT_PROVIDER);
+  if (CURRENT_EXTRACTION_HAS_CHUNKS) {
+    await loadChunksForExtraction(slug, CURRENT_PROVIDER);
     redrawOverlaysForCurrentContext(); // ensure overlays update once chunks are available
   } else {
     CURRENT_CHUNKS = null;
@@ -298,7 +298,7 @@ async function refreshExtractions() {
     clearBoxes();
     updateLegend([]);
     clearDrawer();
-    updateRunConfigCard();
+    updateExtractionConfigCard();
     renderChunksTab();
     populateTypeSelectors();
     renderElementsListForCurrentPage(CURRENT_PAGE_BOXES);
@@ -371,7 +371,7 @@ function setupInspectTabs() {
       if (!name) { showToast('No PDF selected', 'err', 2000); return; }
       try { await refreshRuns(); } catch (_) {}
       const stem = name.replace(/\.pdf$/i, '');
-      const runs = (RUNS_CACHE || []).filter(r => {
+      const runs = (EXTRACTIONS_CACHE || []).filter(r => {
         const cfg = r.run_config || {};
         const pdfFromCfg = cfg.pdf || (cfg.form_snapshot && cfg.form_snapshot.pdf) || null;
         if (pdfFromCfg && pdfFromCfg === name) return true;

@@ -1,5 +1,5 @@
-function updateRunConfigCard() {
-  const cfg = CURRENT_RUN_CONFIG || CURRENT_RUN?.run_config;
+function updateExtractionConfigCard() {
+  const cfg = CURRENT_EXTRACTION_CONFIG || CURRENT_EXTRACTION?.run_config;
 
   // Helper to check if a value should be hidden
   const shouldHide = (value) => {

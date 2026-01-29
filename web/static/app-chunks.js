@@ -1,4 +1,4 @@
-async function loadChunksForRun(slug, provider = CURRENT_PROVIDER) {
+async function loadChunksForExtraction(slug, provider = CURRENT_PROVIDER) {
   try {
     const data = await fetchJSON(withProvider(`/api/chunks/${encodeURIComponent(slug)}`, provider));
     CURRENT_CHUNKS = data;
@@ -70,8 +70,8 @@ function renderChunksTab() {
   const summaryEl = $('chunkSummary');
   const listEl = $('chunkList');
   if (!summaryEl || !listEl) return;
-  if (!CURRENT_RUN_HAS_CHUNKS) {
-    summaryEl.innerHTML = '<div class="placeholder">Chunk data not available for this run.</div>';
+  if (!CURRENT_EXTRACTION_HAS_CHUNKS) {
+    summaryEl.innerHTML = '<div class="placeholder">Chunk data not available for this extraction.</div>';
     listEl.innerHTML = '';
     return;
   }

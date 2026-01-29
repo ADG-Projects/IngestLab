@@ -129,7 +129,7 @@ async function loadReviews(slug, provider = CURRENT_PROVIDER) {
     setReviewState(_emptyReviewState(slug));
   }
   updateReviewSummaryChip();
-  if (CURRENT_RUN_HAS_CHUNKS) renderChunksTab();
+  if (CURRENT_EXTRACTION_HAS_CHUNKS) renderChunksTab();
   if (CURRENT_PAGE_BOXES) {
     renderElementsListForCurrentPage(CURRENT_PAGE_BOXES);
     refreshElementOverlaysForCurrentPage();
@@ -146,7 +146,7 @@ function reviewMatchesFilter(review, filter) {
 
 async function saveReview(kind, itemId, overrides = {}) {
   if (!CURRENT_SLUG) {
-    showToast('Select a run before leaving reviews.', 'err');
+    showToast('Select an extraction before leaving reviews.', 'err');
     return;
   }
   const existing = getReview(kind, itemId);
@@ -176,7 +176,7 @@ async function saveReview(kind, itemId, overrides = {}) {
     const data = await res.json();
     setReviewState(data.reviews);
     updateReviewSummaryChip();
-    if (CURRENT_RUN_HAS_CHUNKS) {
+    if (CURRENT_EXTRACTION_HAS_CHUNKS) {
       renderChunksTab();
     }
     renderElementsListForCurrentPage(CURRENT_PAGE_BOXES);
