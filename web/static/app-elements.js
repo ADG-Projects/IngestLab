@@ -18,7 +18,7 @@ async function drawBoxesForCurrentPage() {
     refreshElementOverlaysForCurrentPage();
     renderElementsListForCurrentPage(boxes);
     if (!entries.length) {
-      showToast('No boxes found on this page for the current run and filter.', 'err', 2000);
+      showToast('No boxes found on this page for the current extraction and filter.', 'err', 2000);
     }
     if (
       !HINTED_HIRES &&

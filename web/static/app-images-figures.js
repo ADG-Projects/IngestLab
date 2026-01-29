@@ -12,7 +12,7 @@
  */
 async function loadFiguresForCurrentRun() {
   if (!CURRENT_SLUG) {
-    renderEmptyState('Select a run to view figures');
+    renderEmptyState('Select an extraction to view figures');
     return;
   }
 
@@ -40,7 +40,7 @@ async function loadFiguresForCurrentRun() {
     renderFiguresList(window.IMAGES_FIGURE_LIST);
   } catch (err) {
     console.error('Failed to load figures:', err);
-    renderEmptyState('Failed to load figures. This run may not have any figures.');
+    renderEmptyState('Failed to load figures. This extraction may not have any figures.');
   }
 }
 
@@ -80,7 +80,7 @@ function renderFiguresList(figures) {
   if (!el) return;
 
   if (!figures || figures.length === 0) {
-    el.innerHTML = '<div class="empty-state">No figures found in this run</div>';
+    el.innerHTML = '<div class="empty-state">No figures found in this extraction</div>';
     return;
   }
 

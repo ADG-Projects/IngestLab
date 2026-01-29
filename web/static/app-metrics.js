@@ -40,7 +40,7 @@ function updateExtractionConfigCard() {
 
   // If no config, show placeholder
   if (!cfg) {
-    topRow.textContent = 'No run selected';
+    topRow.textContent = 'No extraction selected';
     CURRENT_DOC_LANGUAGE = 'eng';
     applyLanguageDirection();
     setupBannerInteractions();
