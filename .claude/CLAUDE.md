@@ -6,23 +6,36 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ChunkingTests is a document ingestion sandbox that enables side-by-side comparison of layout extraction and OCR quality across multiple providers:
 
-- **Unstructured** (local open-source chunker)
-- **Unstructured Partition API** (hosted elements-only service)
-- **Azure Document Intelligence** (Layout with OCR)
+- **Azure Document Intelligence** (Layout with OCR) — active provider
+- **Unstructured** (local open-source chunker) — *deprecated, legacy extractions viewable only*
+- **Unstructured Partition API** (hosted elements-only service) — *deprecated, legacy extractions viewable only*
 
-The project includes an interactive web visualizer for inspecting PDFs, evaluating chunking performance, and collecting structured feedback with LLM-powered analysis.
+The project includes an interactive web visualizer for inspecting documents (PDF, DOCX, XLSX, PPTX), evaluating chunking performance, and collecting structured feedback with LLM-powered analysis.
+
+**Key capabilities:**
+- Multi-format document extraction with bounding box visualization
+- Images tab with vision pipeline (SAM3 segmentation + Mermaid flowchart extraction)
+- Standalone image upload processing for figures and diagrams
 
 ## Architecture
 
 **Backend**: FastAPI server (`web/server.py`) with provider-specific pipelines:
 
-- `chunking_pipeline/pipeline.py` — Unstructured partitioning + chunking
-- `chunking_pipeline/azure_pipeline.py` — Azure Document Intelligence runner
-- `chunking_pipeline/unstructured_partition_pipeline.py` — Hosted Partition API
+- `chunking_pipeline/azure_pipeline.py` — Azure Document Intelligence runner (active)
+- `chunking_pipeline/figure_processor.py` — FigureProcessorWrapper (SAM3/Mermaid via PolicyAsCode)
+- `chunking_pipeline/pipeline.py` — Unstructured partitioning + chunking (deprecated)
+- `chunking_pipeline/unstructured_partition_pipeline.py` — Hosted Partition API (deprecated)
 
 **Frontend**: Vanilla JavaScript modules (`web/static/app-*.js`) with no build step. PDF.js renders documents while SVG overlays display element/chunk bounding boxes.
 
-**Data flow**: PDF → provider SDK → elements/chunks JSONL → UI overlay. Artifacts stored under `outputs/<provider>/`.
+**Data flow**:
+```
+PDF/Document → Azure DI → elements/figures JSONL → UI overlay
+                                    ↓
+                        Figures → SAM3 → Mermaid/Description
+```
+
+Artifacts stored under `outputs/<provider>/` and `outputs/uploads/` (standalone images).
 
 ## Build, Test, and Development Commands
 
@@ -100,7 +113,7 @@ curl http://localhost:8765/healthz
 - `main.py` — FastAPI entry point (loads .env, starts Uvicorn)
 - `web/` — Server and static UI assets
   - `server.py` — FastAPI app, middleware, routes
-  - `routes/` — API endpoint routers (runs, pdfs, chunks, elements, reviews, feedback)
+  - `routes/` — API endpoint routers (extractions, pdfs, chunks, elements, reviews, feedback, images)
   - `static/` — Modular JS (`app-state.js`, `app-overlays.js`, `app-reviews.js`, etc.)
   - `static/vendor/pdfjs/` — vendor-pinned PDF.js (autofetched if missing)
 - `chunking_pipeline/` — Core processing logic for each provider
@@ -108,6 +121,7 @@ curl http://localhost:8765/healthz
 - `res/` — Source PDFs
 - `dataset/` — Curated references (`gold.jsonl` for table matching)
 - `outputs/` — Generated artifacts (not committed)
+  - `outputs/uploads/` — Standalone image uploads and processing artifacts
 
 `README.md`, `TODO.md`, and `database-schema.md` must move in lockstep with any new capability.
 
@@ -159,25 +173,25 @@ Images domain:
 - `app-images-history.js` — Upload history list, refresh
 - `app-images.js` — Tab orchestration, mode switching
 
-Runs domain:
+Extractions domain:
 - `app-pdf.js` — PDF rendering, zoom controls
-- `app-run-jobs.js` — Job polling, progress tracking
-- `app-run-form.js` — Form wiring, validation
+- `app-extraction-jobs.js` — Job polling, progress tracking
+- `app-extraction-form.js` — Form wiring, validation
 - `app-modal.js` — Modal management (open/close)
-- `app-run-preview.js` — Preview helpers, page range utils
-- `app-runs.js` — Orchestration, init, loadRun, view switching
+- `app-extraction-preview.js` — Preview helpers, page range utils
+- `app-extractions.js` — Orchestration, loadExtraction, view switching
 
 Other:
 - `app-overlays.js` — SVG overlay drawing
 - `app-reviews.js` — Review state, persistence
-- `app-metrics.js` — Metrics computation
+- `app-metrics.js` — Vestigial (import only, metrics pipeline removed)
 - `app-feedback.js` — Feedback view, charts
 
 All modules export functions to `window.*` for global access.
 
 ## Coding Style & Conventions
 
-- Python 3.10+, 4-space indentation, f-strings for all dynamic text
+- Python 3.11+, 4-space indentation, f-strings for all dynamic text
 - Naming: `snake_case` for functions, `UPPER_SNAKE_CASE` for constants, `kebab-case` for output JSON artifacts
 - No "test" in filenames unless they are true pytest modules
 - Favor explicit helper functions over inlined comprehensions when parsing structured payloads
@@ -193,13 +207,26 @@ For UI changes, verify:
 - Details drawer shows chunk HTML and contribution metrics
 - "Highlight all/best" behaves without jumping pages unnecessarily
 
+For Images tab changes, verify:
+
+- Two-stage pipeline processes figures correctly (SAM3 → Mermaid/description)
+- Cytoscape renders extracted flowcharts from Mermaid output
+- Upload drag-drop works with processing status polling
+- Figure type override triggers reprocessing
+
 ## Web UI Contribution Notes
 
 - Keep the UI dependency-free (no build/bundle). Add small libs only via `<script>` tags if necessary.
 - Use existing endpoints; prefer `/api/elements/{slug}?ids=...` for box lookups rather than reading whole JSONL in browser.
 - Server caches a minimal element index per slug—reuse it; do not add heavy per-request scans.
 - PDF.js is vendor-pinned to `3.11.174`; if upgrading, update `ensure_pdfjs_assets()` and test Safari.
+- Cytoscape.js loaded dynamically for diagram visualization in Images tab.
 - Avoid committing large artifacts in `outputs/`—reference repro commands in PRs instead.
+
+**Images/Figures pipeline notes:**
+- Upload processing is asynchronous with `/api/uploads/{id}` polling for status
+- Figure metadata stored in `figure_processing` field of elements JSONL
+- SAM3 results stored as `{id}.sam3.json` in figures directory
 
 ## Deployment Guide
 

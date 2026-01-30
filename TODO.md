@@ -5,6 +5,7 @@
 
 ## Completed
 
+- [x] 2026-01-30 Release v6.1.0 (Extraction rename, multi-format uploads, figure understanding, image type override, progress pipeline, upload tab redesign).
 - [x] 2026-01-29 Fix image extractions not appearing in main viewer by converting images to PDF for UI display.
 - [x] 2026-01-27 Release v6.0.0 (Images tab, vision pipeline, Cytoscape visualization, upload history, lightbox, reasoning traces).
 - [x] 2026-01-27 Add reasoning trace display in pipeline view showing LLM reasoning steps.
