@@ -6,7 +6,7 @@
   position: fixed;
   top: calc(58px + 60px + 44px);
   right: 0;
-  width: var(--drawer-width, min(700px, calc(100vw - 32px)));
+  width: var(--drawer-width, min(700px, calc(100% - 32px)));
   bottom: 0;
   background: var(--bg-elevated);
   backdrop-filter: blur(var(--glass-blur-heavy)) saturate(var(--glass-saturation));

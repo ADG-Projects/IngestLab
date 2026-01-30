@@ -674,7 +674,7 @@ body.resizing-drawer {
 
 /* What's New Modal */
 .whats-new-modal {
-  width: min(600px, calc(100vw - 24px));
+  width: min(600px, calc(100% - 24px));
 }
 
 .whats-new-body {
