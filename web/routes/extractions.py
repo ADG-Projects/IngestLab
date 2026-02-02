@@ -115,6 +115,7 @@ def discover_extractions(provider: Optional[str] = None) -> List[Dict[str, Any]]
                     "elements_file": relative_to_root(elements_path) if elements_path.exists() else None,
                     "chunks_file": relative_to_root(chunks_path) if chunks_path.exists() else None,
                     "extraction_config": extraction_config or None,
+                    "tag": extraction_config.get("form_snapshot", {}).get("tag"),
                 }
             )
 
@@ -164,6 +165,72 @@ def api_delete_extraction(slug: str, provider: str = Query(default=DEFAULT_PROVI
         removed.append(relative_to_root(review_path))
     clear_index_cache(slug, provider)
     return {"status": "ok", "removed": removed}
+
+
+@router.patch("/api/extraction/{slug}")
+def api_update_extraction(
+    slug: str,
+    payload: Dict[str, Any],
+    provider: str = Query(default=DEFAULT_PROVIDER),
+) -> Dict[str, Any]:
+    """Update extraction metadata (e.g., tag).
+
+    Payload can contain:
+      - tag: New tag value (string or null to remove)
+    """
+    out_dir = get_out_dir(provider)
+
+    # Find the extraction.json file for this slug
+    # Handle both with and without .pages suffix
+    meta_patterns = [f"{slug}.extraction.json"]
+    if ".pages" in slug:
+        base, _, rest = slug.partition(".pages")
+        meta_patterns.append(f"{base}.pages{rest}.extraction.json")
+
+    meta_path: Optional[Path] = None
+    for pat in meta_patterns:
+        for p in out_dir.glob(pat):
+            if p.exists():
+                meta_path = p
+                break
+        if meta_path:
+            break
+
+    if not meta_path or not meta_path.exists():
+        raise HTTPException(status_code=404, detail=f"Extraction metadata not found for {slug}")
+
+    # Load existing metadata
+    try:
+        with meta_path.open("r", encoding="utf-8") as fh:
+            extraction_config = json.load(fh)
+    except json.JSONDecodeError:
+        extraction_config = {}
+
+    # Update tag if provided
+    if "tag" in payload:
+        new_tag = payload.get("tag")
+        # Ensure form_snapshot exists
+        if "form_snapshot" not in extraction_config:
+            extraction_config["form_snapshot"] = {}
+        # Set or remove tag
+        if new_tag:
+            extraction_config["form_snapshot"]["tag"] = str(new_tag).strip()
+        else:
+            extraction_config["form_snapshot"].pop("tag", None)
+
+    # Write updated metadata
+    with meta_path.open("w", encoding="utf-8") as fh:
+        json.dump(extraction_config, fh, ensure_ascii=False, indent=2)
+        fh.write("\n")
+
+    logger.info(f"Updated extraction metadata for {slug}: tag={payload.get('tag')}")
+
+    return {
+        "status": "ok",
+        "slug": slug,
+        "provider": provider,
+        "tag": extraction_config.get("form_snapshot", {}).get("tag"),
+    }
 
 
 # Providers that support creating new extractions (Unstructured is sunsetted)

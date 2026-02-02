@@ -4,6 +4,7 @@
  */
 
 const LAST_EXTRACTION_KEY = 'chunking-visualizer-last-extraction';
+const COLLAPSED_GROUPS_KEY = 'chunking-visualizer-collapsed-groups';
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 // Legacy provider name aliases (pre-v5.0 compatibility)
@@ -148,6 +149,7 @@ async function init() {
   setupInspectTabs();
   wireModal();
   wireChunkerModal();
+  setupExtractionDropdown();
   document.querySelectorAll('.view-tabs .tab').forEach((btn) => {
     btn.addEventListener('click', async () => {
       const target = btn.dataset.view || 'inspect';
@@ -262,22 +264,284 @@ async function init() {
   switchView('inspect', true);
 }
 
+// --- Extraction Dropdown Helpers ---
+
+function getCollapsedGroups() {
+  try {
+    const stored = localStorage.getItem(COLLAPSED_GROUPS_KEY);
+    return stored ? JSON.parse(stored) : {};
+  } catch (e) {
+    return {};
+  }
+}
+
+function setCollapsedGroups(groups) {
+  try {
+    localStorage.setItem(COLLAPSED_GROUPS_KEY, JSON.stringify(groups));
+  } catch (e) {}
+}
+
+function toggleGroupCollapsed(groupKey) {
+  const groups = getCollapsedGroups();
+  groups[groupKey] = !groups[groupKey];
+  setCollapsedGroups(groups);
+  return groups[groupKey];
+}
+
+function groupExtractionsByTag(extractions) {
+  const groups = {};
+  for (const r of extractions) {
+    const tag = r.tag || '(Untagged)';
+    if (!groups[tag]) {
+      groups[tag] = [];
+    }
+    groups[tag].push(r);
+  }
+  // Sort groups: tagged groups alphabetically first, then (Untagged) last
+  const sortedKeys = Object.keys(groups).sort((a, b) => {
+    if (a === '(Untagged)') return 1;
+    if (b === '(Untagged)') return -1;
+    return a.localeCompare(b);
+  });
+  const sortedGroups = {};
+  for (const key of sortedKeys) {
+    sortedGroups[key] = groups[key];
+  }
+  return sortedGroups;
+}
+
+function renderExtractionDropdown(extractions, currentKey) {
+  const menu = $('extractionMenu');
+  const label = $('extractionLabel');
+  if (!menu || !label) return;
+
+  menu.innerHTML = '';
+
+  if (!extractions || extractions.length === 0) {
+    label.textContent = 'No extractions';
+    return;
+  }
+
+  const groups = groupExtractionsByTag(extractions);
+  const collapsedState = getCollapsedGroups();
+
+  // Update label with current selection
+  const current = extractions.find(r => extractionKey(r.slug, r.provider || 'unstructured/local') === currentKey);
+  if (current) {
+    const providerShort = (current.provider || '').replace('document_intelligence', 'document_intell...');
+    const pageInfo = current.page_range ? ` · pages ${current.page_range}` : '';
+    label.textContent = `${current.slug} · ${providerShort}${pageInfo}`;
+  } else {
+    label.textContent = 'Select extraction...';
+  }
+
+  for (const [tag, items] of Object.entries(groups)) {
+    const groupEl = document.createElement('div');
+    groupEl.className = 'extraction-group';
+    if (collapsedState[tag]) {
+      groupEl.classList.add('collapsed');
+    }
+    groupEl.dataset.tag = tag;
+
+    // Group header
+    const headerEl = document.createElement('div');
+    headerEl.className = 'extraction-group-header';
+    headerEl.innerHTML = `
+      <span class="group-chevron">▼</span>
+      <span class="group-name">${escapeHtml(tag)}</span>
+      <span class="group-count">(${items.length})</span>
+    `;
+    headerEl.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isCollapsed = toggleGroupCollapsed(tag);
+      groupEl.classList.toggle('collapsed', isCollapsed);
+    });
+    groupEl.appendChild(headerEl);
+
+    // Group items
+    const itemsEl = document.createElement('div');
+    itemsEl.className = 'extraction-group-items';
+
+    for (const r of items) {
+      const prov = r.provider || 'unstructured/local';
+      const key = extractionKey(r.slug, prov);
+      const itemEl = document.createElement('div');
+      itemEl.className = 'extraction-item';
+      if (key === currentKey) {
+        itemEl.classList.add('selected');
+      }
+      itemEl.dataset.key = key;
+      itemEl.dataset.slug = r.slug;
+      itemEl.dataset.provider = prov;
+
+      const providerShort = prov.replace('document_intelligence', 'document_intell...');
+      const pageInfo = r.page_range ? `pages ${r.page_range}` : '';
+
+      itemEl.innerHTML = `
+        <span class="item-prefix">├─</span>
+        <span class="item-name">${escapeHtml(r.slug)}</span>
+        <span class="item-provider">${escapeHtml(providerShort)}</span>
+        ${pageInfo ? `<span class="item-pages">${escapeHtml(pageInfo)}</span>` : ''}
+        <span class="item-check">✓</span>
+        <button type="button" class="item-tag-btn" title="Edit tag">✎</button>
+      `;
+
+      // Main click selects the extraction
+      itemEl.addEventListener('click', async (e) => {
+        // Don't trigger selection if clicking the tag button
+        if (e.target.classList.contains('item-tag-btn')) return;
+        e.stopPropagation();
+        await selectExtraction(r.slug, prov);
+      });
+
+      // Tag edit button click
+      const tagBtn = itemEl.querySelector('.item-tag-btn');
+      if (tagBtn) {
+        tagBtn.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          await editExtractionTag(r.slug, prov, r.tag);
+        });
+      }
+
+      itemsEl.appendChild(itemEl);
+    }
+
+    groupEl.appendChild(itemsEl);
+    menu.appendChild(groupEl);
+  }
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str || '';
+  return div.innerHTML;
+}
+
+async function selectExtraction(slug, provider) {
+  const prov = provider || 'unstructured/local';
+  const key = extractionKey(slug, prov);
+
+  // Update selection state
+  CURRENT_SLUG = slug;
+  CURRENT_PROVIDER = prov;
+
+  // Update localStorage
+  localStorage.setItem(LAST_EXTRACTION_KEY, key);
+
+  // Close dropdown
+  closeExtractionDropdown();
+
+  // Update visual selection in menu
+  const menu = $('extractionMenu');
+  if (menu) {
+    menu.querySelectorAll('.extraction-item').forEach(el => {
+      el.classList.toggle('selected', el.dataset.key === key);
+    });
+  }
+
+  // Update label
+  const label = $('extractionLabel');
+  const current = (EXTRACTIONS_CACHE || []).find(r => r.slug === slug && (r.provider || 'unstructured/local') === prov);
+  if (label && current) {
+    const providerShort = prov.replace('document_intelligence', 'document_intell...');
+    const pageInfo = current.page_range ? ` · pages ${current.page_range}` : '';
+    label.textContent = `${current.slug} · ${providerShort}${pageInfo}`;
+  }
+
+  // Load extraction
+  await loadExtraction(slug, prov);
+}
+
+function openExtractionDropdown() {
+  const dropdown = $('extractionDropdown');
+  const menu = $('extractionMenu');
+  if (!dropdown || !menu) return;
+  dropdown.classList.add('open');
+  menu.classList.remove('hidden');
+}
+
+function closeExtractionDropdown() {
+  const dropdown = $('extractionDropdown');
+  const menu = $('extractionMenu');
+  if (!dropdown || !menu) return;
+  dropdown.classList.remove('open');
+  menu.classList.add('hidden');
+}
+
+function toggleExtractionDropdown() {
+  const dropdown = $('extractionDropdown');
+  if (!dropdown) return;
+  if (dropdown.classList.contains('open')) {
+    closeExtractionDropdown();
+  } else {
+    openExtractionDropdown();
+  }
+}
+
+async function editExtractionTag(slug, provider, currentTag) {
+  // Use prompt for simplicity (could be a modal in the future)
+  const newTag = prompt('Enter tag for this extraction (leave empty to remove tag):', currentTag || '');
+
+  // User cancelled
+  if (newTag === null) return;
+
+  const trimmedTag = newTag.trim();
+
+  try {
+    const response = await fetch(
+      `/api/extraction/${encodeURIComponent(slug)}?provider=${encodeURIComponent(provider)}`,
+      {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tag: trimmedTag || null }),
+      }
+    );
+
+    if (!response.ok) {
+      const data = await response.json().catch(() => ({}));
+      throw new Error(data.detail || `HTTP ${response.status}`);
+    }
+
+    // Refresh extractions to show updated grouping
+    showToast(`Tag ${trimmedTag ? 'updated' : 'removed'}`, 'ok', 2000);
+    await refreshExtractions();
+  } catch (e) {
+    showToast(`Failed to update tag: ${e.message}`, 'err', 3000);
+  }
+}
+
+function setupExtractionDropdown() {
+  const toggle = $('extractionToggle');
+  const dropdown = $('extractionDropdown');
+
+  if (toggle) {
+    toggle.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleExtractionDropdown();
+    });
+  }
+
+  // Close on outside click
+  document.addEventListener('click', (e) => {
+    if (dropdown && !dropdown.contains(e.target)) {
+      closeExtractionDropdown();
+    }
+  });
+
+  // Close on Escape
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeExtractionDropdown();
+    }
+  });
+}
+
 async function refreshExtractions() {
   const extractions = await fetchJSON('/api/extractions');
   EXTRACTIONS_CACHE = extractions;
-  const sel = $('extractionSelect');
-  sel.innerHTML = '';
-  for (const r of extractions) {
-    const opt = document.createElement('option');
-    const prov = r.provider || 'unstructured/local';
-    opt.value = extractionKey(r.slug, prov);
-    opt.dataset.slug = r.slug;
-    opt.dataset.provider = prov;
-    const tag = r.page_range ? ` · pages ${r.page_range}` : '';
-    const providerLabel = r.provider ? ` · ${r.provider}` : '';
-    opt.textContent = `${r.slug}${providerLabel}${tag}`;
-    sel.appendChild(opt);
-  }
+
+  let chosenKey = null;
+
   if (extractions.length) {
     // Try to restore last extraction from localStorage
     const lastExtractionKey = localStorage.getItem(LAST_EXTRACTION_KEY);
@@ -297,7 +561,11 @@ async function refreshExtractions() {
     }
     CURRENT_SLUG = chosenExtraction.slug;
     CURRENT_PROVIDER = chosenExtraction.provider || 'unstructured/local';
-    sel.value = extractionKey(CURRENT_SLUG, CURRENT_PROVIDER);
+    chosenKey = extractionKey(CURRENT_SLUG, CURRENT_PROVIDER);
+
+    // Render the dropdown
+    renderExtractionDropdown(extractions, chosenKey);
+
     await loadExtraction(CURRENT_SLUG, CURRENT_PROVIDER);
   } else {
     CURRENT_SLUG = null;
@@ -318,18 +586,11 @@ async function refreshExtractions() {
     populateTypeSelectors();
     renderElementsListForCurrentPage(CURRENT_PAGE_BOXES);
     updateReviewSummaryChip();
+
+    // Update label for empty state
+    const label = $('extractionLabel');
+    if (label) label.textContent = 'No extractions';
   }
-  sel.onchange = async () => {
-    const { slug, provider } = parseExtractionKey(sel.value);
-    CURRENT_SLUG = slug;
-    CURRENT_PROVIDER = provider || 'unstructured/local';
-    const selected = (EXTRACTIONS_CACHE || []).find(
-      (r) => r.slug === CURRENT_SLUG && (r.provider || 'unstructured/local') === CURRENT_PROVIDER,
-    );
-    if (selected && selected.provider) CURRENT_PROVIDER = selected.provider;
-    localStorage.setItem(LAST_EXTRACTION_KEY, sel.value);
-    await loadExtraction(CURRENT_SLUG, CURRENT_PROVIDER);
-  };
 }
 
 async function loadPdfs(preferredName = null) {
@@ -559,3 +820,9 @@ window.setupReviewChipHandlers = setupReviewChipHandlers;
 window.handleReviewChipClick = handleReviewChipClick;
 window.switchView = switchView;
 window.sleep = sleep;
+window.setupExtractionDropdown = setupExtractionDropdown;
+window.renderExtractionDropdown = renderExtractionDropdown;
+window.selectExtraction = selectExtraction;
+window.openExtractionDropdown = openExtractionDropdown;
+window.closeExtractionDropdown = closeExtractionDropdown;
+window.editExtractionTag = editExtractionTag;
