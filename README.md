@@ -121,6 +121,8 @@ Outputs for Azure extractions live under `outputs/azure/document_intelligence/` 
 
 ## Release history
 
+- **v6.1.3 (2026-02-02)** – Fix: Modal viewport overflow causing cutoff on deployed environments (improved defensive CSS).
+- **v6.1.2 (2026-01-30)** – Modal SAM3 Backend: Added optional Modal serverless deployment support for SAM3 segmentation.
 - **v6.1.1 (2026-01-30)** – Fix: Modal viewport overflow causing cutoff on deployed environments.
 - **v6.1.0 (2026-01-30)** – **Extraction Rename & Multi-format Support**: "Run" → "Extraction" terminology across UI. Upload DOCX, XLSX, PPTX, and image files directly. Figure understanding displayed in chunk details and element views. Image type override for reprocessing figures. Real-time progress pipeline visualization. Upload tab redesigned with sidebar layout. Custom confirmation modals replace native dialogs. Fixes for image zoom, figure extraction, and badge display.
 - **v6.0.0 (2026-01-27)** – **Images Tab & Vision Pipeline**: New top-level Images tab for exploring PDF figures and standalone image uploads. Two-stage vision pipeline with SAM3 segmentation preview + Mermaid extraction. Cytoscape graph visualization with fullscreen mode. Upload history management. Lightbox for zoomable previews. Azure DI OCR text extraction for improved Mermaid labeling. LLM reasoning trace display. Frontend refactored into modular CSS/JS.

@@ -15,7 +15,7 @@ env/
 .python-version
 
 # Packaging/build output
-chunking_tests.egg-info/
+*.egg-info/
 build/
 dist/
 

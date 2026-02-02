@@ -666,7 +666,7 @@ wheels = [
 
 [[package]]
 name = "ingestlab"
-version = "6.1.2"
+version = "6.1.3"
 source = { editable = "." }
 dependencies = [
     { name = "azure-ai-documentintelligence" },
