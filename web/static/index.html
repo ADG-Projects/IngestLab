@@ -405,6 +405,30 @@
       </div>
     </div>
 
+    <!-- Tag Editor Modal -->
+    <div id="tagEditorModal" class="modal hidden">
+      <div class="modal-backdrop" id="tagEditorModalBackdrop"></div>
+      <div class="modal-content card confirm-modal">
+        <div class="confirm-modal-body">
+          <div class="confirm-modal-title">Edit Tag</div>
+          <div class="tag-editor-content">
+            <div class="variant-tag-inputs">
+              <select id="tagEditorExistingSelect">
+                <option value="">Select existing tag...</option>
+              </select>
+              <span class="variant-tag-or">or</span>
+              <input id="tagEditorNewInput" placeholder="Enter new tag" />
+            </div>
+          </div>
+          <div class="confirm-modal-actions">
+            <button id="tagEditorCancelBtn" class="btn btn-cancel">Cancel</button>
+            <button id="tagEditorRemoveBtn" class="btn btn-danger">Remove Tag</button>
+            <button id="tagEditorSaveBtn" class="btn btn-confirm">Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- New Extraction Modal -->
     <div id="extractionModal" class="modal hidden">
       <div class="modal-backdrop" id="extractionModalBackdrop"></div>
@@ -495,10 +519,16 @@
                 </label>
               </div>
             </div>
-            <label>
+            <div class="variant-tag-group">
               <div class="lab">Variant tag (optional) <span class="info" tabindex="0">i</span><div class="tip">Optional label appended to the extraction slug for side‑by‑side comparisons (e.g., <code>hires-2k</code>).</div></div>
-              <input id="variantTag" placeholder="e.g. hi-res-tuned" />
-            </label>
+              <div class="variant-tag-inputs">
+                <select id="existingTagSelect">
+                  <option value="">Select existing tag...</option>
+                </select>
+                <span class="variant-tag-or">or</span>
+                <input id="variantTag" placeholder="Enter new tag" />
+              </div>
+            </div>
             <div id="azureSettings" class="azure-settings hidden">
               <div class="lab">Azure Analyze options</div>
               <div class="azure-options">

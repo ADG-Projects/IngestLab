@@ -479,35 +479,118 @@ function toggleExtractionDropdown() {
 }
 
 async function editExtractionTag(slug, provider, currentTag) {
-  // Use prompt for simplicity (could be a modal in the future)
-  const newTag = prompt('Enter tag for this extraction (leave empty to remove tag):', currentTag || '');
+  const modal = document.getElementById('tagEditorModal');
+  const backdrop = document.getElementById('tagEditorModalBackdrop');
+  const existingSelect = document.getElementById('tagEditorExistingSelect');
+  const newInput = document.getElementById('tagEditorNewInput');
+  const saveBtn = document.getElementById('tagEditorSaveBtn');
+  const removeBtn = document.getElementById('tagEditorRemoveBtn');
+  const cancelBtn = document.getElementById('tagEditorCancelBtn');
 
-  // User cancelled
-  if (newTag === null) return;
+  if (!modal) return;
 
-  const trimmedTag = newTag.trim();
-
-  try {
-    const response = await fetch(
-      `/api/extraction/${encodeURIComponent(slug)}?provider=${encodeURIComponent(provider)}`,
-      {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tag: trimmedTag || null }),
+  // Populate existing tags dropdown
+  existingSelect.innerHTML = '<option value="">Select existing tag...</option>';
+  const tags = new Set();
+  if (typeof EXTRACTIONS_CACHE !== 'undefined' && Array.isArray(EXTRACTIONS_CACHE)) {
+    for (const extraction of EXTRACTIONS_CACHE) {
+      if (extraction.tag) {
+        tags.add(extraction.tag);
       }
-    );
-
-    if (!response.ok) {
-      const data = await response.json().catch(() => ({}));
-      throw new Error(data.detail || `HTTP ${response.status}`);
     }
-
-    // Refresh extractions to show updated grouping
-    showToast(`Tag ${trimmedTag ? 'updated' : 'removed'}`, 'ok', 2000);
-    await refreshExtractions();
-  } catch (e) {
-    showToast(`Failed to update tag: ${e.message}`, 'err', 3000);
   }
+  Array.from(tags).sort((a, b) => a.localeCompare(b)).forEach(tag => {
+    const option = document.createElement('option');
+    option.value = tag;
+    option.textContent = tag;
+    existingSelect.appendChild(option);
+  });
+
+  // Hide dropdown if no existing tags
+  if (tags.size === 0) {
+    existingSelect.style.display = 'none';
+    existingSelect.previousElementSibling?.style && (existingSelect.closest('.variant-tag-inputs').querySelector('.variant-tag-or').style.display = 'none');
+  } else {
+    existingSelect.style.display = '';
+    const orSpan = existingSelect.closest('.variant-tag-inputs')?.querySelector('.variant-tag-or');
+    if (orSpan) orSpan.style.display = '';
+  }
+
+  // Pre-fill with current tag
+  if (currentTag && tags.has(currentTag)) {
+    existingSelect.value = currentTag;
+    newInput.value = '';
+  } else {
+    existingSelect.value = '';
+    newInput.value = currentTag || '';
+  }
+
+  // Wire up interactions
+  existingSelect.onchange = () => {
+    if (existingSelect.value) {
+      newInput.value = '';
+    }
+  };
+  newInput.oninput = () => {
+    existingSelect.value = '';
+  };
+
+  modal.classList.remove('hidden');
+
+  return new Promise((resolve) => {
+    const cleanup = () => {
+      modal.classList.add('hidden');
+      saveBtn.onclick = null;
+      removeBtn.onclick = null;
+      cancelBtn.onclick = null;
+      backdrop.onclick = null;
+    };
+
+    const save = async (tagValue) => {
+      cleanup();
+      try {
+        const response = await fetch(
+          `/api/extraction/${encodeURIComponent(slug)}?provider=${encodeURIComponent(provider)}`,
+          {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tag: tagValue }),
+          }
+        );
+
+        if (!response.ok) {
+          const data = await response.json().catch(() => ({}));
+          throw new Error(data.detail || `HTTP ${response.status}`);
+        }
+
+        showToast(`Tag ${tagValue ? 'updated' : 'removed'}`, 'ok', 2000);
+        await refreshExtractions();
+        resolve(true);
+      } catch (e) {
+        showToast(`Failed to update tag: ${e.message}`, 'err', 3000);
+        resolve(false);
+      }
+    };
+
+    saveBtn.onclick = () => {
+      const tag = newInput.value.trim() || existingSelect.value || null;
+      save(tag);
+    };
+
+    removeBtn.onclick = () => {
+      save(null);
+    };
+
+    cancelBtn.onclick = () => {
+      cleanup();
+      resolve(false);
+    };
+
+    backdrop.onclick = () => {
+      cleanup();
+      resolve(false);
+    };
+  });
 }
 
 function setupExtractionDropdown() {

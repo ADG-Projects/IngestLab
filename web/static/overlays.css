@@ -628,6 +628,62 @@ body.resizing-drawer {
   accent-color: var(--accent);
 }
 
+/* Variant Tag Group */
+.variant-tag-group {
+  margin-bottom: 8px;
+}
+
+.variant-tag-group > .lab {
+  margin-bottom: 8px;
+}
+
+.variant-tag-inputs {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.variant-tag-inputs select {
+  flex: 1;
+  min-width: 0;
+}
+
+.variant-tag-inputs input {
+  flex: 1;
+  min-width: 0;
+}
+
+.variant-tag-or {
+  font-size: 12px;
+  color: var(--muted);
+  flex-shrink: 0;
+}
+
+/* Tag Editor Modal */
+.tag-editor-content {
+  margin: 16px 0;
+}
+
+.tag-editor-content .variant-tag-inputs {
+  flex-direction: column;
+  gap: 12px;
+}
+
+.tag-editor-content .variant-tag-inputs select,
+.tag-editor-content .variant-tag-inputs input {
+  width: 100%;
+}
+
+.btn-danger {
+  background: var(--danger, #dc3545);
+  color: white;
+  border: none;
+}
+
+.btn-danger:hover {
+  background: color-mix(in srgb, var(--danger, #dc3545) 85%, black);
+}
+
 /* Unstructured Settings Styling (matching Azure) */
 .unstructured-settings {
   background: var(--surface-glass);

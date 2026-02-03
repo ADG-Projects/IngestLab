@@ -16,7 +16,23 @@ function wireModal() {
     modal.classList.remove('extracting');
     const status = $('extractionStatus');
     if (status) status.textContent = '';
+    populateExistingTagsDropdown();
   });
+
+  // Wire up existing tag dropdown to populate the text input
+  const existingTagSelect = $('existingTagSelect');
+  const variantTagInput = $('variantTag');
+  if (existingTagSelect && variantTagInput) {
+    existingTagSelect.addEventListener('change', () => {
+      if (existingTagSelect.value) {
+        variantTagInput.value = existingTagSelect.value;
+      }
+    });
+    // Clear dropdown selection when user types a new tag
+    variantTagInput.addEventListener('input', () => {
+      existingTagSelect.value = '';
+    });
+  }
   if (deleteBtn) {
     deleteBtn.addEventListener('click', async () => {
       if (!CURRENT_SLUG) return;
@@ -196,8 +212,50 @@ function closeChunkerModal() {
   }
 }
 
+/**
+ * Populate the existing tags dropdown from cached extractions
+ */
+function populateExistingTagsDropdown() {
+  const select = document.getElementById('existingTagSelect');
+  if (!select) return;
+
+  // Clear existing options except the placeholder
+  select.innerHTML = '<option value="">Select existing tag...</option>';
+
+  const tags = new Set();
+  if (typeof EXTRACTIONS_CACHE !== 'undefined' && Array.isArray(EXTRACTIONS_CACHE)) {
+    for (const extraction of EXTRACTIONS_CACHE) {
+      if (extraction.tag) {
+        tags.add(extraction.tag);
+      }
+    }
+  }
+
+  // Sort and add options
+  Array.from(tags).sort((a, b) => a.localeCompare(b)).forEach(tag => {
+    const option = document.createElement('option');
+    option.value = tag;
+    option.textContent = tag;
+    select.appendChild(option);
+  });
+
+  // Hide dropdown if no existing tags
+  const wrapper = select.closest('.variant-tag-inputs');
+  if (wrapper) {
+    const orSpan = wrapper.querySelector('.variant-tag-or');
+    if (tags.size === 0) {
+      select.style.display = 'none';
+      if (orSpan) orSpan.style.display = 'none';
+    } else {
+      select.style.display = '';
+      if (orSpan) orSpan.style.display = '';
+    }
+  }
+}
+
 // Window exports
 window.wireModal = wireModal;
 window.closeExtractionModal = closeExtractionModal;
 window.wireChunkerModal = wireChunkerModal;
 window.closeChunkerModal = closeChunkerModal;
+window.populateExistingTagsDropdown = populateExistingTagsDropdown;
