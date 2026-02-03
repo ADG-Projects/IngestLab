@@ -4,7 +4,7 @@
 
 .drawer {
   position: fixed;
-  top: calc(58px + 60px + 44px);
+  top: 80px;
   right: 0;
   width: var(--drawer-width, min(700px, calc(100% - 32px)));
   bottom: 0;
