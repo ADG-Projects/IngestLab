@@ -1,6 +1,6 @@
 [project]
 name = "ingestlab"
-version = "6.2.0"
+version = "6.2.1"
 description = "Document ingestion sandbox for Azure Document Intelligence with custom chunking."
 requires-python = ">=3.11,<3.12"
 

@@ -5,6 +5,7 @@
 
 ## Completed
 
+- [x] 2026-02-03 Release v6.2.1 (Tag selection dropdowns with autocomplete, auto-select newly extracted document).
 - [x] 2026-02-02 Release v6.2.0 (Tag-based extraction groups with collapsible dropdown, tag editing for existing extractions).
 - [x] 2026-01-30 Release v6.1.0 (Extraction rename, multi-format uploads, figure understanding, image type override, progress pipeline, upload tab redesign).
 - [x] 2026-01-29 Fix image extractions not appearing in main viewer by converting images to PDF for UI display.

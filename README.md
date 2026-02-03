@@ -121,6 +121,8 @@ Outputs for Azure extractions live under `outputs/azure/document_intelligence/` 
 
 ## Release history
 
+- **v6.2.1 (2026-02-03)** – Tag selection dropdowns with autocomplete in new/edit extraction modals; fix for auto-selecting newly extracted document after job completion.
+- **v6.2.0 (2026-02-02)** – Tag-based extraction groups with collapsible dropdown, tag editing for existing extractions.
 - **v6.1.3 (2026-02-02)** – Fix: Modal viewport overflow causing cutoff on deployed environments (improved defensive CSS).
 - **v6.1.2 (2026-01-30)** – Modal SAM3 Backend: Added optional Modal serverless deployment support for SAM3 segmentation.
 - **v6.1.1 (2026-01-30)** – Fix: Modal viewport overflow causing cutoff on deployed environments.

@@ -203,7 +203,7 @@ async function pollExtractionJob(jobId) {
       if (provider) CURRENT_PROVIDER = provider;
       if (slug) CURRENT_SLUG = slug;
       try {
-        await refreshExtractions();
+        await refreshExtractions({ slug, provider });
       } catch (err) {
         console.warn('Failed to refresh extractions after job completion', err);
       }
