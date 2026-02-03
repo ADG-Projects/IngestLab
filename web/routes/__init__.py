@@ -1,3 +1,4 @@
+from .admin import router as admin_router
 from .chunker import router as chunker_router
 from .chunks import router as chunks_router
 from .elements import clear_index_cache, router as elements_router
@@ -8,6 +9,7 @@ from .pdfs import router as pdfs_router
 from .reviews import router as reviews_router
 
 __all__ = [
+    "admin_router",
     "chunker_router",
     "chunks_router",
     "elements_router",

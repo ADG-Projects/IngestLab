@@ -17,6 +17,7 @@ from .config import (
     ensure_pdfjs_assets,
 )
 from .routes import (
+    admin_router,
     chunker_router,
     chunks_router,
     elements_router,
@@ -38,7 +39,7 @@ def configure_chunking_logging() -> None:
     handler = logging.StreamHandler()
     handler.setLevel(logging.INFO)
     handler.setFormatter(logging.Formatter("[chunking] %(asctime)s %(levelname)s %(name)s: %(message)s"))
-    for name in ("chunking.routes.extractions", "chunking.routes.chunker", "chunking.routes.images", "chunking.extraction_jobs"):
+    for name in ("chunking.routes.admin", "chunking.routes.extractions", "chunking.routes.chunker", "chunking.routes.images", "chunking.extraction_jobs"):
         logger = logging.getLogger(name)
         logger.setLevel(logging.INFO)
         logger.addHandler(handler)
@@ -65,6 +66,7 @@ def healthz() -> Dict[str, Any]:
     return {"status": "ok"}
 
 
+app.include_router(admin_router)
 app.include_router(extractions_router)
 app.include_router(pdfs_router)
 app.include_router(elements_router)

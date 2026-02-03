@@ -3,6 +3,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initDrawerAutoCondense();
   initDrawerResize();
   wireWhatsNewModal();
+  if (typeof initSettingsModal === 'function') initSettingsModal();
   const sel = $('elementsTypeSelect');
   if (sel) sel.addEventListener('change', async () => {
     CURRENT_TYPE_FILTER = sel.value || 'All';

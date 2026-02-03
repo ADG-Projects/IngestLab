@@ -121,6 +121,7 @@ Outputs for Azure extractions live under `outputs/azure/document_intelligence/` 
 
 ## Release history
 
+- **v6.2.2 (2026-02-03)** – PolicyAsCode dev mode: update PaC on-demand via Settings modal without restart; admin API endpoints and CLI helper.
 - **v6.2.1 (2026-02-03)** – Tag selection dropdowns with autocomplete in new/edit extraction modals; fix for auto-selecting newly extracted document after job completion.
 - **v6.2.0 (2026-02-02)** – Tag-based extraction groups with collapsible dropdown, tag editing for existing extractions.
 - **v6.1.3 (2026-02-02)** – Fix: Modal viewport overflow causing cutoff on deployed environments (improved defensive CSS).
@@ -341,6 +342,24 @@ docker build -t ingestlab:min \
 ```
 
 At runtime you can still set `DISABLE_HI_RES=1` to force the `strategy=fast` path without rebuilding the image.
+
+### PolicyAsCode Development Mode
+
+IngestLab uses PolicyAsCode (PaC) for figure processing (SAM3 segmentation + Mermaid extraction). By default it uses the installed package version. To test PaC changes without redeploying:
+
+1. **Enable dev mode** by setting `PAC_DEV_MODE=1` in your environment
+2. **Open Settings** (gear icon in header) and click "Update PaC"
+3. PaC is cloned to `PAC_LOCAL_PATH` (default: `/tmp/pac` on Railway, `../PolicyAsCode` locally)
+4. Modules are hot-reloaded — subsequent figure processing uses the new code
+
+Environment variables:
+- `PAC_DEV_MODE` — Enable development mode (`1`, `true`)
+- `PAC_LOCAL_PATH` — Clone location (default: `/tmp/pac` on Railway)
+- `PAC_BRANCH` — Branch to clone/pull (default: `feature/chunking-visualizer-integration`)
+- `PAC_REPO_URL` — Git repository URL
+- `GH_TOKEN` — GitHub Personal Access Token for private repos (same token used by `gh` CLI)
+
+On Railway, the `/tmp` directory persists within a container lifetime but resets on deploy. To update PaC without restarting: click "Update PaC" in Settings.
 
 ### Railway deployment & volumes
 

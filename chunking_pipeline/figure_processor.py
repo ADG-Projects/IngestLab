@@ -30,6 +30,15 @@ class FigureProcessorWrapper:
         """Initialize the processor lazily to avoid import overhead."""
         self._processor: FigureProcessor | None = None
 
+    def reset(self) -> None:
+        """Clear cached processor to force re-initialization.
+
+        Called by pac_dev.reload_pac_modules() to ensure new PaC code
+        is used on the next figure processing request.
+        """
+        self._processor = None
+        logger.debug("FigureProcessorWrapper reset - will reinitialize on next use")
+
     def _get_processor(self) -> FigureProcessor:
         """Lazy-load the FigureProcessor from PolicyAsCode."""
         if self._processor is None:
@@ -987,3 +996,16 @@ def get_processor() -> FigureProcessorWrapper:
     if _processor is None:
         _processor = FigureProcessorWrapper()
     return _processor
+
+
+def reset_processor() -> None:
+    """Reset the module-level FigureProcessorWrapper singleton.
+
+    Called by pac_dev.reload_pac_modules() to ensure new PaC code
+    is used on the next figure processing request.
+    """
+    global _processor
+    if _processor is not None:
+        _processor.reset()
+    _processor = None
+    logger.debug("Module-level FigureProcessorWrapper reset")
