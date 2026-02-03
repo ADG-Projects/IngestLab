@@ -228,6 +228,7 @@ function wireExtractionForm() {
       const pushIf = (el, val) => { if (el && el.checked) azureFeatures.push(val); };
       const pushOutputIf = (el, val) => { if (el && el.checked) azureOutputs.push(val); };
       pushOutputIf($('azureFigureImage'), 'figures');
+      pushOutputIf($('azureProcessFigures'), 'process_figures');
       pushIf($('azureBarcodes'), 'barcodes');
       pushIf($('azureLanguage'), 'languages');
       pushIf($('azureKvp'), 'keyValuePairs');
@@ -276,6 +277,7 @@ function wireExtractionForm() {
     } else {
       payload.form_snapshot.features = payload.features;
       payload.form_snapshot.outputs = payload.outputs;
+      payload.form_snapshot.process_figures = $('azureProcessFigures')?.checked ?? true;
       payload.form_snapshot.output_content_format = payload.output_content_format;
       payload.form_snapshot.model_id = payload.model_id;
       payload.form_snapshot.locale = payload.locale;

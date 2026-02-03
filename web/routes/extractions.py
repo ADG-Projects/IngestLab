@@ -366,6 +366,7 @@ def _process_figures_after_extraction(
     figures_dir: Path,
     run_id: Optional[str] = None,
     metadata: Optional[Dict[str, Any]] = None,
+    run_vision_pipeline: bool = True,
 ) -> List[Dict[str, Any]]:
     """Process figures through vision pipeline after extraction.
 
@@ -378,6 +379,8 @@ def _process_figures_after_extraction(
         figures_dir: Directory to save extracted figure images
         run_id: Optional run identifier
         metadata: Job metadata for progress reporting
+        run_vision_pipeline: If True (default), run AI vision analysis on figures.
+            If False, only extract figure images without AI processing.
 
     Returns:
         Updated elements list with figure_processing added to figure elements
@@ -393,18 +396,24 @@ def _process_figures_after_extraction(
     logger.info(f"Found {total_figures} figures to process")
     _report_progress(metadata, stage="figures", total=total_figures, message=f"Processing {total_figures} figure{'s' if total_figures > 1 else ''}...")
 
-    # Try to import the vision processor
-    try:
-        from chunking_pipeline.figure_processor import get_processor
-        processor = get_processor()
-        vision_available = True
-        logger.info("Vision pipeline available for figure processing")
-        _report_progress(metadata, stage="figures", total=total_figures, message=f"Vision pipeline ready, processing {total_figures} figure{'s' if total_figures > 1 else ''}...")
-    except ImportError:
+    # Try to import the vision processor (unless explicitly disabled)
+    if not run_vision_pipeline:
         processor = None
         vision_available = False
-        logger.info("Vision pipeline not available - extracting images only")
-        _report_progress(metadata, stage="figures", total=total_figures, message=f"Extracting {total_figures} figure image{'s' if total_figures > 1 else ''} (no vision pipeline)...")
+        logger.info("Vision pipeline disabled by user - extracting images only")
+        _report_progress(metadata, stage="figures", total=total_figures, message=f"Extracting {total_figures} figure image{'s' if total_figures > 1 else ''} (AI analysis disabled)...")
+    else:
+        try:
+            from chunking_pipeline.figure_processor import get_processor
+            processor = get_processor()
+            vision_available = True
+            logger.info("Vision pipeline available for figure processing")
+            _report_progress(metadata, stage="figures", total=total_figures, message=f"Vision pipeline ready, processing {total_figures} figure{'s' if total_figures > 1 else ''}...")
+        except ImportError:
+            processor = None
+            vision_available = False
+            logger.info("Vision pipeline not available - extracting images only")
+            _report_progress(metadata, stage="figures", total=total_figures, message=f"Extracting {total_figures} figure image{'s' if total_figures > 1 else ''} (no vision pipeline)...")
 
     # Ensure figures directory exists
     figures_dir.mkdir(parents=True, exist_ok=True)
@@ -681,13 +690,21 @@ def _execute_extraction(metadata: Dict[str, Any]) -> None:
         else:
             extraction_config[key] = val
 
-    # Process figures: extract images from PDF and run vision pipeline if available
+    # Process figures: extract images from PDF and run vision pipeline if enabled
     # Only process if we have a PDF (trimmed_path exists)
     if trimmed_path and trimmed_path.exists():
         figures_dir = elements_path.parent / f"{elements_path.stem.replace('.elements', '')}.figures"
         slug_with_pages = metadata.get("slug_with_pages")
+        # Check if vision pipeline should run (process_figures in outputs list)
+        run_vision_pipeline = any(
+            (o or "").lower() == "process_figures"
+            for o in (metadata.get("outputs") or [])
+        )
         elems = _process_figures_after_extraction(
-            elems, trimmed_path, figures_dir, run_id=slug_with_pages, metadata=metadata
+            elems, trimmed_path, figures_dir,
+            run_id=slug_with_pages,
+            metadata=metadata,
+            run_vision_pipeline=run_vision_pipeline,
         )
 
     # Write outputs
