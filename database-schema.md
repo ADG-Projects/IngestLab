@@ -6,6 +6,7 @@ The project does not persist to a database yet. Instead, artifacts are written t
 - `outputs/azure/document_intelligence/` — Azure extractions (Document Intelligence Layout). API endpoints accept an optional `provider` query parameter to resolve the correct directory.
 - When Document Intelligence is invoked with `outputs=figures`, cropped figure PNGs are saved alongside the chunk JSONL as `<chunk_stem>.figures/<figure-id>.png`; element metadata references those files so the UI can preview them just like Unstructured image payloads.
 - Azure Document Intelligence runs are elements-only in the UI; the Chunks tab stays hidden even if chunk-style JSONL artifacts are present.
+- Chunker strategies are registered in the PolicyAsCode chunker registry. `GET /api/chunkers` returns available strategies with their parameter schemas. `POST /api/chunk` accepts a `chunker` name and `config` overrides to dispatch to any registered strategy.
 - Custom chunker keeps section headings that fall inside Table/Figure bounding boxes attached to the container chunk so captions stay with their figure/table instead of starting new section chunks, and merges consecutive sectionHeading/title elements into a single section to avoid heading-only chunks when multiple headings stack without body content between them.
 - Reviews are stored per provider under `<provider_out_dir>/reviews/<slug>.reviews.json`.
 - Azure AnalyzeResult payloads are now coerced via the SDK `as_dict` helper and polygon coordinates are scaled to PDF points (72/in) so overlays line up; rerun any older Azure slices that produced empty `.tables.jsonl` files.
@@ -18,6 +19,7 @@ Source PDFs are read from a configurable directory:
 
 ## Version history
 
+- **v6.3.0 (2026-02-09)** – Chunker Strategy Selection: choose between registered chunker strategies (Custom, Size Controlled) via dropdown with collapsible advanced options. Strategies and parameter schemas fetched dynamically from PaC chunker registry (`GET /api/chunkers`). Default is Size Controlled. Last used strategy and overrides remembered across sessions.
 - **v6.0.0 (2026-01-27)** – Images Tab & Vision Pipeline: New top-level Images tab for exploring PDF figures and standalone image uploads. Two-stage vision pipeline with SAM3 segmentation preview + Mermaid extraction. Cytoscape graph visualization with fullscreen mode. Upload history management. Lightbox for zoomable previews. Azure DI OCR text extraction for improved Mermaid labeling. LLM reasoning trace display. Frontend refactored into modular CSS/JS for maintainability.
 - **v5.0 (2025-12-01)** – Custom chunker improvements: section headings inside Table/Figure boxes stay attached to container, consecutive headings merge, paragraphs inside tables filtered, tables/figures included in parent sections. UI: element drawer hierarchy, resizable panels, centered PDF viewer, smart parameter banner, alternating chunk overlay colors, extraction persistence across reloads.
 - **v4.4 (2025-11-28)** – Apple Liquid Glass UI redesign with frosted glass effects, dark/light theme toggle, Apple system color palette, smooth spring animations.
