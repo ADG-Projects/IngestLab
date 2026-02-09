@@ -15,7 +15,7 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from src.extractors.custom_chunker import (
+from src.extractors.section_based_chunker import (
     ChunkingConfig,
     chunk_elements,
     get_chunk_statistics,

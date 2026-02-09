@@ -11,7 +11,7 @@ from typing import Any, Dict, List, Tuple
 from fastapi import APIRouter, HTTPException, Request
 
 from src.extractors.chunker_registry import chunker_schemas, get_chunker
-from src.extractors.custom_chunker import (
+from src.extractors.section_based_chunker import (
     decode_orig_elements,
     get_chunk_statistics,
 )
