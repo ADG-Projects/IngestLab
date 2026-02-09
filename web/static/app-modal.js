@@ -284,7 +284,7 @@ function wireChunkerModal() {
       } else {
         // Fallback defaults
         if (schemas.find(s => s.name === 'size_controlled')) strategySelect.value = 'size_controlled';
-        else if (schemas.find(s => s.name === 'custom')) strategySelect.value = 'custom';
+        else if (schemas.find(s => s.name === 'section_based')) strategySelect.value = 'section_based';
       }
       await onStrategyChange(savedConfig);
     }
@@ -322,7 +322,7 @@ function wireChunkerModal() {
         const payload = {
           source_slug: sourceData.slug,
           source_provider: sourceData.provider,
-          chunker: strategySelect ? strategySelect.value : 'custom',
+          chunker: strategySelect ? strategySelect.value : 'section_based',
           config: _collectConfigOverrides(),
         };
 
@@ -341,7 +341,7 @@ function wireChunkerModal() {
           status.textContent = `Done! ${result.summary?.count || 0} chunks created`;
         }
         showToast(`Chunker complete: ${result.summary?.count || 0} chunks`, 'ok', 3000);
-        _saveChunkerPrefs(strategySelect ? strategySelect.value : 'custom', _collectParamValues(false));
+        _saveChunkerPrefs(strategySelect ? strategySelect.value : 'section_based', _collectParamValues(false));
         try {
           switchView('inspect', true);
           switchInspectTab('chunks', true);

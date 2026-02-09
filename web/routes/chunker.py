@@ -1,4 +1,4 @@
-"""API routes for custom chunker operations."""
+"""API routes for chunker operations."""
 
 from __future__ import annotations
 
@@ -138,7 +138,7 @@ async def api_chunk(request: Request) -> Dict[str, Any]:
     {
         "source_slug": "...",       # Slug of the source run
         "source_provider": "...",   # Provider of the source run
-        "chunker": "custom",        # Chunker strategy name (default: "custom")
+        "chunker": "section_based",  # Chunker strategy name (default: "section_based")
         "config": { ... }           # Optional config overrides for the chosen chunker
     }
 
@@ -170,7 +170,7 @@ async def api_chunk(request: Request) -> Dict[str, Any]:
         )
 
     # Resolve chunker strategy from the registry
-    chunker_name = payload.get("chunker") or "custom"
+    chunker_name = payload.get("chunker") or "section_based"
     try:
         chunker_info = get_chunker(chunker_name)
     except KeyError:

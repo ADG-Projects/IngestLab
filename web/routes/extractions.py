@@ -743,7 +743,7 @@ def api_extraction(payload: Dict[str, Any]) -> Dict[str, Any]:
     if not file_type:
         raise HTTPException(status_code=400, detail=f"Unsupported file type: {doc_name}")
 
-    # All providers now output elements only; chunking is done via separate custom chunker
+    # All providers now output elements only; chunking is done via separate chunker
     ocr_languages = str(payload.get("ocr_languages") or "eng+ara").strip() or None
     languages_raw = payload.get("languages")
     primary_language = str(payload.get("primary_language") or "eng").strip().lower()

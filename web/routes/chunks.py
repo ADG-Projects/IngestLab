@@ -125,7 +125,7 @@ def api_chunks(slug: str, provider: str = Query(default=None)) -> Dict[str, Any]
                     segment_span_info = (span[0], span[1], total_rows)
                     if segment_bbox and reference_bbox and not segment_bbox.get("page_trimmed"):
                         segment_bbox["page_trimmed"] = reference_bbox.get("page_trimmed")
-            # Handle multi-page bboxes (page_bboxes field from custom chunker)
+            # Handle multi-page bboxes (page_bboxes field from chunker)
             page_bboxes_simplified: Optional[List[Dict[str, Any]]] = None
             raw_page_bboxes = meta.get("page_bboxes")
             if raw_page_bboxes:

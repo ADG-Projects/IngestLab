@@ -33,7 +33,7 @@ function parseExtractionKey(key) {
 }
 
 function providerSupportsChunks(provider) {
-  // All providers support chunks via the custom chunker
+  // All providers support chunks via the chunker
   return true;
 }
 

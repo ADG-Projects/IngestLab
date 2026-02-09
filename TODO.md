@@ -5,6 +5,7 @@
 
 ## Completed
 
+- [x] 2026-02-09 Release v6.4.0 (Rename "Custom" chunker to "Section Based" across UI, API, and docs).
 - [x] 2026-02-09 Release v6.3.0 (Chunker strategy selection with advanced options, dynamic parameter schemas from PaC registry, size controlled default).
 - [x] 2026-02-03 Add PolicyAsCode development mode for on-demand updates without restart (Settings modal, admin API, CLI helper).
 - [x] 2026-02-03 Release v6.2.1 (Tag selection dropdowns with autocomplete, auto-select newly extracted document).
