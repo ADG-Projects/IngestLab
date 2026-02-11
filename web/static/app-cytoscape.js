@@ -160,170 +160,180 @@ function parseMermaidToCytoscape(mermaidCode) {
 }
 
 /**
- * Cytoscape style configuration.
+ * Build Cytoscape style array for the given theme.
+ * @param {'dark' | 'light'} theme
+ * @returns {Array} Cytoscape style definitions
  */
-const CYTOSCAPE_STYLE = [
-  {
-    selector: 'node',
-    style: {
-      'background-color': '#4fc3f7',
-      'background-opacity': 0.85,
-      'border-color': '#0288d1',
-      'border-width': 2,
-      'label': 'data(label)',
-      'text-wrap': 'wrap',
-      'text-max-width': '70px',
-      'font-size': '10px',
-      'font-family': 'Segoe UI, Tahoma, sans-serif',
-      'text-valign': 'center',
-      'text-halign': 'center',
-      'width': 80,
-      'height': 32,
-      'padding': '4px',
-      'shape': 'round-rectangle',
-      'color': '#1a1a1a'
-    }
-  },
-  // Dynamic sizing for nodes with SAM3 bbox data
-  {
-    selector: 'node[nodeWidth]',
-    style: {
-      'width': 'data(nodeWidth)',
-      'height': 'data(nodeHeight)',
-      'text-max-width': function(ele) {
-        return Math.max(ele.data('nodeWidth') - 10, 40) + 'px';
-      },
-      'font-size': function(ele) {
-        // Scale font based on node size
-        const size = Math.min(ele.data('nodeWidth'), ele.data('nodeHeight'));
-        return Math.max(Math.min(size / 6, 14), 8) + 'px';
+function getCytoscapeStyle(theme) {
+  const isDark = theme === 'dark';
+  const edgeColor = isDark ? '#72808a' : '#8e8e93';
+  const edgeLabelBg = isDark ? '#ffffff' : '#f2f2f7';
+  const edgeLabelOpacity = isDark ? 0.85 : 0.9;
+  const textOutlineColor = isDark ? '#000000' : '#333333';
+
+  return [
+    {
+      selector: 'node',
+      style: {
+        'background-color': '#4fc3f7',
+        'background-opacity': 0.85,
+        'border-color': '#0288d1',
+        'border-width': 2,
+        'label': 'data(label)',
+        'text-wrap': 'wrap',
+        'text-max-width': '70px',
+        'font-size': '10px',
+        'font-family': 'Segoe UI, Tahoma, sans-serif',
+        'text-valign': 'center',
+        'text-halign': 'center',
+        'width': 80,
+        'height': 32,
+        'padding': '4px',
+        'shape': 'round-rectangle',
+        'color': '#1a1a1a'
+      }
+    },
+    // Dynamic sizing for nodes with SAM3 bbox data
+    {
+      selector: 'node[nodeWidth]',
+      style: {
+        'width': 'data(nodeWidth)',
+        'height': 'data(nodeHeight)',
+        'text-max-width': function(ele) {
+          return Math.max(ele.data('nodeWidth') - 10, 40) + 'px';
+        },
+        'font-size': function(ele) {
+          // Scale font based on node size
+          const size = Math.min(ele.data('nodeWidth'), ele.data('nodeHeight'));
+          return Math.max(Math.min(size / 6, 14), 8) + 'px';
+        }
+      }
+    },
+    {
+      selector: 'node[type = "decision"]',
+      style: {
+        'background-color': '#fff59d',
+        'background-opacity': 0.9,
+        'border-color': '#f9a825',
+        'border-width': 3,
+        'shape': 'diamond',
+        'width': 70,
+        'height': 50,
+        'text-max-width': '55px',
+        'font-size': '8px'
+      }
+    },
+    {
+      selector: 'node[type = "decision"][nodeWidth]',
+      style: {
+        'width': 'data(nodeWidth)',
+        'height': 'data(nodeHeight)'
+      }
+    },
+    {
+      selector: 'node[type = "terminal"]',
+      style: {
+        'background-color': '#a5d6a7',
+        'background-opacity': 0.9,
+        'border-color': '#388e3c',
+        'border-width': 3,
+        'shape': 'ellipse',
+        'width': 55,
+        'height': 35,
+        'text-max-width': '45px',
+        'font-size': '8px',
+        'font-weight': 'bold'
+      }
+    },
+    {
+      selector: 'node[type = "terminal"][nodeWidth]',
+      style: {
+        'width': 'data(nodeWidth)',
+        'height': 'data(nodeHeight)'
+      }
+    },
+    {
+      selector: 'node[type = "subprocess"]',
+      style: {
+        'background-color': '#ce93d8',
+        'background-opacity': 0.9,
+        'border-color': '#7b1fa2',
+        'border-width': 4,
+        'shape': 'round-rectangle'
+      }
+    },
+    {
+      selector: 'node[type = "subprocess"][nodeWidth]',
+      style: {
+        'width': 'data(nodeWidth)',
+        'height': 'data(nodeHeight)'
+      }
+    },
+    {
+      selector: 'edge',
+      style: {
+        'width': 2,
+        'line-color': edgeColor,
+        'target-arrow-color': edgeColor,
+        'target-arrow-shape': 'triangle',
+        'curve-style': 'bezier',
+        'label': 'data(label)',
+        'font-size': '9px',
+        'text-background-color': edgeLabelBg,
+        'text-background-opacity': edgeLabelOpacity,
+        'text-background-padding': '2px'
+      }
+    },
+    {
+      selector: 'node:selected',
+      style: {
+        'background-color': '#ff9800',
+        'border-color': '#e65100'
+      }
+    },
+    {
+      selector: 'node[shapeColor]',
+      style: {
+        'background-color': 'data(shapeColor)',
+        'border-color': 'data(shapeColor)',
+        'border-width': 3,
+        'color': '#ffffff',
+        'text-outline-color': textOutlineColor,
+        'text-outline-width': 1
+      }
+    },
+    {
+      selector: 'node[type = "decision"][shapeColor]',
+      style: {
+        'background-color': 'data(shapeColor)',
+        'border-color': 'data(shapeColor)',
+        'color': '#ffffff',
+        'text-outline-color': textOutlineColor,
+        'text-outline-width': 1
+      }
+    },
+    {
+      selector: 'node[type = "terminal"][shapeColor]',
+      style: {
+        'background-color': 'data(shapeColor)',
+        'border-color': 'data(shapeColor)',
+        'color': '#ffffff',
+        'text-outline-color': textOutlineColor,
+        'text-outline-width': 1
+      }
+    },
+    {
+      selector: 'node[type = "subprocess"][shapeColor]',
+      style: {
+        'background-color': 'data(shapeColor)',
+        'border-color': 'data(shapeColor)',
+        'color': '#ffffff',
+        'text-outline-color': textOutlineColor,
+        'text-outline-width': 1
       }
     }
-  },
-  {
-    selector: 'node[type = "decision"]',
-    style: {
-      'background-color': '#fff59d',
-      'background-opacity': 0.9,
-      'border-color': '#f9a825',
-      'border-width': 3,
-      'shape': 'diamond',
-      'width': 70,
-      'height': 50,
-      'text-max-width': '55px',
-      'font-size': '8px'
-    }
-  },
-  {
-    selector: 'node[type = "decision"][nodeWidth]',
-    style: {
-      'width': 'data(nodeWidth)',
-      'height': 'data(nodeHeight)'
-    }
-  },
-  {
-    selector: 'node[type = "terminal"]',
-    style: {
-      'background-color': '#a5d6a7',
-      'background-opacity': 0.9,
-      'border-color': '#388e3c',
-      'border-width': 3,
-      'shape': 'ellipse',
-      'width': 55,
-      'height': 35,
-      'text-max-width': '45px',
-      'font-size': '8px',
-      'font-weight': 'bold'
-    }
-  },
-  {
-    selector: 'node[type = "terminal"][nodeWidth]',
-    style: {
-      'width': 'data(nodeWidth)',
-      'height': 'data(nodeHeight)'
-    }
-  },
-  {
-    selector: 'node[type = "subprocess"]',
-    style: {
-      'background-color': '#ce93d8',
-      'background-opacity': 0.9,
-      'border-color': '#7b1fa2',
-      'border-width': 4,
-      'shape': 'round-rectangle'
-    }
-  },
-  {
-    selector: 'node[type = "subprocess"][nodeWidth]',
-    style: {
-      'width': 'data(nodeWidth)',
-      'height': 'data(nodeHeight)'
-    }
-  },
-  {
-    selector: 'edge',
-    style: {
-      'width': 2,
-      'line-color': '#72808a',
-      'target-arrow-color': '#72808a',
-      'target-arrow-shape': 'triangle',
-      'curve-style': 'bezier',
-      'label': 'data(label)',
-      'font-size': '9px',
-      'text-background-color': '#fff',
-      'text-background-opacity': 1,
-      'text-background-padding': '2px'
-    }
-  },
-  {
-    selector: 'node:selected',
-    style: {
-      'background-color': '#ff9800',
-      'border-color': '#e65100'
-    }
-  },
-  {
-    selector: 'node[shapeColor]',
-    style: {
-      'background-color': 'data(shapeColor)',
-      'border-color': 'data(shapeColor)',
-      'border-width': 3,
-      'color': '#ffffff',
-      'text-outline-color': '#000000',
-      'text-outline-width': 1
-    }
-  },
-  {
-    selector: 'node[type = "decision"][shapeColor]',
-    style: {
-      'background-color': 'data(shapeColor)',
-      'border-color': 'data(shapeColor)',
-      'color': '#ffffff',
-      'text-outline-color': '#000000',
-      'text-outline-width': 1
-    }
-  },
-  {
-    selector: 'node[type = "terminal"][shapeColor]',
-    style: {
-      'background-color': 'data(shapeColor)',
-      'border-color': 'data(shapeColor)',
-      'color': '#ffffff',
-      'text-outline-color': '#000000',
-      'text-outline-width': 1
-    }
-  },
-  {
-    selector: 'node[type = "subprocess"][shapeColor]',
-    style: {
-      'background-color': 'data(shapeColor)',
-      'border-color': 'data(shapeColor)',
-      'color': '#ffffff',
-      'text-outline-color': '#000000',
-      'text-outline-width': 1
-    }
-  }
-];
+  ];
+}
 
 /**
  * Initialize Cytoscape diagram from Mermaid code with SAM3 positions.
@@ -492,7 +502,7 @@ function initCytoscapeDiagram(containerId, mermaidCode, shapePositions, imageDim
   currentCyInstance = cytoscape({
     container,
     elements: { nodes, edges },
-    style: CYTOSCAPE_STYLE,
+    style: getCytoscapeStyle(getEffectiveTheme()),
     pixelRatio: 'auto',
     layout: layoutConfig
   });
@@ -568,7 +578,7 @@ function cytoscapeMaximize() {
     currentCyInstance = cytoscape({
       container,
       elements,
-      style: CYTOSCAPE_STYLE,
+      style: getCytoscapeStyle(getEffectiveTheme()),
       layout: { name: 'preset' },
       pixelRatio: 'auto'
     });
@@ -611,7 +621,7 @@ function cytoscapeMinimize() {
     currentCyInstance = cytoscape({
       container,
       elements,
-      style: CYTOSCAPE_STYLE,
+      style: getCytoscapeStyle(getEffectiveTheme()),
       layout: { name: 'preset' },
       pixelRatio: 'auto'
     });
@@ -629,6 +639,15 @@ function cytoscapeEscapeHandler(e) {
   }
 }
 
+/**
+ * Re-apply Cytoscape styles for the given theme on the live instance.
+ * @param {'dark' | 'light'} theme
+ */
+function updateCytoscapeTheme(theme) {
+  if (!currentCyInstance) return;
+  currentCyInstance.style().fromJson(getCytoscapeStyle(theme)).update();
+}
+
 // Window exports
 window.sam3ColorToHex = sam3ColorToHex;
 window.parseMermaidToCytoscape = parseMermaidToCytoscape;
@@ -637,5 +656,6 @@ window.cytoscapeZoomIn = cytoscapeZoomIn;
 window.cytoscapeZoomOut = cytoscapeZoomOut;
 window.cytoscapeReset = cytoscapeReset;
 window.cytoscapeFullscreen = cytoscapeFullscreen;
+window.updateCytoscapeTheme = updateCytoscapeTheme;
 window.cytoscapeMaximize = cytoscapeMaximize;
 window.cytoscapeMinimize = cytoscapeMinimize;

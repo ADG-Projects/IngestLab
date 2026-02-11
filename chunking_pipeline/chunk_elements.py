@@ -1,7 +1,7 @@
-"""CLI entry point for the custom chunker.
+"""CLI entry point for the section-based chunker.
 
 Usage:
-    uv run python -m chunking_pipeline.run_custom_chunker \
+    uv run python -m chunking_pipeline.chunk_elements \
         --input existing.chunks.jsonl \
         --output chunked.chunks.jsonl
 """
@@ -15,7 +15,7 @@ import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from src.extractors.custom_chunker import (
+from src.extractors.section_based_chunker import (
     ChunkingConfig,
     chunk_elements,
     get_chunk_statistics,
@@ -43,9 +43,9 @@ def save_chunks(chunks: List[Dict[str, Any]], path: Path) -> None:
 
 
 def main(argv: Optional[List[str]] = None) -> int:
-    """Main entry point for the custom chunker CLI."""
+    """Main entry point for the section-based chunker CLI."""
     parser = argparse.ArgumentParser(
-        description="Run custom chunker on element files",
+        description="Run section-based chunker on element files",
         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
     )
 

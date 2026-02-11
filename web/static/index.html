@@ -81,7 +81,7 @@
       <div class="header-left">
         <div class="title-stack">
           <h1>IngestLab</h1>
-<span class="version-badge" id="versionBadge" title="What's new">v6.3.0</span>
+<span class="version-badge" id="versionBadge" title="What's new">v6.4.0</span>
         </div>
         <div class="view-tabs" role="tablist" aria-label="Primary view">
           <button id="viewTabInspect" class="tab active" data-view="inspect" role="tab" aria-selected="true">Inspect</button>
@@ -645,9 +645,17 @@
         </div>
         <div class="whats-new-body">
           <div class="version-section">
+            <h3 class="version-header">v6.4.0 <span class="version-date">2026-02-09</span></h3>
+            <ul>
+              <li><strong>Rename</strong>: "Custom" chunker renamed to "Section Based" across UI, API, and documentation</li>
+              <li>PaC chunker registry updated to reflect new naming</li>
+              <li><strong>Sharper Figures</strong>: Figure extraction DPI increased from 150 to 300, improving OCR text detection, SAM3 shape segmentation, and Mermaid flowchart extraction</li>
+            </ul>
+          </div>
+          <div class="version-section">
             <h3 class="version-header">v6.3.0 <span class="version-date">2026-02-09</span></h3>
             <ul>
-              <li><strong>Chunker Strategy Selection</strong>: Choose between chunker strategies (Custom, Size Controlled) from a dropdown in the chunker modal</li>
+              <li><strong>Chunker Strategy Selection</strong>: Choose between chunker strategies (Section Based, Size Controlled) from a dropdown in the chunker modal</li>
               <li><strong>Advanced Options</strong>: Collapsible panel exposes all configurable parameters per strategy (size limits, merge/split toggles, etc.)</li>
               <li>Strategies and parameters fetched dynamically from the PolicyAsCode chunker registry (<code>GET /api/chunkers</code>)</li>
               <li>Default strategy is now Size Controlled with configurable min/max/target chunk sizes</li>

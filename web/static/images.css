@@ -683,10 +683,10 @@
   min-height: auto !important;
   z-index: 9999 !important;
   aspect-ratio: auto !important;
-  box-shadow: 0 0 60px rgba(0, 0, 0, 0.5);
-  background: #1a1a1a !important;
+  box-shadow: var(--shadow-lg);
+  background: var(--bg-solid) !important;
   border-radius: var(--radius-lg);
-  border: 2px solid rgba(255, 255, 255, 0.1);
+  border: 2px solid var(--border-default);
 }
 
 .cytoscape-overlay {

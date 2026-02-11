@@ -189,7 +189,7 @@ wheels = [
 [[package]]
 name = "brd-to-opa-pipeline"
 version = "0.1.0"
-source = { git = "https://github.com/kyndryl-agentic-ai/PolicyAsCode.git?rev=feature%2Fchunking-visualizer-integration#ac577a6efeb4bbd92e378af6f8e00575d1fc1522" }
+source = { git = "https://github.com/kyndryl-agentic-ai/PolicyAsCode.git?rev=feature%2Fchunking-visualizer-integration#ffca4a65188c4b9213c308fc7090aa44bb9853cd" }
 dependencies = [
     { name = "arabic-reshaper" },
     { name = "azure-ai-documentintelligence" },
@@ -676,7 +676,7 @@ wheels = [
 
 [[package]]
 name = "ingestlab"
-version = "6.3.0"
+version = "6.4.0"
 source = { editable = "." }
 dependencies = [
     { name = "azure-ai-documentintelligence" },

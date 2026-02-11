@@ -121,7 +121,8 @@ Outputs for Azure extractions live under `outputs/azure/document_intelligence/` 
 
 ## Release history
 
-- **v6.3.0 (2026-02-09)** – **Chunker Strategy Selection**: Choose between chunker strategies (Custom, Size Controlled) from a dropdown in the chunker modal with collapsible advanced options. Strategies and parameters fetched dynamically from PaC chunker registry. Default is now Size Controlled. Last used strategy remembered across sessions.
+- **v6.4.0 (2026-02-09)** – Rename "Custom" chunker to "Section Based" across UI, API, documentation, and CLI.
+- **v6.3.0 (2026-02-09)** – **Chunker Strategy Selection**: Choose between chunker strategies (Section Based, Size Controlled) from a dropdown in the chunker modal with collapsible advanced options. Strategies and parameters fetched dynamically from PaC chunker registry. Default is now Size Controlled. Last used strategy remembered across sessions.
 - **v6.2.2 (2026-02-03)** – PolicyAsCode dev mode: update PaC on-demand via Settings modal without restart; admin API endpoints and CLI helper.
 - **v6.2.1 (2026-02-03)** – Tag selection dropdowns with autocomplete in new/edit extraction modals; fix for auto-selecting newly extracted document after job completion.
 - **v6.2.0 (2026-02-02)** – Tag-based extraction groups with collapsible dropdown, tag editing for existing extractions.

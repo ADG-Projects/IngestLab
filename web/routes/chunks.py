@@ -9,7 +9,7 @@ from typing import Any, Dict, List, Optional, Tuple
 
 from fastapi import APIRouter, HTTPException, Query
 
-from src.extractors.custom_chunker import decode_orig_elements
+from src.extractors.section_based_chunker import decode_orig_elements
 
 from ..config import DEFAULT_PROVIDER, get_out_dir
 
@@ -125,7 +125,7 @@ def api_chunks(slug: str, provider: str = Query(default=None)) -> Dict[str, Any]
                     segment_span_info = (span[0], span[1], total_rows)
                     if segment_bbox and reference_bbox and not segment_bbox.get("page_trimmed"):
                         segment_bbox["page_trimmed"] = reference_bbox.get("page_trimmed")
-            # Handle multi-page bboxes (page_bboxes field from custom chunker)
+            # Handle multi-page bboxes (page_bboxes field from chunker)
             page_bboxes_simplified: Optional[List[Dict[str, Any]]] = None
             raw_page_bboxes = meta.get("page_bboxes")
             if raw_page_bboxes:

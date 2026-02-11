@@ -64,7 +64,7 @@ def _extract_figure_from_pdf(
     pdf_path: Path,
     page_number: int,
     coordinates: Dict[str, Any],
-    dpi: int = 150,
+    dpi: int = 300,
 ) -> Optional[bytes]:
     """Extract a figure region from a PDF page as PNG bytes.
 
@@ -72,7 +72,7 @@ def _extract_figure_from_pdf(
         pdf_path: Path to the PDF file
         page_number: 1-indexed page number
         coordinates: Dict with 'points' (4 corners) and layout dimensions
-        dpi: Resolution for rendering (default 150)
+        dpi: Resolution for rendering (default 300)
 
     Returns:
         PNG image bytes or None if extraction fails
