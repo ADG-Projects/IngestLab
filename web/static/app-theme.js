@@ -91,6 +91,10 @@ function updateChartColors(theme) {
   if (typeof window.refreshFeedbackCharts === 'function') {
     window.refreshFeedbackCharts();
   }
+  // Update Cytoscape diagram colors if one is rendered
+  if (typeof window.updateCytoscapeTheme === 'function') {
+    window.updateCytoscapeTheme(theme);
+  }
 }
 
 /**
