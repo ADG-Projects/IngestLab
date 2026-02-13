@@ -93,6 +93,8 @@ function buildElementHierarchy(filteredEntries) {
   sorted.sort((a, b) => {
     const ea = a[1] || {};
     const eb = b[1] || {};
+    const hasLayout = (ea.layout_w && ea.layout_h) || (eb.layout_w && eb.layout_h);
+    if (!hasLayout) return (ea.order ?? 0) - (eb.order ?? 0);
     const ya = Number(ea.y || 0) - Number(eb.y || 0);
     if (ya !== 0) return ya;
     return Number(ea.x || 0) - Number(eb.x || 0);

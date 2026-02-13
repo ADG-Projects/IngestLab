@@ -58,6 +58,7 @@ def _index_from_elements_file(path: Path) -> Tuple[Dict[str, Dict[str, Any]], Di
     by_id: Dict[str, Dict[str, Any]] = {}
     by_page: Dict[int, List[str]] = {}
     type_counts: Dict[str, int] = {}
+    order_idx = 0
 
     with path.open("r", encoding="utf-8") as f:
         for line in f:
@@ -99,7 +100,9 @@ def _index_from_elements_file(path: Path) -> Tuple[Dict[str, Dict[str, Any]], Di
                 "h": h if h is not None else 0,
                 "type": el_type,
                 "orig_id": md.get("original_element_id"),
+                "order": order_idx,
             }
+            order_idx += 1
             if isinstance(page_trimmed, int):
                 by_page.setdefault(page_trimmed, []).append(element_id)
             type_counts[el_type] = type_counts.get(el_type, 0) + 1

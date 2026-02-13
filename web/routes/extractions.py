@@ -13,6 +13,7 @@ from src.extractors.azure_di import (
     AzureDIConfig,
     AzureDIExtractOptions,
     AzureDIExtractor,
+    ensure_stable_element_id,
     parse_pages,
     resolve_pages_in_document,
     slice_pdf,
@@ -757,6 +758,11 @@ def _execute_extraction(metadata: Dict[str, Any]) -> None:
 
     # Convert elements to dict format for JSONL
     elems = [el.to_dict() for el in result.elements]
+
+    # Ensure every element has a stable ID (safety net for extractors that omit it)
+    for el in elems:
+        if not el.get("element_id"):
+            ensure_stable_element_id(el)
 
     # Count element types for progress reporting
     type_counts: Dict[str, int] = {}

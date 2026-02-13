@@ -189,7 +189,7 @@ wheels = [
 [[package]]
 name = "brd-to-opa-pipeline"
 version = "0.1.0"
-source = { git = "https://github.com/kyndryl-agentic-ai/PolicyAsCode.git?rev=feature%2Fchunking-visualizer-integration#e6946a672bf3488ac589cbcebe2d1a90683c4799" }
+source = { git = "https://github.com/kyndryl-agentic-ai/PolicyAsCode.git?rev=feature%2Fchunking-visualizer-integration#2bbe85dcdbae4c8e0a764f350cad9298f7bb3b09" }
 dependencies = [
     { name = "arabic-reshaper" },
     { name = "azure-ai-documentintelligence" },

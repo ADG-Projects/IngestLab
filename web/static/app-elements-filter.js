@@ -88,6 +88,8 @@ function sortElementEntries(entries) {
   list.sort((a, b) => {
     const ea = a[1] || {};
     const eb = b[1] || {};
+    const hasLayout = (ea.layout_w && ea.layout_h) || (eb.layout_w && eb.layout_h);
+    if (!hasLayout) return (ea.order ?? 0) - (eb.order ?? 0);
     const ta = (ea.type || '').localeCompare(eb.type || '');
     if (ta !== 0) return ta;
     const ya = Number(ea.y || 0) - Number(eb.y || 0);
