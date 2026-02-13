@@ -333,8 +333,46 @@ function wireExtractionForm() {
   if (markEndBtn) markEndBtn.addEventListener('click', () => { if (EXTRACTION_RANGE_START != null) { const a = Math.min(EXTRACTION_RANGE_START, EXTRACTION_PREVIEW_PAGE); const b = Math.max(EXTRACTION_RANGE_START, EXTRACTION_PREVIEW_PAGE); addRangeToInput(a, b); EXTRACTION_RANGE_START = null; updateRangeHint(); } });
 }
 
+// Store original placeholder so we can restore it
+const PAGES_INPUT_DEFAULT_PLACEHOLDER = 'e.g. 4-6 or 4,5,6 (blank = all)';
+
+/**
+ * Enable/disable form sections that don't apply to a given file type.
+ * Spreadsheets use native openpyxl extraction — Azure settings and page
+ * selection are irrelevant.
+ */
+function updateFormForFileType(fileType) {
+  const azureSettings = $('azureSettings');
+  const pagesInput = $('pagesInput');
+  const addPageBtn = $('addPageBtn');
+  const markStartBtn = $('markStartBtn');
+  const markEndBtn = $('markEndBtn');
+
+  const isSpreadsheet = fileType === 'spreadsheet';
+
+  // Azure settings section
+  if (azureSettings) {
+    azureSettings.classList.toggle('disabled', isSpreadsheet);
+  }
+
+  // Pages input
+  if (pagesInput) {
+    pagesInput.disabled = isSpreadsheet;
+    pagesInput.placeholder = isSpreadsheet
+      ? 'All sheets \u2014 pages N/A for spreadsheets'
+      : PAGES_INPUT_DEFAULT_PLACEHOLDER;
+    if (isSpreadsheet) pagesInput.value = '';
+  }
+
+  // Page navigation buttons
+  if (addPageBtn) addPageBtn.disabled = isSpreadsheet;
+  if (markStartBtn) markStartBtn.disabled = isSpreadsheet;
+  if (markEndBtn) markEndBtn.disabled = isSpreadsheet;
+}
+
 // Window exports
 window.wireExtractionForm = wireExtractionForm;
 window.fetchSupportedFormats = fetchSupportedFormats;
 window.isSupportedFile = isSupportedFile;
 window.getFileType = getFileType;
+window.updateFormForFileType = updateFormForFileType;

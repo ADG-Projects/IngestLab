@@ -26,6 +26,12 @@ async function loadExtractionPreviewForSelectedPdf() {
   const isSpreadsheet = ['.xlsx', '.xls'].includes(ext);
   const isOffice = ['.docx', '.pptx'].includes(ext);
 
+  // Update form sections for this file type
+  const fileType = isSpreadsheet ? 'spreadsheet' : isPdf ? 'pdf' : isImage ? 'image' : isOffice ? 'office' : null;
+  if (typeof updateFormForFileType === 'function') {
+    updateFormForFileType(fileType);
+  }
+
   // Update format badge
   if (formatBadge) {
     const extDisplay = ext.replace('.', '').toUpperCase();

@@ -621,6 +621,18 @@ body.resizing-drawer {
   margin-bottom: 12px;
 }
 
+/* Disabled state for file-type-aware form sections */
+.azure-settings.disabled {
+  opacity: 0.4;
+  pointer-events: none;
+  user-select: none;
+}
+
+#pagesInput:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
 /* Ensure inputs inside labels don't break layout */
 .opt-group input[type="radio"],
 .opt-group input[type="checkbox"] {
