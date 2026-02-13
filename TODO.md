@@ -5,6 +5,7 @@
 
 ## Completed
 
+- [x] 2026-02-13 Release v7.0.0 (Native spreadsheet extraction, dynamic progress stages, spreadsheet-aware UI, XLSX chunk/element/preview fixes).
 - [x] 2026-02-11 Increase figure extraction DPI from 150 to 300 for better vision pipeline accuracy (OCR, SAM3, Mermaid).
 - [x] 2026-02-09 Release v6.4.0 (Rename "Custom" chunker to "Section Based" across UI, API, and docs).
 - [x] 2026-02-09 Release v6.3.0 (Chunker strategy selection with advanced options, dynamic parameter schemas from PaC registry, size controlled default).

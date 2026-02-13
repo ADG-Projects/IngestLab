@@ -121,6 +121,7 @@ Outputs for Azure extractions live under `outputs/azure/document_intelligence/` 
 
 ## Release history
 
+- **v7.0.0 (2026-02-13)** – **Native Spreadsheet Extraction**: XLSX files extracted via PolicyAsCode SpreadsheetExtractor without Azure DI. Dynamic progress pipeline stages per file type. Spreadsheet-aware form options. Fixes for XLSX preview, elements display order, chunk page filtering, and format badge clearing.
 - **v6.4.0 (2026-02-09)** – Rename "Custom" chunker to "Section Based" across UI, API, documentation, and CLI.
 - **v6.3.0 (2026-02-09)** – **Chunker Strategy Selection**: Choose between chunker strategies (Section Based, Size Controlled) from a dropdown in the chunker modal with collapsible advanced options. Strategies and parameters fetched dynamically from PaC chunker registry. Default is now Size Controlled. Last used strategy remembered across sessions.
 - **v6.2.2 (2026-02-03)** – PolicyAsCode dev mode: update PaC on-demand via Settings modal without restart; admin API endpoints and CLI helper.

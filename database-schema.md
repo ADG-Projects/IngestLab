@@ -19,6 +19,7 @@ Source PDFs are read from a configurable directory:
 
 ## Version history
 
+- **v7.0.0 (2026-02-13)** – Native Spreadsheet Extraction: XLSX files extracted via PolicyAsCode SpreadsheetExtractor. Dynamic progress pipeline stages per file type. Spreadsheet-aware UI form. Fixes for XLSX preview, elements display, chunk page filtering, and format badge.
 - **v6.4.0 (2026-02-09)** – Rename "Custom" chunker to "Section Based" across UI, API, and documentation.
 - **v6.3.0 (2026-02-09)** – Chunker Strategy Selection: choose between registered chunker strategies (Section Based, Size Controlled) via dropdown with collapsible advanced options. Strategies and parameter schemas fetched dynamically from PaC chunker registry (`GET /api/chunkers`). Default is Size Controlled. Last used strategy and overrides remembered across sessions.
 - **v6.0.0 (2026-01-27)** – Images Tab & Vision Pipeline: New top-level Images tab for exploring PDF figures and standalone image uploads. Two-stage vision pipeline with SAM3 segmentation preview + Mermaid extraction. Cytoscape graph visualization with fullscreen mode. Upload history management. Lightbox for zoomable previews. Azure DI OCR text extraction for improved Mermaid labeling. LLM reasoning trace display. Frontend refactored into modular CSS/JS for maintainability.
