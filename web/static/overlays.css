@@ -606,6 +606,12 @@ body.resizing-drawer {
   user-select: none;
 }
 
+.opt-group.disabled {
+  opacity: 0.4;
+  pointer-events: none;
+  user-select: none;
+}
+
 /* Ensure inputs inside labels don't break layout */
 .opt-group input[type="radio"],
 .opt-group input[type="checkbox"] {

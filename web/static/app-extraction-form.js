@@ -513,13 +513,14 @@ function wireExtractionForm() {
  */
 function updateFormForFileType(fileType) {
   const azureSettings = $('azureSettings');
-
+  if (!azureSettings) return;
   const isSpreadsheet = fileType === 'spreadsheet';
 
-  // Azure settings section
-  if (azureSettings) {
-    azureSettings.classList.toggle('disabled', isSpreadsheet);
-  }
+  azureSettings.classList.remove('disabled');
+  azureSettings.querySelectorAll('.opt-group').forEach(group => {
+    const keep = group.querySelector('#azureProcessFigures');
+    group.classList.toggle('disabled', isSpreadsheet && !keep);
+  });
 }
 
 // Window exports

@@ -50,9 +50,10 @@ const PIPELINES_BY_FILE_TYPE = {
     { id: 'writing', label: 'Save', aliases: [] },
   ],
   spreadsheet: [
-    { id: 'extract', label: 'Extract', aliases: [] },
-    { id: 'convert', label: 'Preview', aliases: [] },
+    { id: 'convert', label: 'Convert', aliases: [] },
+    { id: 'azure', label: 'Azure DI', aliases: [] },
     { id: 'elements', label: 'Elements', aliases: [] },
+    { id: 'figures', label: 'Figures', aliases: [] },
     { id: 'writing', label: 'Save', aliases: [] },
   ],
 };
