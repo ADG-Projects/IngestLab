@@ -45,7 +45,7 @@ class FigureProcessorWrapper:
             try:
                 from src.config.settings import settings
                 from src.figure_processing import FigureProcessor
-                from src.processors.structured_client import create_client
+                from src.utils.ai_client import create_client
 
                 # Create separate client for mermaid generation (text-only with no reasoning)
                 mermaid_client = create_client(
@@ -60,7 +60,7 @@ class FigureProcessorWrapper:
             except ImportError as e:
                 raise ImportError(
                     "FigureProcessor not available. Ensure PolicyAsCode is installed "
-                    "from the feature/figure-vision-pr5c-api-endpoints branch."
+                    "from the feature/chunking-visualizer-integration branch."
                 ) from e
         return self._processor
 
