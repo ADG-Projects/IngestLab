@@ -561,6 +561,23 @@
   padding-top: 4px;
 }
 
+.chunker-reset-row,
+.extraction-reset-row {
+  padding: 8px 12px 4px;
+  text-align: right;
+}
+
+/* Per-field modification indicator — small blue dot after label text */
+label.checkbox.pref-modified::after,
+.chunker-param-row.pref-modified > label::after,
+.opt-group.pref-modified > .lab::after,
+.azure-advanced label.pref-modified > .lab::after {
+  content: ' ●';
+  color: var(--color-primary);
+  font-size: 6px;
+  vertical-align: super;
+}
+
 .chunker-actions {
   display: flex;
   align-items: center;

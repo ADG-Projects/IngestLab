@@ -59,6 +59,159 @@ function getFileType(filename) {
   return null;
 }
 
+/* ---------- extraction prefs persistence ---------- */
+const _EXTRACTION_STORAGE_KEY = 'ingestlab:extractionPrefs';
+
+const _EXTRACTION_DEFAULTS = {
+  azureOutputFormat: 'markdown',
+  azureFigureImage: false,
+  azureProcessFigures: true,
+  azureBarcodes: false,
+  azureLanguage: true,
+  azureKvp: false,
+  azureHighRes: false,
+  azureStyleFont: false,
+  azureFormulas: false,
+  azureModelId: '',
+  azureLocale: '',
+  azureStringIndexType: '',
+  azureQueryFields: '',
+};
+
+const _EXTRACTION_CHECK_IDS = ['azureFigureImage', 'azureProcessFigures', 'azureBarcodes', 'azureLanguage', 'azureKvp', 'azureHighRes', 'azureStyleFont', 'azureFormulas'];
+const _EXTRACTION_TEXT_IDS = ['azureModelId', 'azureLocale', 'azureStringIndexType', 'azureQueryFields'];
+
+function _extractionDefaultsHash() {
+  const sig = JSON.stringify(_EXTRACTION_DEFAULTS);
+  let h = 0;
+  for (let i = 0; i < sig.length; i++) { h = ((h << 5) - h + sig.charCodeAt(i)) | 0; }
+  return h;
+}
+
+function _resetExtractionToDefaults() {
+  const mdRadio = document.querySelector('input[name="azureOutputFormat"][value="markdown"]');
+  const textRadio = document.querySelector('input[name="azureOutputFormat"][value="text"]');
+  if (mdRadio) mdRadio.checked = true;
+  if (textRadio) textRadio.checked = false;
+  for (const id of _EXTRACTION_CHECK_IDS) {
+    const el = $(id);
+    if (el) el.checked = _EXTRACTION_DEFAULTS[id];
+  }
+  for (const id of _EXTRACTION_TEXT_IDS) {
+    const el = $(id);
+    if (el) el.value = '';
+  }
+}
+
+function _collectExtractionValues() {
+  const vals = {};
+  const fmt = document.querySelector('input[name="azureOutputFormat"]:checked');
+  vals.azureOutputFormat = fmt ? fmt.value : 'markdown';
+  for (const id of _EXTRACTION_CHECK_IDS) {
+    const el = $(id);
+    vals[id] = el ? el.checked : _EXTRACTION_DEFAULTS[id];
+  }
+  for (const id of _EXTRACTION_TEXT_IDS) {
+    const el = $(id);
+    vals[id] = el ? (el.value || '') : '';
+  }
+  return vals;
+}
+
+function saveExtractionPrefs() {
+  try {
+    const vals = _collectExtractionValues();
+    const overrides = {};
+    for (const [key, val] of Object.entries(vals)) {
+      if (JSON.stringify(val) !== JSON.stringify(_EXTRACTION_DEFAULTS[key])) overrides[key] = val;
+    }
+    localStorage.setItem(_EXTRACTION_STORAGE_KEY, JSON.stringify({
+      config: overrides, _v: _extractionDefaultsHash(),
+    }));
+  } catch (_) { /* quota or private-browsing */ }
+}
+
+function loadExtractionPrefs() {
+  _resetExtractionToDefaults();
+  try {
+    const raw = localStorage.getItem(_EXTRACTION_STORAGE_KEY);
+    if (!raw) { _updateExtractionModifiedIndicators(); return; }
+    const prefs = JSON.parse(raw);
+    if (!prefs || prefs._v !== _extractionDefaultsHash()) {
+      localStorage.removeItem(_EXTRACTION_STORAGE_KEY);
+      _updateExtractionModifiedIndicators();
+      return;
+    }
+    const config = prefs.config || {};
+    if (config.azureOutputFormat) {
+      const radio = document.querySelector(`input[name="azureOutputFormat"][value="${config.azureOutputFormat}"]`);
+      if (radio) radio.checked = true;
+    }
+    for (const id of _EXTRACTION_CHECK_IDS) {
+      if (id in config) { const el = $(id); if (el) el.checked = config[id]; }
+    }
+    for (const id of _EXTRACTION_TEXT_IDS) {
+      if (id in config) { const el = $(id); if (el) el.value = config[id]; }
+    }
+    _updateExtractionModifiedIndicators();
+  } catch (_) {
+    localStorage.removeItem(_EXTRACTION_STORAGE_KEY);
+    _updateExtractionModifiedIndicators();
+  }
+}
+
+function _updateExtractionModifiedIndicators() {
+  const vals = _collectExtractionValues();
+  // Radio: output format
+  const fmtRadio = document.querySelector('input[name="azureOutputFormat"]');
+  const fmtGroup = fmtRadio ? fmtRadio.closest('.opt-group') : null;
+  if (fmtGroup) fmtGroup.classList.toggle('pref-modified', vals.azureOutputFormat !== _EXTRACTION_DEFAULTS.azureOutputFormat);
+  // Checkboxes
+  for (const id of _EXTRACTION_CHECK_IDS) {
+    const el = $(id);
+    if (!el) continue;
+    const label = el.closest('label');
+    if (label) label.classList.toggle('pref-modified', vals[id] !== _EXTRACTION_DEFAULTS[id]);
+  }
+  // Text fields
+  for (const id of _EXTRACTION_TEXT_IDS) {
+    const el = $(id);
+    if (!el) continue;
+    const label = el.closest('label');
+    if (label) label.classList.toggle('pref-modified', (vals[id] || '') !== _EXTRACTION_DEFAULTS[id]);
+  }
+}
+
+function _wireExtractionModifiedIndicators() {
+  // Radio: output format
+  document.querySelectorAll('input[name="azureOutputFormat"]').forEach(radio => {
+    radio.addEventListener('change', () => {
+      const checked = document.querySelector('input[name="azureOutputFormat"]:checked');
+      const isModified = checked && checked.value !== _EXTRACTION_DEFAULTS.azureOutputFormat;
+      const group = radio.closest('.opt-group');
+      if (group) group.classList.toggle('pref-modified', isModified);
+    });
+  });
+  // Checkboxes
+  for (const id of _EXTRACTION_CHECK_IDS) {
+    const el = $(id);
+    if (!el) continue;
+    el.addEventListener('change', () => {
+      const label = el.closest('label');
+      if (label) label.classList.toggle('pref-modified', el.checked !== _EXTRACTION_DEFAULTS[id]);
+    });
+  }
+  // Text fields
+  for (const id of _EXTRACTION_TEXT_IDS) {
+    const el = $(id);
+    if (!el) continue;
+    el.addEventListener('input', () => {
+      const label = el.closest('label');
+      if (label) label.classList.toggle('pref-modified', (el.value || '') !== _EXTRACTION_DEFAULTS[id]);
+    });
+  }
+}
+
 function wireExtractionForm() {
   // Fetch supported formats from API (non-blocking)
   fetchSupportedFormats().catch(e => console.warn('Could not fetch supported formats:', e));
@@ -299,6 +452,7 @@ function wireExtractionForm() {
       if (!r.ok) throw new Error(data?.detail || `HTTP ${r.status}`);
       jobId = data?.job?.id || null;
       if (!jobId) throw new Error('Server did not return a job id');
+      saveExtractionPrefs();
       if (status) status.textContent = 'Queued…';
       const tagInput = $('variantTag');
       if (tagInput) tagInput.value = '';
@@ -311,6 +465,17 @@ function wireExtractionForm() {
       }
     }
   });
+
+  // Reset extraction form to defaults
+  const resetExtrBtn = $('resetExtractionDefaults');
+  if (resetExtrBtn) {
+    resetExtrBtn.addEventListener('click', () => {
+      _resetExtractionToDefaults();
+      localStorage.removeItem(_EXTRACTION_STORAGE_KEY);
+      _updateExtractionModifiedIndicators();
+      showToast('Extraction options reset to defaults', 'ok', 2000);
+    });
+  }
 
   const cancelBtn = $('cancelExtractionBtn');
   if (cancelBtn) {
@@ -337,6 +502,8 @@ function wireExtractionForm() {
   if (addPageBtn) addPageBtn.addEventListener('click', () => { addPageToInput(EXTRACTION_PREVIEW_PAGE); });
   if (markStartBtn) markStartBtn.addEventListener('click', () => { EXTRACTION_RANGE_START = EXTRACTION_PREVIEW_PAGE; updateRangeHint(); });
   if (markEndBtn) markEndBtn.addEventListener('click', () => { if (EXTRACTION_RANGE_START != null) { const a = Math.min(EXTRACTION_RANGE_START, EXTRACTION_PREVIEW_PAGE); const b = Math.max(EXTRACTION_RANGE_START, EXTRACTION_PREVIEW_PAGE); addRangeToInput(a, b); EXTRACTION_RANGE_START = null; updateRangeHint(); } });
+
+  _wireExtractionModifiedIndicators();
 }
 
 /**
@@ -361,3 +528,5 @@ window.fetchSupportedFormats = fetchSupportedFormats;
 window.isSupportedFile = isSupportedFile;
 window.getFileType = getFileType;
 window.updateFormForFileType = updateFormForFileType;
+window.saveExtractionPrefs = saveExtractionPrefs;
+window.loadExtractionPrefs = loadExtractionPrefs;
