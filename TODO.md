@@ -5,6 +5,7 @@
 
 ## Completed
 
+- [x] 2026-02-19 Release v7.3.0 (Spreadsheet figure processing via vision pipeline, figure analysis toggle for spreadsheets, Figures stage in extraction progress).
 - [x] 2026-02-19 Release v7.2.0 (Language-aware chars_per_token, table row span badges, x-internal filtering, PaC table splitting improvements).
 - [x] 2026-02-19 Release v7.1.0 (Preference persistence, modification indicators, reset-to-defaults for extraction and chunker modals).
 - [x] 2026-02-18 Release v7.0.1 (Chunker UI: strategy vs preprocessing param groups, merge_toward_target parameter, env documentation).

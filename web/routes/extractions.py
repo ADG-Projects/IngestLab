@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import json
 import logging
 import re
@@ -544,7 +545,7 @@ def _process_figures_after_extraction(
             metadata,
             current=figure_index,
             total=total_figures,
-            message="Extracting from PDF...",
+            message="Extracting figure...",
             stage="figures",
         )
 
@@ -553,15 +554,23 @@ def _process_figures_after_extraction(
         page_number = el.get("page_number") or md.get("page_number")
         coordinates = md.get("coordinates", {})
 
-        if not page_number or not coordinates.get("points"):
-            logger.warning(f"Figure {element_id} missing page/coordinates, skipping")
+        base64_image = md.get("base64_image")
+        if not page_number or (not coordinates.get("points") and not base64_image):
+            logger.warning(f"Figure {element_id} missing page/coordinates and no base64_image, skipping")
             continue
 
-        # Extract figure from PDF
-        png_bytes = _extract_figure_from_pdf(pdf_path, page_number, coordinates)
-        if not png_bytes:
-            logger.warning(f"Failed to extract figure {element_id} from PDF")
-            continue
+        # Extract figure from PDF or decode base64 image
+        if coordinates.get("points"):
+            png_bytes = _extract_figure_from_pdf(pdf_path, page_number, coordinates)
+            if not png_bytes:
+                logger.warning(f"Failed to extract figure {element_id} from PDF")
+                continue
+        else:
+            try:
+                png_bytes = base64.b64decode(base64_image)
+            except Exception as e:
+                logger.warning(f"Failed to decode base64 image for {element_id}: {e}")
+                continue
 
         # Save extracted image
         image_path = figures_dir / f"{element_id}.png"

@@ -121,6 +121,7 @@ Outputs for Azure extractions live under `outputs/azure/document_intelligence/` 
 
 ## Release history
 
+- **v7.3.0 (2026-02-19)** – **Spreadsheet figure processing**: Spreadsheets with embedded images now flow through the vision pipeline (SAM3 + Mermaid). Base64-encoded figures decoded and processed alongside PDF figures. "Analyze figures with AI" toggle enabled for spreadsheets. Extraction progress shows Figures stage.
 - **v7.2.0 (2026-02-19)** – **Language-aware chunking & table row spans**: Auto-detects document language to set optimal `chars_per_token` (Arabic=2.0, English=4.0) with language hint in chunker modal. Split table chunks show "Rows X–Y of Z" badges. Internal developer flags hidden via `x-internal` schema annotation. PaC updated with semantic HTML table splitting (`<thead>` repetition) and metadata copy fix.
 - **v7.1.0 (2026-02-19)** – **Preference persistence & modification indicators**: Extraction and chunker modals remember settings across sessions via localStorage. Blue dot markers show which fields differ from defaults. One-click reset buttons to restore factory settings. Consistent Advanced section styling.
 - **v7.0.1 (2026-02-18)** – **Chunker UI clarity**: Advanced options split into "Strategy Settings" and collapsible "Preprocessing" group. New `merge_toward_target` parameter from PaC update. All chunker env vars documented in `.env.example`.

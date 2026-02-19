@@ -19,6 +19,7 @@ Source PDFs are read from a configurable directory:
 
 ## Version history
 
+- **v7.3.0 (2026-02-19)** – Spreadsheet figure processing: base64-encoded figures from SpreadsheetExtractor decoded and routed through vision pipeline. Frontend enables figure analysis toggle for spreadsheets. Extraction progress pipeline includes Figures stage for spreadsheets.
 - **v7.2.0 (2026-02-19)** – Language-aware chunking: `/api/chunkers` returns `chars_per_token_by_language` mapping, `/api/chunk` auto-injects `chars_per_token` based on detected language. Table row span (`segment_row_span`) emitted independently of bbox. Full table HTML loaded from sibling `.elements.jsonl` for accurate row span matching. `x-internal` properties filtered from chunker schema.
 - **v7.1.0 (2026-02-19)** – Preference persistence & modification indicators: extraction and chunker modals remember settings via localStorage, blue dot markers for modified fields, reset-to-defaults buttons, consistent Advanced section styling.
 - **v7.0.1 (2026-02-18)** – Chunker UI clarity: advanced options split into Strategy Settings and Preprocessing groups. New `merge_toward_target` parameter from PaC update. Chunker env vars documented in `.env.example`.
