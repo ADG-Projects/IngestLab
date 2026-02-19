@@ -5,6 +5,7 @@
 
 ## Completed
 
+- [x] 2026-02-19 Release v7.1.0 (Preference persistence, modification indicators, reset-to-defaults for extraction and chunker modals).
 - [x] 2026-02-18 Release v7.0.1 (Chunker UI: strategy vs preprocessing param groups, merge_toward_target parameter, env documentation).
 - [x] 2026-02-13 Release v7.0.0 (Native spreadsheet extraction, dynamic progress stages, spreadsheet-aware UI, XLSX chunk/element/preview fixes).
 - [x] 2026-02-11 Increase figure extraction DPI from 150 to 300 for better vision pipeline accuracy (OCR, SAM3, Mermaid).

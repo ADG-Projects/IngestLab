@@ -81,7 +81,7 @@
       <div class="header-left">
         <div class="title-stack">
           <h1>IngestLab</h1>
-<span class="version-badge" id="versionBadge" title="What's new">v7.0.1</span>
+<span class="version-badge" id="versionBadge" title="What's new">v7.1.0</span>
         </div>
         <div class="view-tabs" role="tablist" aria-label="Primary view">
           <button id="viewTabInspect" class="tab active" data-view="inspect" role="tab" aria-selected="true">Inspect</button>
@@ -580,6 +580,9 @@
                   <input id="azureQueryFields" placeholder="e.g. invoiceDate,total" />
                 </label>
               </details>
+              <div class="extraction-reset-row">
+                <button id="resetExtractionDefaults" class="btn btn-secondary btn-sm" type="button">Reset to defaults</button>
+              </div>
             </div>
             <div class="extraction-actions">
               <button id="cancelExtractionBtn" class="btn btn-secondary" type="button">Cancel</button>
@@ -625,6 +628,9 @@
             <details class="chunker-advanced" id="chunkerAdvanced">
               <summary>Advanced Options</summary>
               <div id="chunkerAdvancedParams" class="chunker-advanced-params"></div>
+              <div class="chunker-reset-row">
+                <button id="resetChunkerDefaults" class="btn btn-secondary btn-sm" type="button">Reset to defaults</button>
+              </div>
             </details>
             <div class="chunker-actions">
               <button id="runChunkerBtn" class="btn btn-primary">Run Chunker</button>
@@ -644,6 +650,15 @@
           <button id="closeWhatsNew" class="btn">Close</button>
         </div>
         <div class="whats-new-body">
+          <div class="version-section">
+            <h3 class="version-header">v7.1.0 <span class="version-date">2026-02-19</span></h3>
+            <ul>
+              <li><strong>Preference persistence</strong>: Extraction and chunker modals remember your settings across sessions via localStorage — no more re-entering options every time</li>
+              <li><strong>Modification indicators</strong>: Blue dot markers show which fields differ from defaults, so you always know what's customized</li>
+              <li><strong>Reset to defaults</strong>: One-click reset buttons in both modals to restore factory settings</li>
+              <li><strong>Consistent styling</strong>: Advanced details sections now share a unified container look across all modals</li>
+            </ul>
+          </div>
           <div class="version-section">
             <h3 class="version-header">v7.0.1 <span class="version-date">2026-02-18</span></h3>
             <ul>

@@ -18,6 +18,7 @@ function wireModal() {
     if (status) status.textContent = '';
     populateExistingTagsDropdown();
     loadExtractionPreviewForSelectedPdf();
+    if (typeof loadExtractionPrefs === 'function') loadExtractionPrefs();
   });
 
   // Wire up existing tag dropdown to populate the text input
@@ -76,18 +77,36 @@ function closeExtractionModal() {
 /* ---------- chunker prefs persistence ---------- */
 const _CHUNKER_STORAGE_KEY = 'ingestlab:chunkerPrefs';
 
-function _saveChunkerPrefs(strategy, config) {
+function _schemaDefaultsHash(schemas) {
+  // Simple hash of all schema defaults — changes when upstream defaults change
+  const sig = schemas.map(s => {
+    const props = s.parameters?.properties || {};
+    return Object.keys(props).sort().map(k => k + '=' + JSON.stringify(props[k].default)).join('|');
+  }).join('||');
+  let h = 0;
+  for (let i = 0; i < sig.length; i++) { h = ((h << 5) - h + sig.charCodeAt(i)) | 0; }
+  return h;
+}
+
+function _saveChunkerPrefs(strategy, config, schemas) {
   try {
-    localStorage.setItem(_CHUNKER_STORAGE_KEY, JSON.stringify({ strategy, config }));
+    const hash = schemas ? _schemaDefaultsHash(schemas) : null;
+    localStorage.setItem(_CHUNKER_STORAGE_KEY, JSON.stringify({ strategy, config, _v: hash }));
   } catch (_) { /* quota or private-browsing — silently ignore */ }
 }
 
-function _loadChunkerPrefs() {
+function _loadChunkerPrefs(schemas) {
   try {
     const raw = localStorage.getItem(_CHUNKER_STORAGE_KEY);
     if (!raw) return null;
     const prefs = JSON.parse(raw);
-    if (prefs && typeof prefs.strategy === 'string') return prefs;
+    if (!prefs || typeof prefs.strategy !== 'string') return null;
+    // Invalidate stale prefs when upstream defaults change
+    if (schemas && prefs._v !== _schemaDefaultsHash(schemas)) {
+      localStorage.removeItem(_CHUNKER_STORAGE_KEY);
+      return null;
+    }
+    return prefs;
   } catch (_) { /* corrupt data */ }
   return null;
 }
@@ -166,10 +185,33 @@ function _buildParamRow(key, prop, savedConfig) {
   input.dataset.paramType = prop.type || 'string';
   if (prop.default !== undefined) input.dataset.paramDefault = JSON.stringify(prop.default);
   row.appendChild(input);
+
+  // Per-field modification indicator
+  const checkModified = () => {
+    if (prop.default === undefined) { row.classList.remove('pref-modified'); return; }
+    let currentVal;
+    if (prop.type === 'boolean') {
+      currentVal = input.checked;
+    } else if (prop.type === 'integer') {
+      currentVal = input.value !== '' ? parseInt(input.value, 10) : undefined;
+    } else if (prop.type === 'number') {
+      currentVal = input.value !== '' ? parseFloat(input.value) : undefined;
+    } else if (prop.type === 'array') {
+      currentVal = input.value.trim() ? input.value.split(',').map(s => s.trim()).filter(Boolean) : undefined;
+    } else {
+      currentVal = input.value || undefined;
+    }
+    const isModified = currentVal !== undefined && JSON.stringify(currentVal) !== JSON.stringify(prop.default);
+    row.classList.toggle('pref-modified', isModified);
+  };
+  input.addEventListener(prop.type === 'boolean' ? 'change' : 'input', checkModified);
+  checkModified();
+
   return row;
 }
 
 async function _buildAdvancedParams(schema, container, savedConfig) {
+  const prevBaseOpen = container.querySelector('.chunker-base-params')?.open ?? false;
   _clearChildren(container);
   const props = schema.parameters?.properties || {};
   const hidden = new Set(['include_orig_elements']);
@@ -199,6 +241,7 @@ async function _buildAdvancedParams(schema, container, savedConfig) {
   if (sharedKeys.length > 0) {
     const details = document.createElement('details');
     details.className = 'chunker-base-params';
+    details.open = prevBaseOpen;
     const summary = document.createElement('summary');
     summary.textContent = 'Preprocessing (shared by all strategies)';
     summary.title = 'Element filtering and section detection that runs BEFORE any chunker-specific logic. Both section_based and size_controlled chunkers inherit these settings.';
@@ -259,16 +302,26 @@ function wireChunkerModal() {
   if (!openBtn || !modal) return;
 
   // Strategy change handler
-  async function onStrategyChange(savedConfig) {
+  async function onStrategyChange(savedConfig, keepOpen) {
     const schemas = await _fetchChunkerSchemas();
     const selected = schemas.find(s => s.name === strategySelect.value);
     if (!selected) return;
     if (strategyDesc) strategyDesc.textContent = selected.description || '';
     if (advancedParams) _buildAdvancedParams(selected, advancedParams, savedConfig);
-    if (advancedDetails) advancedDetails.open = false;
+    if (advancedDetails && !keepOpen) advancedDetails.open = false;
   }
 
   if (strategySelect) strategySelect.addEventListener('change', () => onStrategyChange());
+
+  // Reset to defaults button
+  const resetBtn = $('resetChunkerDefaults');
+  if (resetBtn) {
+    resetBtn.addEventListener('click', async () => {
+      localStorage.removeItem(_CHUNKER_STORAGE_KEY);
+      await onStrategyChange(undefined, true);   // rebuild params, keep Advanced open
+      showToast('Chunker options reset to defaults', 'ok', 2000);
+    });
+  }
 
   openBtn.addEventListener('click', async () => {
     // Populate source extraction dropdown from existing extractions
@@ -317,7 +370,7 @@ function wireChunkerModal() {
         strategySelect.appendChild(opt);
       });
 
-      const prefs = _loadChunkerPrefs();
+      const prefs = _loadChunkerPrefs(schemas);
       let savedConfig = null;
       if (prefs && schemas.find(s => s.name === prefs.strategy)) {
         strategySelect.value = prefs.strategy;
@@ -382,7 +435,8 @@ function wireChunkerModal() {
           status.textContent = `Done! ${result.summary?.count || 0} chunks created`;
         }
         showToast(`Chunker complete: ${result.summary?.count || 0} chunks`, 'ok', 3000);
-        _saveChunkerPrefs(strategySelect ? strategySelect.value : 'section_based', _collectParamValues(false));
+        const schemas = await _fetchChunkerSchemas();
+        _saveChunkerPrefs(strategySelect ? strategySelect.value : 'section_based', _collectConfigOverrides(), schemas);
         try {
           switchView('inspect', true);
           switchInspectTab('chunks', true);
