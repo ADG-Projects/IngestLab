@@ -561,6 +561,34 @@
   padding-top: 4px;
 }
 
+.azure-advanced {
+  margin-top: 4px;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--surface-glass);
+}
+
+.azure-advanced summary {
+  padding: 6px 10px;
+  font-size: var(--text-sm);
+  font-weight: 500;
+  color: var(--text-tertiary);
+  cursor: pointer;
+  user-select: none;
+}
+
+.azure-advanced summary:hover {
+  color: var(--text-secondary);
+}
+
+.azure-advanced > label {
+  padding: 0 10px 8px;
+}
+
+.azure-advanced > label:first-of-type {
+  padding-top: 4px;
+}
+
 .chunker-reset-row,
 .extraction-reset-row {
   padding: 8px 12px 4px;
